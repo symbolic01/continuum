@@ -19,6 +19,7 @@ from tokens import count_tokens, count_messages_tokens
 from session_log import SessionLog
 from retrieval import ContextRetriever
 from compression import CompressionPolicy, CompressedBlock, TokenBudgetPolicy
+from actions import parse_actions, strip_actions, execute_action
 
 
 class ContextAssembler:
@@ -290,6 +291,9 @@ class Session:
     def turn(self, user_message: str) -> tuple[str, dict]:
         """Process one turn: assemble context, call API, log everything.
 
+        If the response contains <action> blocks, executes them and
+        includes results in the returned stats.
+
         Returns:
             (response_text, stats_dict)
         """
@@ -302,7 +306,20 @@ class Session:
         )
         response = self.assembler.call_api(system, messages)
 
-        # Log assistant response
-        self.assembler.log.append("assistant", response, thread=self.current_thread)
+        # Parse and execute any action blocks
+        actions = parse_actions(response)
+        action_results = []
+        if actions:
+            for action in actions:
+                result = execute_action(action, model=self.assembler.model)
+                action_results.append(result)
 
-        return response, self.assembler.stats()
+        # Log assistant response (with actions stripped for cleaner history)
+        display_response = strip_actions(response) if actions else response
+        self.assembler.log.append("assistant", display_response, thread=self.current_thread)
+
+        stats = self.assembler.stats()
+        if action_results:
+            stats["actions"] = action_results
+
+        return display_response, stats
