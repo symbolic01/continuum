@@ -112,7 +112,7 @@ def _execute_read(file_path: str, cwd: Path) -> dict:
         content = path.read_text(encoding="utf-8", errors="replace")
         return {
             "ok": True,
-            "result": content[:4000],
+            "result": content[:16000],
             "project": cwd.name,
             "type": "read",
             "path": str(path),
