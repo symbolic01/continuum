@@ -3,6 +3,11 @@ model: claude-sonnet-4-6
 identity: identity.md
 system_prompt: system.md  # file path or inline string
 
+# Backend: "cli" (claude --print, flat rate) or "api" (Anthropic SDK, per-token with caching)
+backend: cli
+# api_key: sk-ant-...        # for api backend (or set ANTHROPIC_API_KEY env var)
+# base_url: http://localhost:4000  # for LiteLLM proxy (work)
+
 context_sources:
   - ~/projects/CLAUDE.md
   - ~/projects/bridge/CLAUDE.md
@@ -15,6 +20,10 @@ token_budgets:
   system: 4000           # layer 1
   dynamic_context: 30000 # layer 2
   recent_tail: 80000     # layer 3b
+
+compression:
+  policy: token_budget   # or "fixed_tail"
+  model: claude-haiku-4-5-20251001  # or "local:qwen2.5:7b"
 
 session:
   log_dir: ~/.continuum/sessions

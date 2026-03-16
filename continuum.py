@@ -20,6 +20,7 @@ from session_log import SessionLog
 from retrieval import ContextRetriever
 from compression import CompressionPolicy, CompressedBlock, TokenBudgetPolicy
 from actions import parse_actions, strip_actions, execute_action
+from backend import Backend, CLIBackend, make_backend
 
 
 class ContextAssembler:
@@ -34,6 +35,7 @@ class ContextAssembler:
         model: str = "claude-sonnet-4-6",
         token_budgets: dict | None = None,
         compression_policy: CompressionPolicy | None = None,
+        backend: Backend | None = None,
     ):
         self.identity = Path(identity_path).expanduser().read_text().strip()
         self.system_prompt = system_prompt
@@ -41,6 +43,7 @@ class ContextAssembler:
         self.log = session_log
         self.model = model
         self.policy = compression_policy or TokenBudgetPolicy()
+        self.backend = backend or CLIBackend()
 
         defaults = {
             "total": 180_000,
@@ -234,51 +237,8 @@ class ContextAssembler:
         return getattr(self, "_last_stats", {})
 
     def call_api(self, system: str, messages: list[dict]) -> str:
-        """Call Claude API via claude --print subprocess."""
-        claude_bin = shutil.which("claude") or "claude"
-
-        # Prior messages go as conversation history in system prompt
-        conversation_context = ""
-        prior_messages = messages[:-1]
-        current_message = messages[-1]["content"]
-
-        if prior_messages:
-            parts = []
-            for msg in prior_messages:
-                role = msg["role"].upper()
-                parts.append(f"[{role}]: {msg['content']}")
-            conversation_context = "\n\n".join(parts)
-
-        full_system = system
-        if conversation_context:
-            full_system = f"{system}\n\n<conversation_history>\n{conversation_context}\n</conversation_history>"
-
-        cmd = [
-            claude_bin,
-            "--print",
-            "--model", self.model,
-            "--no-session-persistence",
-            "--system-prompt", full_system,
-            "-p", current_message,
-        ]
-
-        env = {k: v for k, v in os.environ.items()
-               if k not in ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT")}
-
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=300,
-            env=env,
-            stdin=subprocess.DEVNULL,
-        )
-
-        if result.returncode != 0:
-            error = (result.stderr or "").strip()[:500]
-            raise RuntimeError(f"claude --print failed (rc={result.returncode}): {error}")
-
-        return (result.stdout or "").strip()
+        """Call the API via the configured backend."""
+        return self.backend.call(system, messages, self.model)
 
 
 class Session:

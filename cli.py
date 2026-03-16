@@ -12,6 +12,7 @@ from session_log import SessionLog
 from retrieval import ContextRetriever
 from compression import FixedTailPolicy, TokenBudgetPolicy
 from continuum import ContextAssembler, Session
+from backend import make_backend
 from index import load_index, DEFAULT_INDEX_PATH
 
 
@@ -51,6 +52,9 @@ def make_session(config: dict, session_name: str | None = None) -> Session:
     else:
         policy = TokenBudgetPolicy(model=comp_model)
 
+    # Backend
+    backend = make_backend(config)
+
     # Assembler
     assembler = ContextAssembler(
         identity_path=identity_path,
@@ -60,6 +64,7 @@ def make_session(config: dict, session_name: str | None = None) -> Session:
         model=config.get("model", "claude-sonnet-4-6"),
         token_budgets=config.get("token_budgets"),
         compression_policy=policy,
+        backend=backend,
     )
 
     return Session(assembler)
