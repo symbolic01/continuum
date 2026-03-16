@@ -1,0 +1,20 @@
+# Continuum configuration
+model: claude-sonnet-4-6
+identity: identity.md
+system_prompt: system.md  # file path or inline string
+
+context_sources:
+  - ~/projects/CLAUDE.md
+  - ~/projects/bridge/CLAUDE.md
+  - ~/projects/continuum/CLAUDE.md
+  - ~/projects/superempathy/CLAUDE.md
+
+token_budgets:
+  total: 180000          # leave headroom below 200K window
+  identity: 300          # layer 0 — tiny, fixed
+  system: 4000           # layer 1
+  dynamic_context: 30000 # layer 2
+  recent_tail: 80000     # layer 3b
+
+session:
+  log_dir: ~/.continuum/sessions
