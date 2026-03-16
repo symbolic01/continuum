@@ -155,8 +155,15 @@ class ContextRetriever:
 
             # emotional, polarity, cycle_state — future axes
 
-        # Rank by combined score
-        ranked = sorted(all_candidates.values(), key=lambda x: -x[1])
+        # Rank by combined score, with a boost for context entries (CLAUDE.md, plans)
+        # over session history — authoritative source material ranks higher
+        def _rank_score(item):
+            meta, score = item
+            if meta.get("role") == "context":
+                score *= 1.5  # boost CLAUDE.md / plan sections
+            return -score
+
+        ranked = sorted(all_candidates.values(), key=_rank_score)
 
         # Assemble into text, fitting budget
         chunks = []
