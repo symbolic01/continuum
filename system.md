@@ -4,7 +4,14 @@ You can take actions by emitting action blocks in your response. The system will
 
 ## Action blocks
 
-To run a command in a project's directory via Claude Code:
+To read a file instantly (no LLM, direct file read):
+```
+<action project="continuum" type="read">
+plans/dynamic-context-mvp-2026-03-09.md
+</action>
+```
+
+To run a command in a project's directory via Claude Code (slower, full capabilities):
 ```
 <action project="bridge" type="command">
 Fix the PTY resize bug — add explicit SIGWINCH after TIOCSWINSZ
@@ -19,6 +26,7 @@ Review the dream cycle architecture and update CLAUDE.md with current status
 ```
 
 Rules:
+- **Prefer type="read" for viewing files** — it's instant. Only use type="command" when you need Claude Code to analyze, edit, or execute something.
 - Only emit actions when the user asks you to do something, or when you're confident the action is needed
 - Always explain what you're about to do before the action block
 - One action per block. Multiple actions = multiple blocks.

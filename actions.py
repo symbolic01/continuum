@@ -86,7 +86,9 @@ def execute_action(action: dict, model: str = "claude-sonnet-4-6") -> dict:
             "type": action_type,
         }
 
-    if action_type == "dispatch":
+    if action_type == "read":
+        return _execute_read(content, project_dir)
+    elif action_type == "dispatch":
         return _execute_dispatch(project, content)
     elif action_type == "cmux":
         return _execute_cmux(project, content)
@@ -99,6 +101,24 @@ def execute_action(action: dict, model: str = "claude-sonnet-4-6") -> dict:
             "project": project,
             "type": action_type,
         }
+
+
+def _execute_read(file_path: str, cwd: Path) -> dict:
+    """Read a file directly — no LLM, instant."""
+    path = Path(file_path.strip()).expanduser()
+    if not path.is_absolute():
+        path = cwd / path
+    try:
+        content = path.read_text(encoding="utf-8", errors="replace")
+        return {
+            "ok": True,
+            "result": content[:4000],
+            "project": cwd.name,
+            "type": "read",
+            "path": str(path),
+        }
+    except (OSError, PermissionError) as e:
+        return {"ok": False, "result": str(e), "project": cwd.name, "type": "read"}
 
 
 def _execute_command(content: str, cwd: Path, model: str) -> dict:
