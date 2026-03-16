@@ -12,6 +12,7 @@ from session_log import SessionLog
 from retrieval import ContextRetriever
 from compression import FixedTailPolicy, TokenBudgetPolicy
 from continuum import ContextAssembler, Session
+from index import load_index, DEFAULT_INDEX_PATH
 
 
 def make_session(config: dict, session_name: str | None = None) -> Session:
@@ -29,9 +30,10 @@ def make_session(config: dict, session_name: str | None = None) -> Session:
     if sp_path.is_file():
         system_prompt = sp_path.read_text().strip()
 
-    # Retriever
+    # Retriever with corpus index
     sources = config.get("context_sources", [])
-    retriever = ContextRetriever(sources)
+    idx = load_index()
+    retriever = ContextRetriever(sources, index=idx)
 
     # Session log
     log_dir = Path(config["session"]["log_dir"]).expanduser()
@@ -79,7 +81,7 @@ def main():
 
     compressed = session.assembler._compressed
     print(f"continuum | model={config['model']} | session={log.path.stem}")
-    print(f"  sources: {len(session.assembler.retriever.sources)}")
+    print(f"  sources: {len(session.assembler.retriever.sources)} files, {len(idx)} corpus entries")
     print(f"  compression: {policy_name} (via {comp_model})")
     print(f"  log: {log.path}")
     if log.entries:

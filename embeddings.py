@@ -69,7 +69,7 @@ class EmbeddingIndex:
         self.metadata: list[dict] = []  # uid, source, thread, ts, etc.
         self.path = Path(path) if path else None
 
-        if self.path and self.path.exists():
+        if self.path and self.path.with_suffix(".npz").exists():
             self._load()
 
     def add(self, vector: list[float], meta: dict):
