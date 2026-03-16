@@ -235,6 +235,129 @@ def ingest_file(args):
     print(f"Ingested: {len(entries)} entries → {out_path}")
 
 
+# ── Markdown ingestion ─────────────────────────────────────────────────
+
+def chunk_markdown(text: str, source_path: str) -> list[dict]:
+    """Split markdown into chunks by heading. Each chunk = one section.
+
+    Returns list of {"content": str, "heading": str, "source": str}.
+    """
+    chunks = []
+    current_heading = "preamble"
+    current_lines = []
+
+    for line in text.split("\n"):
+        if line.startswith("#"):
+            # Save previous chunk
+            if current_lines:
+                content = "\n".join(current_lines).strip()
+                if content:
+                    chunks.append({
+                        "content": content,
+                        "heading": current_heading,
+                        "source": source_path,
+                    })
+            current_heading = line.lstrip("#").strip()
+            current_lines = [line]
+        else:
+            current_lines.append(line)
+
+    # Save last chunk
+    if current_lines:
+        content = "\n".join(current_lines).strip()
+        if content:
+            chunks.append({
+                "content": content,
+                "heading": current_heading,
+                "source": source_path,
+            })
+
+    return chunks
+
+
+def convert_markdown_file(source_path: Path, project: str, embed: bool = False) -> list[dict]:
+    """Convert a markdown file into Continuum corpus entries (one per heading section)."""
+    text = source_path.read_text(encoding="utf-8", errors="replace")
+    chunks = chunk_markdown(text, str(source_path))
+    entries = []
+
+    for chunk in chunks:
+        entry = {
+            "uid": mint_uid(),
+            "role": "context",
+            "content": chunk["content"],
+            "turn": 0,
+            "ts": "",
+            "thread": project,
+            "source_file": chunk["source"],
+            "heading": chunk["heading"],
+        }
+
+        if embed:
+            try:
+                from embeddings import embed_text
+                vec = embed_text(chunk["content"])
+                if vec is not None:
+                    entry["embedding"] = vec
+            except Exception:
+                pass
+
+        entries.append(entry)
+
+    return entries
+
+
+def ingest_markdown(args):
+    """Ingest markdown files from ~/projects/ into the corpus."""
+    projects_dir = Path.home() / "projects"
+    output_dir = Path.home() / ".continuum" / "corpus"
+
+    # Find all markdown files
+    md_files = sorted(projects_dir.rglob("*.md"))
+    # Filter to CLAUDE.md and plans/*.md
+    md_files = [f for f in md_files if
+                f.name == "CLAUDE.md" or
+                "plans/" in str(f.relative_to(projects_dir)) or
+                "plans\\" in str(f.relative_to(projects_dir))]
+
+    print(f"Found {len(md_files)} markdown files")
+
+    total_entries = 0
+    total_files = 0
+
+    for mf in md_files:
+        rel = mf.relative_to(projects_dir)
+        # Detect project from path
+        parts = rel.parts
+        if len(parts) > 1:
+            project = str(Path(*parts[:-1]))
+        else:
+            project = "home"
+
+        out_path = output_dir / "_markdown" / f"{str(rel).replace('/', '_')}.jsonl"
+
+        if out_path.exists() and not args.force:
+            continue
+
+        if args.dry_run:
+            print(f"  [dry-run] {rel} → {project}")
+            total_files += 1
+            continue
+
+        entries = convert_markdown_file(mf, project, embed=args.embed)
+        if not entries:
+            continue
+
+        write_corpus(entries, out_path)
+        total_entries += len(entries)
+        total_files += 1
+        print(f"  {rel} → {project} ({len(entries)} sections)")
+
+    print(f"\nIngested: {total_files} files, {total_entries} sections")
+    if not args.dry_run:
+        print(f"Corpus: {output_dir / '_markdown'}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Continuum Ingest — convert session logs to corpus")
 
@@ -251,12 +374,19 @@ def main():
     file_parser.add_argument("--embed", action="store_true", help="Mint embeddings per entry (slower)")
     file_parser.add_argument("--dry-run", action="store_true", help="Show what would be ingested")
 
+    md_parser = sub.add_parser("markdown", help="Ingest CLAUDE.md + plans/*.md from ~/projects/")
+    md_parser.add_argument("--embed", action="store_true", help="Mint embeddings per section (slower)")
+    md_parser.add_argument("--dry-run", action="store_true", help="Show what would be ingested")
+    md_parser.add_argument("--force", action="store_true", help="Re-ingest already-ingested files")
+
     args = parser.parse_args()
 
     if args.command == "claude-code":
         ingest_claude_code(args)
     elif args.command == "file":
         ingest_file(args)
+    elif args.command == "markdown":
+        ingest_markdown(args)
     else:
         parser.print_help()
 

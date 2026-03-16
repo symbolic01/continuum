@@ -26,8 +26,9 @@ def build_index(
     if len(idx) > 0 and not force:
         return idx
 
-    # Scan corpus
-    idx = EmbeddingIndex(index_path)
+    # Scan corpus — fresh index (don't load existing when forcing rebuild)
+    idx = EmbeddingIndex(None)
+    idx.path = index_path
     corpus_files = sorted(corpus_dir.rglob("*.jsonl"))
 
     total = 0

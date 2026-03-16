@@ -267,28 +267,15 @@ class ContextRetriever:
         return matches
 
     def retrieve(self, query: str, token_budget: int) -> str:
-        """Retrieve context: static sources + corpus search.
+        """Retrieve context from index via LLM-routed query decomposition.
 
-        Static sources get first claim on the budget.
-        Remaining budget goes to corpus retrieval.
+        If index is available, all retrieval is semantic — no files loaded wholesale.
+        Falls back to static source reading if no index is available.
         """
-        # Static sources (CLAUDE.md files) — always included
-        static_budget = min(token_budget // 2, 30000)  # cap at 30K for static
-        static_text, static_tokens = self._retrieve_static(static_budget)
-
-        # Corpus retrieval with remaining budget
-        corpus_text = ""
-        corpus_budget = token_budget - static_tokens
-
-        if self.index and len(self.index) > 0 and corpus_budget > 1000:
+        if self.index and len(self.index) > 0:
             decomposition = decompose_query(query, model=self.decompose_model)
-            corpus_text = self._retrieve_corpus(query, decomposition, corpus_budget)
+            return self._retrieve_corpus(query, decomposition, token_budget)
 
-        # Combine
-        parts = []
-        if static_text:
-            parts.append(static_text)
-        if corpus_text:
-            parts.append(f"--- corpus (retrieved) ---\n{corpus_text}")
-
-        return "\n".join(parts)
+        # Fallback: static sources if no index
+        static_text, _ = self._retrieve_static(token_budget)
+        return static_text
