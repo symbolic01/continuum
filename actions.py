@@ -11,7 +11,7 @@ Action block format in Symbolic's response:
 
 Supported types:
     - command: run `claude --print` with the action text in the project dir
-    - dispatch: create a dispatch card via `px dispatch`
+    - dispatch: create a dispatch card via `px dispatch` (home) or `cmux` (work)
 """
 
 import os
@@ -88,6 +88,8 @@ def execute_action(action: dict, model: str = "claude-sonnet-4-6") -> dict:
 
     if action_type == "dispatch":
         return _execute_dispatch(project, content)
+    elif action_type == "cmux":
+        return _execute_cmux(project, content)
     elif action_type == "command":
         return _execute_command(content, project_dir, model)
     else:
@@ -147,3 +149,22 @@ def _execute_dispatch(project: str, content: str) -> dict:
         return {"ok": True, "result": output, "project": project, "type": "dispatch"}
     except Exception as e:
         return {"ok": False, "result": str(e)[:300], "project": project, "type": "dispatch"}
+
+
+def _execute_cmux(project: str, content: str) -> dict:
+    """Execute via cmux (work laptop dispatch alternative)."""
+    cmux_bin = shutil.which("cmux")
+    if not cmux_bin:
+        # Fallback to dispatch if cmux not available
+        return _execute_dispatch(project, content)
+    try:
+        result = subprocess.run(
+            [cmux_bin, project, content],
+            capture_output=True, text=True, timeout=10,
+        )
+        output = (result.stdout or "").strip()
+        if result.returncode != 0:
+            return {"ok": False, "result": (result.stderr or "").strip()[:300], "project": project, "type": "cmux"}
+        return {"ok": True, "result": output, "project": project, "type": "cmux"}
+    except Exception as e:
+        return {"ok": False, "result": str(e)[:300], "project": project, "type": "cmux"}
