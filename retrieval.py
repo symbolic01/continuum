@@ -367,15 +367,27 @@ class ContextRetriever:
 
         return matches
 
-    def retrieve(self, query: str, token_budget: int) -> str:
+    def retrieve(self, query: str, token_budget: int, conversation_tail: str = "") -> str:
         """Retrieve context from index via LLM-routed query decomposition.
 
-        If index is available, all retrieval is semantic — no files loaded wholesale.
-        Falls back to static source reading if no index is available.
+        Args:
+            query: the current user message
+            token_budget: max tokens for assembled context
+            conversation_tail: recent conversation for context-enriched embedding.
+                When provided, the query is embedded WITH this trailing context
+                so that short follow-up questions ("what about the file viewer?")
+                carry the conversational context that triggered them.
         """
         if self.index and len(self.index) > 0:
-            decomposition = decompose_query(query, model=self.decompose_model)
-            return self._retrieve_corpus(query, decomposition, token_budget)
+            # Enrich the query with conversation tail for better embeddings
+            enriched_query = query
+            if conversation_tail:
+                # Truncate tail to keep embedding input reasonable
+                tail_truncated = conversation_tail[-2000:]
+                enriched_query = f"{tail_truncated}\n\nCurrent question: {query}"
+
+            decomposition = decompose_query(enriched_query, model=self.decompose_model)
+            return self._retrieve_corpus(enriched_query, decomposition, token_budget)
 
         # Fallback: static sources if no index
         static_text, _ = self._retrieve_static(token_budget)

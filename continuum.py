@@ -181,10 +181,18 @@ class ContextAssembler:
 
         system = self._build_system()
 
-        # Layer 2: dynamic context
+        # Build conversation tail for context-enriched retrieval
+        recent = self.log.get_recent(10)
+        conversation_tail = "\n".join(
+            f"[{e.get('role', '?')}] {e.get('content', '')[:300]}"
+            for e in recent
+        )
+
+        # Layer 2: dynamic context (query enriched with conversation tail)
         dynamic = self.retriever.retrieve(
             query=user_message,
             token_budget=self.budgets["dynamic_context"],
+            conversation_tail=conversation_tail,
         )
 
         messages = []

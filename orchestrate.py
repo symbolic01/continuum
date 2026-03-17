@@ -60,11 +60,19 @@ def run_turn(
     # Log user message to ground truth
     log.append("user", user_message, thread="default")
 
-    # Retrieve context based on this turn's content
+    # Build conversation tail for context-enriched retrieval
+    recent = log.get_recent(10)  # last 10 entries
+    conversation_tail = "\n".join(
+        f"[{e.get('role', '?')}] {e.get('content', '')[:300]}"
+        for e in recent[:-1]  # exclude the just-appended user message
+    )
+
+    # Retrieve context based on this turn + recent conversation
     token_budgets = config.get("token_budgets", {})
     retrieved = retriever.retrieve(
         user_message,
         token_budget=token_budgets.get("dynamic_context", 30000),
+        conversation_tail=conversation_tail,
     )
 
     # Build spoofed session JSONL
