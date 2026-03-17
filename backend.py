@@ -54,8 +54,8 @@ class CLIBackend(Backend):
         cmd = [
             claude_bin, "--print", "--model", model,
             "--no-session-persistence",
-            "--tools", "",
-            "--system-prompt", full_system,
+            "--dangerously-skip-permissions",
+            "--append-system-prompt", full_system,
             "-p", current_message,
         ]
 
