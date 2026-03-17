@@ -1,14 +1,18 @@
-"""Context retrieval — multi-axis retrieval from corpus + configured sources.
+"""Context retrieval — multi-axis hybrid retrieval from corpus + configured sources.
 
 Combines:
-- Static sources (CLAUDE.md files, plans) — always included
-- Corpus retrieval via embedding index — LLM-routed query decomposition
-  selects axes (semantic, temporal, project, entity, etc.) and the
-  retriever blends results accordingly.
+- Semantic search (embedding similarity)
+- Keyword search (exact string matching)
+- Temporal decay (facts fade, patterns persist, anti-patterns get boosted)
+- LLM-routed query decomposition selects axes and weights
 """
 
 import glob
 import json
+import math
+import re
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from tokens import count_tokens
@@ -155,15 +159,24 @@ class ContextRetriever:
 
             # emotional, polarity, cycle_state — future axes
 
-        # Rank by combined score, with a boost for context entries (CLAUDE.md, plans)
-        # over session history — authoritative source material ranks higher
-        def _rank_score(item):
-            meta, score = item
-            if meta.get("role") == "context":
-                score *= 1.5  # boost CLAUDE.md / plan sections
-            return -score
+        # Hybrid: add keyword search results (always runs alongside semantic)
+        keyword_results = self._search_keyword(rewritten, k=30)
+        for meta, score in keyword_results:
+            uid = meta.get("uid", "")
+            if uid in all_candidates:
+                # Boost entries found by BOTH semantic and keyword
+                existing_meta, existing_score = all_candidates[uid]
+                all_candidates[uid] = (existing_meta, existing_score + score * 0.4)
+            else:
+                all_candidates[uid] = (meta, score * 0.3)
 
-        ranked = sorted(all_candidates.values(), key=_rank_score)
+        # Apply temporal decay + role-based scoring
+        decayed = []
+        for meta, score in all_candidates.values():
+            adjusted = self._apply_temporal_decay(meta, score)
+            decayed.append((meta, adjusted))
+
+        ranked = sorted(decayed, key=lambda x: -x[1])
 
         # Assemble into text, fitting budget
         chunks = []
@@ -256,6 +269,87 @@ class ContextRetriever:
 
         scores.sort(key=lambda x: -x[1])
         return [(self.index.metadata[i], s) for i, s in scores[:k]]
+
+    def _search_keyword(self, query: str, k: int = 30) -> list[tuple[dict, float]]:
+        """Keyword search — exact term matching against content.
+
+        Splits query into terms, scores by how many terms match.
+        Critical for: file paths, function names, error messages, UIDs.
+        """
+        if not self.index or not self.index.metadata:
+            return []
+
+        # Extract meaningful terms (3+ chars, skip common words)
+        stop_words = {"the", "and", "for", "are", "but", "not", "you", "all", "can",
+                      "had", "her", "was", "one", "our", "out", "has", "have", "been",
+                      "this", "that", "with", "from", "they", "will", "what", "when",
+                      "how", "who", "which", "their", "about", "would", "there", "could"}
+        terms = [t.lower() for t in re.split(r'\W+', query) if len(t) >= 3 and t.lower() not in stop_words]
+
+        if not terms:
+            return []
+
+        matches = []
+        for m in self.index.metadata:
+            content = m.get("content", "").lower()
+            hits = sum(1 for t in terms if t in content)
+            if hits > 0:
+                score = hits / len(terms)  # fraction of terms found
+                matches.append((m, score))
+
+        matches.sort(key=lambda x: -x[1])
+        return matches[:k]
+
+    def _apply_temporal_decay(self, meta: dict, base_score: float) -> float:
+        """Apply temporal decay — facts fade, patterns and corrections persist.
+
+        - context entries (CLAUDE.md): no decay (actively maintained)
+        - anti-pattern content: negative decay (gets boosted with age)
+        - normal session turns: gentle decay over weeks
+        """
+        role = meta.get("role", "")
+        ts = meta.get("ts", "")
+
+        # Context entries (CLAUDE.md, plans) — no decay, boosted
+        if role == "context":
+            return base_score * 1.5
+
+        # No timestamp → no decay
+        if not ts:
+            return base_score
+
+        # Calculate age in days
+        try:
+            entry_time = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            age_days = (datetime.now(timezone.utc) - entry_time).total_seconds() / 86400
+        except (ValueError, TypeError):
+            return base_score
+
+        # Check for anti-pattern / correction content
+        content = meta.get("content", "").lower()
+        is_correction = any(w in content for w in (
+            "fixed", "the fix", "correct approach", "solved", "the solution",
+            "don't do", "instead use", "the right way", "confirmed working",
+        ))
+        is_failure = any(w in content for w in (
+            "failed", "error", "bug", "wrong", "broken", "doesn't work",
+        ))
+
+        if is_correction:
+            # Corrections get BOOSTED with age — they're established knowledge
+            return base_score * (1.0 + min(age_days / 30, 0.5))  # up to 1.5x boost
+        elif is_failure and is_correction:
+            # Anti-pattern with correction — very valuable, boost
+            return base_score * 1.3
+        elif is_failure:
+            # Pure failure without correction — mild decay
+            return base_score * max(0.7, 1.0 - age_days / 60)
+        else:
+            # Normal content — gentle decay
+            # Half-life of ~30 days: score * 0.5^(age/30)
+            decay = math.pow(0.5, age_days / 30)
+            # Floor at 0.3 — very old content can still be retrieved, just ranked lower
+            return base_score * max(0.3, decay)
 
     def _search_entity(self, entity: str, k: int = 20) -> list[tuple[dict, float]]:
         """Entity search — find mentions of a specific name/term."""
