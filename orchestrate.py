@@ -75,7 +75,8 @@ def main():
 
     # Claude Code session ID (stable across turns for this continuum session)
     cc_session_id = str(uuid.uuid4())
-    cwd = str(Path.cwd())
+    # Use ~/projects as CWD — Claude Code knows this directory
+    cwd = str(Path.home() / "projects")
     model = config.get("model", "claude-sonnet-4-6")
 
     print(f"continuum | session={session_name} | model={model}")
@@ -116,7 +117,7 @@ def main():
            if k not in ("CLAUDECODE",)}
 
     try:
-        subprocess.run(cmd, env=env, cwd=cwd)
+        subprocess.run(cmd, env=env, cwd=cwd, start_new_session=False)
     except KeyboardInterrupt:
         pass
 
