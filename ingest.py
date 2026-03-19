@@ -139,17 +139,19 @@ def convert_claude_code_session(
                 "source_uuid": raw.get("uuid", ""),
             }
 
-            # Optional embedding
-            if embed:
-                try:
-                    from embeddings import embed_text
-                    vec = embed_text(content)
-                    if vec is not None:
-                        entry["embedding"] = vec
-                except Exception:
-                    pass
-
             entries.append(entry)
+
+    # Batch embed all entries at once
+    if embed and entries:
+        try:
+            from embeddings import embed_batch
+            texts = [e["content"] for e in entries]
+            vectors = embed_batch(texts)
+            for entry, vec in zip(entries, vectors):
+                if vec is not None:
+                    entry["embedding"] = vec
+        except Exception:
+            pass
 
     return entries
 
@@ -293,40 +295,51 @@ def convert_markdown_file(source_path: Path, project: str, embed: bool = False) 
             "heading": chunk["heading"],
         }
 
-        if embed:
-            try:
-                from embeddings import embed_text
-                vec = embed_text(chunk["content"])
+        entries.append(entry)
+
+    # Batch embed all entries at once
+    if embed and entries:
+        try:
+            from embeddings import embed_batch
+            texts = [e["content"] for e in entries]
+            vectors = embed_batch(texts)
+            for entry, vec in zip(entries, vectors):
                 if vec is not None:
                     entry["embedding"] = vec
-            except Exception:
-                pass
-
-        entries.append(entry)
+        except Exception:
+            pass
 
     return entries
 
 
 def ingest_markdown(args):
-    """Ingest markdown files from ~/projects/ into the corpus."""
-    projects_dir = Path.home() / "projects"
+    """Ingest markdown files from source directories into the corpus."""
+    source_dirs = [Path(s).expanduser() for s in (args.sources or [str(Path.home() / "projects")])]
     output_dir = Path.home() / ".continuum" / "corpus"
 
-    # Find all markdown files
-    md_files = sorted(projects_dir.rglob("*.md"))
-    # Filter to CLAUDE.md and plans/*.md
-    md_files = [f for f in md_files if
-                f.name == "CLAUDE.md" or
-                "plans/" in str(f.relative_to(projects_dir)) or
-                "plans\\" in str(f.relative_to(projects_dir))]
+    # Find all markdown files across all source dirs
+    md_files = []
+    source_roots = []  # track which root each file came from
+    for src_dir in source_dirs:
+        if not src_dir.is_dir():
+            print(f"  skipping {src_dir} (not found)", file=sys.stderr)
+            continue
+        found = sorted(src_dir.rglob("*.md"))
+        # Filter to CLAUDE.md and plans/*.md
+        found = [f for f in found if
+                 f.name == "CLAUDE.md" or
+                 "plans/" in str(f.relative_to(src_dir)) or
+                 "plans\\" in str(f.relative_to(src_dir))]
+        md_files.extend(found)
+        source_roots.extend([src_dir] * len(found))
 
-    print(f"Found {len(md_files)} markdown files")
+    print(f"Found {len(md_files)} markdown files across {len(source_dirs)} source(s)")
 
     total_entries = 0
     total_files = 0
 
-    for mf in md_files:
-        rel = mf.relative_to(projects_dir)
+    for mf, root_dir in zip(md_files, source_roots):
+        rel = mf.relative_to(root_dir)
         # Detect project from path
         parts = rel.parts
         if len(parts) > 1:
@@ -374,10 +387,11 @@ def main():
     file_parser.add_argument("--embed", action="store_true", help="Mint embeddings per entry (slower)")
     file_parser.add_argument("--dry-run", action="store_true", help="Show what would be ingested")
 
-    md_parser = sub.add_parser("markdown", help="Ingest CLAUDE.md + plans/*.md from ~/projects/")
+    md_parser = sub.add_parser("markdown", help="Ingest CLAUDE.md + plans/*.md from source directories")
     md_parser.add_argument("--embed", action="store_true", help="Mint embeddings per section (slower)")
     md_parser.add_argument("--dry-run", action="store_true", help="Show what would be ingested")
     md_parser.add_argument("--force", action="store_true", help="Re-ingest already-ingested files")
+    md_parser.add_argument("--sources", nargs="+", help="Source directories (default: ~/projects/)")
 
     args = parser.parse_args()
 
