@@ -232,5 +232,135 @@ def main():
     print(f"\nsession saved: {log.path} ({len(log)} entries)")
 
 
+def launch():
+    """Spoof a session and exec into interactive Claude Code.
+
+    Usage:
+        python orchestrate.py launch                     # new session
+        python orchestrate.py launch --session my-name   # named/resumed
+        python orchestrate.py launch "do the thing"      # with initial prompt
+        python orchestrate.py launch --cwd /path/to/dir  # custom working dir
+
+    Each invocation:
+      1. Appends the prompt (if any) to Continuum's ground truth log
+      2. Retrieves relevant context from the corpus
+      3. Spoofs a CC session JSONL with assembled context
+      4. exec()s into `claude --resume <id>` — full interactive session
+      5. On exit, captures CC's responses back to ground truth
+
+    Re-run to get fresh context for the next turn.
+    """
+    parser = argparse.ArgumentParser(description="Continuum — launch interactive Claude Code with dynamic context")
+    parser.add_argument("--config", "-c", help="Path to continuum.yaml")
+    parser.add_argument("--session", "-s", help="Session name (for continuity across launches)")
+    parser.add_argument("--model", "-m", help="Override model")
+    parser.add_argument("--cwd", help="Working directory for Claude Code (default: cwd)")
+    parser.add_argument("--yolo", action="store_true", help="Skip permissions (--dangerously-skip-permissions)")
+    parser.add_argument("prompt", nargs="?", help="Initial user message (optional)")
+    args = parser.parse_args(sys.argv[2:])  # skip 'orchestrate.py launch'
+
+    config = load_config(args.config)
+    if args.model:
+        config["model"] = args.model
+
+    continuum_dir = Path(__file__).parent
+    cwd = args.cwd or str(Path.cwd())
+    model = config.get("model", "claude-sonnet-4-6")
+
+    # Identity
+    identity_path = Path(config.get("identity", "identity.md"))
+    if not identity_path.is_absolute():
+        identity_path = continuum_dir / identity_path
+    identity_text = identity_path.read_text().strip() if identity_path.exists() else ""
+
+    # System prompt
+    sp = config.get("system_prompt", "")
+    sp_path = continuum_dir / sp
+    system_prompt = sp_path.read_text().strip() if sp_path.is_file() else sp
+    if system_prompt:
+        identity_text = f"{identity_text}\n\n{system_prompt}" if identity_text else system_prompt
+
+    # Session log (ground truth)
+    session_name = args.session or "default"
+    log_dir = Path(config["session"]["log_dir"]).expanduser()
+    log = SessionLog(log_dir / f"{session_name}.jsonl")
+
+    # Append user message if provided
+    if args.prompt:
+        log.append("user", args.prompt, thread="default")
+
+    # Retrieve context
+    idx = load_index()
+    sources = config.get("context_sources", [])
+    retriever = ContextRetriever(sources, index=idx)
+
+    token_budgets = config.get("token_budgets", {})
+    retrieved = ""
+    try:
+        query = args.prompt or (log.entries[-1]["content"] if log.entries else "continue")
+        recent = log.get_recent(10)
+        conversation_tail = "\n".join(
+            f"[{e.get('role', '?')}] {e.get('content', '')[:300]}" for e in recent
+        )
+        retrieved = retriever.retrieve(
+            query,
+            token_budget=token_budgets.get("dynamic_context", 30000),
+            conversation_tail=conversation_tail,
+        )
+    except Exception:
+        pass
+
+    # Build spoofed session
+    cc_session_id = str(uuid.uuid4())
+    cc_entries = build_spoofed_session(
+        session_id=cc_session_id,
+        continuum_log=log,
+        retrieved_context=retrieved,
+        compressed_blocks=[],
+        tail_budget=token_budgets.get("recent_tail", 80000),
+        identity_text=identity_text,
+        cwd=cwd,
+    )
+    session_file = write_cc_session(cc_session_id, cc_entries, cwd=cwd)
+    entry_count_before = len(cc_entries)
+
+    print(f"continuum launch | session={session_name} | model={model}")
+    print(f"  corpus: {len(idx)} entries | log: {len(log)} entries")
+    print(f"  context: {len(retrieved)} chars retrieved | tail: {len(cc_entries)} CC entries")
+    print(f"  cwd: {cwd}")
+    print(f"  spoofed: {session_file}")
+    print()
+
+    # Build command
+    cmd = ["claude", "--resume", cc_session_id]
+    if args.yolo:
+        cmd.append("--dangerously-skip-permissions")
+
+    # Run claude interactively (inherits stdin/stdout/stderr)
+    env = {k: v for k, v in os.environ.items() if k not in ("CLAUDECODE",)}
+    try:
+        result = subprocess.run(cmd, env=env, cwd=cwd)
+    except KeyboardInterrupt:
+        pass
+
+    # Capture CC responses back to ground truth
+    try:
+        new_entries = read_cc_new_entries(session_file, entry_count_before)
+        captured = 0
+        for entry in new_entries:
+            if entry.get("type") == "assistant":
+                text = extract_text_from_cc_entry(entry)
+                if text.strip():
+                    log.append("assistant", text, thread="default")
+                    captured += 1
+        if captured:
+            print(f"[continuum] captured {captured} entries → {log.path}")
+    except Exception as e:
+        print(f"[continuum] capture failed: {e}", file=sys.stderr)
+
+
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "launch":
+        launch()
+    else:
+        main()

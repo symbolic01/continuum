@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""Standalone retrieval tool — retrieve context from continuum's corpus index.
+
+Usage:
+    python ~/+/continuum/retrieve_tool.py "token refresh auth flow"
+    python ~/+/continuum/retrieve_tool.py --budget 10000 "query"
+"""
+
+import argparse
+import sys
+from pathlib import Path
+
+# Ensure continuum modules are importable
+_CONTINUUM_DIR = Path(__file__).resolve().parent
+if str(_CONTINUUM_DIR) not in sys.path:
+    sys.path.insert(0, str(_CONTINUUM_DIR))
+
+from auto_ingest import auto_ingest
+from index import load_index
+from retrieval import ContextRetriever
+from config import load_config
+from tokens import count_tokens
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Retrieve context from continuum corpus")
+    parser.add_argument("query", help="Query string for retrieval")
+    parser.add_argument("--budget", type=int, default=30000, help="Token budget (default: 30000)")
+    parser.add_argument("--no-ingest", action="store_true", help="Skip auto-ingest check")
+    args = parser.parse_args()
+
+    if not args.no_ingest:
+        auto_ingest()
+
+    config = load_config(_CONTINUUM_DIR / "continuum.yaml")
+    idx = load_index()
+
+    if len(idx) == 0:
+        # No corpus — try static sources only
+        sources = config.get("context_sources", [])
+        if not sources:
+            print("[continuum:retrieve] empty index, no static sources", file=sys.stderr)
+            sys.exit(0)
+
+    sources = config.get("context_sources", [])
+    retriever = ContextRetriever(sources=sources, index=idx)
+    result = retriever.retrieve(
+        query=args.query,
+        token_budget=args.budget,
+        conversation_tail="",
+    )
+
+    if not result.strip():
+        print("[continuum:retrieve] no results", file=sys.stderr)
+        sys.exit(0)
+
+    entry_count = result.count("\n") + 1 if result.strip() else 0
+    token_est = count_tokens(result)
+    print(f"[continuum:retrieve] {entry_count} entries | {token_est / 1000:.1f}K tokens", file=sys.stderr)
+    print(result)
+
+
+if __name__ == "__main__":
+    main()
