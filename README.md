@@ -182,6 +182,40 @@ Source files are chunked by language:
 
 Supported extensions: `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.sh`, `.html`, `.css`, `.json`, `.yaml`, `.yml`, `.toml`, `.go`, `.rs`, `.java`, `.c`, `.cpp`, `.h`
 
+## Work setup: ingest a codebase you don't own
+
+At work you often have large repos you want searchable but don't control. Here's the quickest path:
+
+```bash
+# 1. Ingest just the codebase (no CC sessions, no markdown, no embeddings)
+python3 ~/continuum/ingest.py codebase ~/work/my-service ~/work/shared-libs --force
+
+# 2. Rebuild the index (picks up the new corpus files)
+python3 ~/continuum/ingest_all.py --identifiers-only   # instant — just identifiers
+# or full rebuild:
+python3 ~/continuum/ingest_all.py --no-code --no-embed  # skips re-ingesting code, rebuilds index
+
+# 3. Search it
+cx retrieve "TokenRefreshHandler credential rotation"
+```
+
+Step 1 is the targeted command — it only touches the codebases you point it at. No session logs, no markdown, no embeddings. The `--force` flag re-ingests even if a previous run exists (useful after `git pull`).
+
+You can also add codebases to the default `cx ingest` run:
+
+```bash
+# These paths get ingested alongside CC sessions + markdown
+cx ingest --codebases ~/work/my-service ~/work/shared-libs
+```
+
+Or skip codebases entirely in the default run:
+
+```bash
+cx ingest --no-code
+```
+
+**Re-ingesting after code changes**: run the same `ingest.py codebase ... --force` command again. It overwrites the previous corpus file for that project. Then `cx ingest --identifiers-only` to update the identifiers index.
+
 ## How it works under the hood
 
 ### Session spoofing
