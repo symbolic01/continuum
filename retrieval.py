@@ -7,9 +7,11 @@ Combines:
 - LLM-routed query decomposition selects axes and weights
 """
 
+import difflib
 import glob
 import json
 import math
+import os
 import re
 import subprocess
 import sys
@@ -19,6 +21,7 @@ from pathlib import Path
 
 from tokens import count_tokens
 from embeddings import embed_text, EmbeddingIndex
+from index import load_identifiers
 from query import decompose_query
 
 
@@ -38,6 +41,12 @@ class ContextRetriever:
         self.sources = sources
         self.index = index
         self.decompose_model = decompose_model
+        self._known_identifiers: list[str] | None = None
+
+    def _get_known_identifiers(self) -> list[str]:
+        if self._known_identifiers is None:
+            self._known_identifiers = load_identifiers()
+        return self._known_identifiers
 
     def _resolve_paths(self) -> list[Path]:
         """Expand globs and resolve all source paths."""
@@ -96,6 +105,8 @@ class ContextRetriever:
 
         axes = decomposition.get("axes", [])
         rewritten = decomposition.get("rewritten_query", query)
+        expanded_keywords = decomposition.get("keywords", [])
+        raw_identifiers = decomposition.get("identifiers", [])
 
         # Collect candidates from each axis
         all_candidates = {}  # uid → (meta, score)
@@ -162,15 +173,31 @@ class ContextRetriever:
             # emotional, polarity, cycle_state — future axes
 
         # Hybrid: add keyword search results (always runs alongside semantic)
-        keyword_results = self._search_keyword(rewritten, k=30)
+        # Merge expanded keywords from decomposition with raw query terms
+        keyword_query = rewritten
+        if expanded_keywords:
+            keyword_query = rewritten + " " + " ".join(expanded_keywords)
+        keyword_results = self._search_keyword(keyword_query, k=30)
         for meta, score in keyword_results:
             uid = meta.get("uid", "")
             if uid in all_candidates:
-                # Boost entries found by BOTH semantic and keyword
                 existing_meta, existing_score = all_candidates[uid]
                 all_candidates[uid] = (existing_meta, existing_score + score * 0.4)
             else:
                 all_candidates[uid] = (meta, score * 0.3)
+
+        # Identifier search: fuzzy-resolve then graduated exact match
+        if raw_identifiers:
+            resolved = self._resolve_identifiers(raw_identifiers)
+            if resolved:
+                id_results = self._search_identifier(resolved, k=30)
+                for meta, score in id_results:
+                    uid = meta.get("uid", "")
+                    if uid in all_candidates:
+                        existing_meta, existing_score = all_candidates[uid]
+                        all_candidates[uid] = (existing_meta, existing_score + score * 0.6)
+                    else:
+                        all_candidates[uid] = (meta, score * 0.6)
 
         # Apply temporal decay + role-based scoring
         decayed = []
@@ -368,6 +395,122 @@ class ContextRetriever:
                 break
 
         return matches
+
+    def _resolve_identifiers(self, raw_identifiers: list[str]) -> list[str]:
+        """Fuzzy-match approximate identifiers against the known identifiers index.
+
+        Returns resolved (correct) identifiers sorted by confidence.
+        """
+        known = self._get_known_identifiers()
+        if not known or not raw_identifiers:
+            return raw_identifiers  # pass through if no index
+
+        resolved = set()
+
+        for raw in raw_identifiers:
+            raw_lower = raw.lower().strip()
+            if not raw_lower:
+                continue
+
+            # 1. Exact match
+            if raw in known or raw_lower in (k.lower() for k in known):
+                resolved.add(raw)
+                continue
+
+            # Score candidates
+            candidates: list[tuple[str, float]] = []
+
+            # Pre-compute raw tokens for rearrangement check
+            raw_tokens = set(re.split(r'[_./\-]', raw_lower))
+            raw_tokens.discard("")
+
+            for k in known:
+                k_lower = k.lower()
+
+                # 2. Token rearrangement — same tokens, different order
+                #    spoof_session → session_spoof
+                k_tokens = set(re.split(r'[_./\-]', k_lower))
+                k_tokens.discard("")
+                if raw_tokens and k_tokens and raw_tokens == k_tokens:
+                    candidates.append((k, 0.95))
+                    continue
+
+                # 3. Substring containment — replace_session matches _replace_session
+                #    Require coverage > 60% to avoid "session" matching "do_session"
+                if raw_lower in k_lower:
+                    coverage = len(raw_lower) / len(k_lower)
+                    if coverage >= 0.6:
+                        candidates.append((k, 0.5 + coverage * 0.4))
+                        continue
+                if k_lower in raw_lower:
+                    coverage = len(k_lower) / len(raw_lower)
+                    if coverage >= 0.6:
+                        candidates.append((k, 0.4 + coverage * 0.3))
+                        continue
+
+                # 4. SequenceMatcher — handles typos, character reordering
+                #    Penalize large length mismatches to avoid "do_session" matching "spoof_session"
+                len_ratio = min(len(raw_lower), len(k_lower)) / max(len(raw_lower), len(k_lower))
+                if len_ratio < 0.5:
+                    continue
+                ratio = difflib.SequenceMatcher(None, raw_lower, k_lower).ratio()
+                if ratio >= 0.7:
+                    candidates.append((k, ratio * len_ratio))
+
+            # Take top matches above threshold
+            candidates.sort(key=lambda x: -x[1])
+            for cand, score in candidates[:3]:
+                if score >= 0.55:
+                    resolved.add(cand)
+
+        if resolved - set(raw_identifiers):
+            print(f"  identifiers resolved: {list(resolved - set(raw_identifiers))}", file=sys.stderr)
+
+        return list(resolved)
+
+    def _search_identifier(self, identifiers: list[str], k: int = 30) -> list[tuple[dict, float]]:
+        """Search corpus for entries containing specific identifiers.
+
+        Graduated scoring: exact filename > path suffix > stem > substring.
+        """
+        if not identifiers or not self.index or not self.index.metadata:
+            return []
+
+        matches: dict[str, tuple[dict, float]] = {}  # uid → (meta, best_score)
+
+        for ident in identifiers:
+            ident_lower = ident.lower()
+            # Extract just the filename if it's a path
+            basename = os.path.basename(ident)
+            stem = os.path.splitext(basename)[0] if "." in basename else basename
+
+            for m in self.index.metadata:
+                uid = m.get("uid", "")
+                content = m.get("content", "")
+                content_lower = content.lower()
+
+                best = 0.0
+
+                # Exact identifier match
+                if ident in content:
+                    best = max(best, 1.0)
+                elif ident_lower in content_lower:
+                    best = max(best, 0.9)
+
+                # Stem match (no extension)
+                if stem and len(stem) >= 4 and stem.lower() in content_lower:
+                    best = max(best, 0.7)
+
+                # Word-boundary function/var match
+                if re.search(r'\b' + re.escape(ident_lower) + r'\b', content_lower):
+                    best = max(best, 0.9)
+
+                if best > 0:
+                    if uid not in matches or matches[uid][1] < best:
+                        matches[uid] = (m, best)
+
+        ranked = sorted(matches.values(), key=lambda x: -x[1])
+        return ranked[:k]
 
     def _cull_with_llm(self, query: str, chunks: list[str], budget_tokens: int,
                        model: str = "claude-haiku-4-5-20251001") -> list[str]:

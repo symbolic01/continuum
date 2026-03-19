@@ -20,7 +20,18 @@ def main():
     parser.add_argument("--force", action="store_true", help="Re-ingest already-converted files")
     parser.add_argument("--no-embed", action="store_true", help="Skip embedding generation")
     parser.add_argument("--sources", nargs="+", help="Additional markdown source directories")
+    parser.add_argument("--identifiers-only", action="store_true",
+                        help="Only rebuild identifiers index (no ingest, no embeddings)")
     args = parser.parse_args()
+
+    if args.identifiers_only:
+        print("── Identifiers only ──", file=sys.stderr)
+        subprocess.run(
+            [sys.executable, "-c",
+             "from index import build_identifiers; build_identifiers()"],
+            cwd=str(_CONTINUUM_DIR),
+        )
+        return
 
     embed_flag = [] if args.no_embed else ["--embed"]
     force_flag = ["--force"] if args.force else []
@@ -42,7 +53,7 @@ def main():
         cwd=str(_CONTINUUM_DIR),
     )
 
-    # 3. Rebuild index
+    # 3. Rebuild index (includes identifiers)
     print("\n── Index rebuild ──", file=sys.stderr)
     subprocess.run(
         [sys.executable, "-c", "from index import build_index; build_index(force=True)"],

@@ -26,15 +26,20 @@ Axes:
 - polarity: filter by success or failure
   - filter: "success" or "failure"
 
+Also extract:
+- keywords: 5-10 expanded search terms — synonyms, related jargon, abbreviations, alternate phrasings. These augment keyword search beyond the literal query words.
+- identifiers: any file paths, function names, variable names, class names, or code identifiers mentioned or implied in the query. Extract them exactly as the user wrote them (even if approximate/misspelled — fuzzy matching happens downstream).
+
 Output ONLY valid JSON, no markdown:
-{"axes": [{"axis": "...", "weight": 0.0-1.0, "filter": "optional"}], "rewritten_query": "optimized search text"}
+{"axes": [...], "rewritten_query": "optimized search text", "keywords": ["term1", "term2", ...], "identifiers": ["file.py", "func_name", ...]}
 
 The rewritten_query should be the semantic core of the query, stripped of meta-language.
 
 Examples:
-- "what's the first thing we ever talked about?" → {"axes": [{"axis": "temporal", "weight": 0.7, "filter": "oldest"}, {"axis": "semantic", "weight": 0.3}], "rewritten_query": "initial conversation first discussion"}
-- "that PTY resize bug in bridge" → {"axes": [{"axis": "semantic", "weight": 0.5}, {"axis": "project", "weight": 0.3, "filter": "bridge"}, {"axis": "entity", "weight": 0.2, "filter": "PTY resize"}], "rewritten_query": "PTY resize TIOCSWINSZ SIGWINCH bug fix"}
-- "what went wrong last time we tried compression?" → {"axes": [{"axis": "anti_pattern", "weight": 0.4}, {"axis": "semantic", "weight": 0.3}, {"axis": "temporal", "weight": 0.3, "filter": "newest"}], "rewritten_query": "compression policy failure error"}"""
+- "what's the first thing we ever talked about?" → {"axes": [{"axis": "temporal", "weight": 0.7, "filter": "oldest"}, {"axis": "semantic", "weight": 0.3}], "rewritten_query": "initial conversation first discussion", "keywords": ["first", "beginning", "earliest", "introduction", "started"], "identifiers": []}
+- "that PTY resize bug in bridge" → {"axes": [{"axis": "semantic", "weight": 0.5}, {"axis": "project", "weight": 0.3, "filter": "bridge"}, {"axis": "entity", "weight": 0.2, "filter": "PTY resize"}], "rewritten_query": "PTY resize TIOCSWINSZ SIGWINCH bug fix", "keywords": ["PTY", "TIOCSWINSZ", "SIGWINCH", "terminal", "resize", "winsz", "ioctl"], "identifiers": ["webui_server.py", "_start_proc"]}
+- "what went wrong last time we tried compression?" → {"axes": [{"axis": "anti_pattern", "weight": 0.4}, {"axis": "semantic", "weight": 0.3}, {"axis": "temporal", "weight": 0.3, "filter": "newest"}], "rewritten_query": "compression policy failure error", "keywords": ["compress", "compression", "summary", "truncate", "token_budget", "failure", "error"], "identifiers": ["compression.py", "session_compress.py"]}
+- "check the webserverui file" → {"axes": [{"axis": "semantic", "weight": 0.5}, {"axis": "entity", "weight": 0.5, "filter": "webserverui"}], "rewritten_query": "web server UI file", "keywords": ["webui", "server", "HTTP", "handler", "endpoint"], "identifiers": ["webserverui"]}"""
 
 
 def decompose_query(query: str, model: str = "qwen2.5:7b") -> dict:
@@ -74,6 +79,8 @@ def decompose_query(query: str, model: str = "qwen2.5:7b") -> dict:
         return {
             "axes": parsed["axes"],
             "rewritten_query": parsed.get("rewritten_query", query),
+            "keywords": parsed.get("keywords", []),
+            "identifiers": parsed.get("identifiers", []),
         }
     except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
         return _fallback(query)
@@ -84,4 +91,6 @@ def _fallback(query: str) -> dict:
     return {
         "axes": [{"axis": "semantic", "weight": 1.0}],
         "rewritten_query": query,
+        "keywords": [],
+        "identifiers": [],
     }
