@@ -21,9 +21,11 @@ cp continuum.yaml.example continuum.yaml
 Edit `continuum.yaml` — the defaults work, but point `context_sources` at your project docs:
 
 ```yaml
+# Accepts files, directories (recurses *.md), and globs
 context_sources:
-  - ~/my-project/CLAUDE.md
-  - ~/my-project/docs/architecture.md
+  - ~/my-project/                        # whole directory tree
+  - ~/my-project/docs/architecture.md    # single file
+  - ~/work/plans/*.md                    # glob pattern
 ```
 
 ### 3. Build the corpus
@@ -144,8 +146,8 @@ Edit `identity.md` to define who the AI is in first person. This gets injected i
 model: claude-sonnet-4-6              # model for interactive mode
 backend: cli                           # "cli" (claude --print) or "api" (Anthropic SDK)
 
-context_sources:                       # static context always included
-  - ~/my-project/CLAUDE.md
+context_sources:                       # files, directories, or globs
+  - ~/my-project/
 
 token_budgets:
   total: 180000                        # overall context budget

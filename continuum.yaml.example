@@ -8,11 +8,12 @@ backend: cli
 # api_key: sk-ant-...        # for api backend (or set ANTHROPIC_API_KEY env var)
 # base_url: http://localhost:4000  # for LiteLLM proxy (work)
 
+# Static context — always included in retrieval.
+# Accepts files, directories (recurses *.md), and globs.
 context_sources:
-  - ~/projects/CLAUDE.md
-  - ~/projects/bridge/CLAUDE.md
-  - ~/projects/continuum/CLAUDE.md
-  - ~/projects/superempathy/CLAUDE.md
+  - ~/projects/                        # whole directory — recurses all *.md files
+  - ~/my-project/docs/architecture.md  # single file
+  - ~/work/plans/*.md                  # glob pattern
 
 token_budgets:
   total: 180000          # leave headroom below 200K window
