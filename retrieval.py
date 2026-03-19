@@ -11,6 +11,8 @@ import glob
 import json
 import math
 import re
+import subprocess
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -367,7 +369,66 @@ class ContextRetriever:
 
         return matches
 
-    def retrieve(self, query: str, token_budget: int, conversation_tail: str = "") -> str:
+    def _cull_with_llm(self, query: str, chunks: list[str], budget_tokens: int,
+                       model: str = "claude-haiku-4-5-20251001") -> list[str]:
+        """Over-retrieve then LLM-cull: keep only chunks relevant to the query.
+
+        Takes a list of retrieved chunks (already ranked), asks a fast LLM
+        which ones are actually relevant, drops the noise.
+        """
+        if not chunks or len(chunks) <= 5:
+            return chunks  # too few to bother culling
+
+        # Number each chunk for reference
+        numbered = []
+        for i, chunk in enumerate(chunks):
+            # Truncate individual chunks for the cull prompt (save tokens)
+            preview = chunk[:300] + "..." if len(chunk) > 300 else chunk
+            numbered.append(f"[{i}] {preview}")
+
+        prompt = f"""Given this query: "{query}"
+
+Which of these retrieved context chunks are relevant? Return ONLY the numbers of relevant chunks as a JSON array, e.g. [0, 2, 5, 7]. Drop anything that is noise, off-topic, or redundant.
+
+{chr(10).join(numbered)}"""
+
+        try:
+            result = subprocess.run(
+                ["claude", "--print", "--model", model],
+                input=prompt,
+                capture_output=True, text=True, timeout=30,
+            )
+            if result.returncode != 0:
+                return chunks  # fallback: return all
+
+            # Parse the JSON array from output
+            output = result.stdout.strip()
+            match = re.search(r'\[[\d,\s]+\]', output)
+            if match:
+                indices = json.loads(match.group())
+                kept = [chunks[i] for i in indices if 0 <= i < len(chunks)]
+                if kept:
+                    # Fit to budget
+                    final = []
+                    tokens_used = 0
+                    for chunk in kept:
+                        t = count_tokens(chunk)
+                        if tokens_used + t > budget_tokens:
+                            break
+                        final.append(chunk)
+                        tokens_used += t
+                    culled = len(chunks) - len(final)
+                    if culled > 0:
+                        print(f"  culled {culled}/{len(chunks)} chunks", file=sys.stderr)
+                    return final
+
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
+            pass
+
+        return chunks  # fallback: return all
+
+    def retrieve(self, query: str, token_budget: int, conversation_tail: str = "",
+                 cull: bool = False, cull_factor: int = 5) -> str:
         """Retrieve context from index via LLM-routed query decomposition.
 
         Args:
@@ -387,7 +448,15 @@ class ContextRetriever:
                 enriched_query = f"{tail_truncated}\n\nCurrent question: {query}"
 
             decomposition = decompose_query(enriched_query, model=self.decompose_model)
-            return self._retrieve_corpus(enriched_query, decomposition, token_budget)
+
+            if cull:
+                # Over-retrieve then LLM-cull for precision
+                raw = self._retrieve_corpus(enriched_query, decomposition, token_budget * cull_factor)
+                chunks = [line for line in raw.split("\n") if line.strip()]
+                culled = self._cull_with_llm(query, chunks, token_budget)
+                return "\n".join(culled)
+            else:
+                return self._retrieve_corpus(enriched_query, decomposition, token_budget)
 
         # Fallback: static sources if no index
         static_text, _ = self._retrieve_static(token_budget)
