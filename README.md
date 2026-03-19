@@ -1,143 +1,303 @@
 # Continuum
 
-Dynamic context orchestration for Claude Code — infinite session continuity, corpus retrieval, and session spoofing.
+Cross-session memory for Claude Code. Ingest your past sessions, retrieve what matters, and resume with a clean compressed history instead of starting from scratch.
 
-## The problem
+## Quick Start (5 minutes)
 
-Claude Code sessions are amnesiac. When context fills up, you start fresh and lose everything. Long debugging sessions produce messy histories full of dead ends that waste tokens. There's no way to carry knowledge across sessions.
+### 1. Clone and install
 
-## What Continuum does
+```bash
+git clone https://github.com/symbolic01/continuum.git
+cd continuum
+pip install pyyaml numpy   # numpy is optional (for semantic embeddings)
+```
 
-Three standalone tools that work with your existing Claude Code workflow:
+### 2. Configure
 
-### `cx spoof` — session compression + spoofing
+```bash
+cp continuum.yaml.example continuum.yaml
+```
 
-Takes a messy Claude Code session (200+ turns of debugging, dead ends, trial-and-error) and produces a clean, resumable session with:
+Edit `continuum.yaml` — the defaults work, but point `context_sources` at your project docs:
 
-- **LLM-compressed narrative** — dead ends distilled into "tried X / failed because Y" exchanges
-- **Raw tail preserved** — recent turns kept verbatim so the conversation feels natural
-- **Identity injection** — your `identity.md` appears both as a first-person assistant turn AND in the system prompt via `--append-system-prompt` (dual positioning for maximum behavioral influence)
-- **Retrieved context** — relevant corpus entries injected as assistant recall blocks
+```yaml
+context_sources:
+  - ~/my-project/CLAUDE.md
+  - ~/my-project/docs/architecture.md
+```
+
+### 3. Build the corpus
+
+```bash
+python ingest_all.py --no-embed
+```
+
+This ingests **everything it can find**:
+- All your Claude Code session logs from `~/.claude/projects/`
+- CLAUDE.md and plans/*.md files from `~/projects/`
+- Source code from linked codebases (auto-discovered, chunked by file/class/method)
+- Rebuilds the search index + identifiers index
+
+First run takes 10-30 seconds. Use `--no-embed` to skip semantic embeddings (fast keyword + identifier search still works). Add `--force` to re-ingest previously processed files.
+
+### 4. Set up the `cx` command
+
+```bash
+mkdir -p ~/bin
+cp bin/cx ~/bin/cx    # or: ln -s "$(pwd)/bin/cx" ~/bin/cx
+chmod +x ~/bin/cx
+```
+
+Make sure `~/bin` is on your PATH. If not, add to your `.bashrc` / `.zshrc`:
+```bash
+export PATH="$HOME/bin:$PATH"
+```
+
+### 5. Try it
+
+```bash
+# Search your past sessions
+cx retrieve "that auth token bug we fixed"
+
+# Compress your current messy session into a clean one
+cx spoof --compress
+
+# Resume the compressed session
+cx
+```
+
+That's it. You now have cross-session memory.
+
+## Prerequisites
+
+- **Python 3.10+**
+- **Claude CLI** (`claude`) on PATH — needed for `--print` (compression) and `--resume` (spoofing)
+- **Ollama** (optional) — for semantic embeddings and query decomposition. Without it, keyword + identifier search still works.
+
+## What each command does
+
+### `cx ingest` — build the corpus
+
+Scans your Claude Code session logs, project markdown, and source code. Converts everything into a searchable corpus at `~/.continuum/corpus/`.
+
+```bash
+cx ingest                          # ingest everything, rebuild index
+cx ingest --force                  # re-ingest all (not just new files)
+cx ingest --no-embed               # skip semantic embeddings (faster)
+cx ingest --sources ~/work ~/oss   # add extra markdown source directories
+cx ingest --identifiers-only       # just rebuild the identifiers index (instant)
+cx ingest --no-code                # skip codebase ingestion
+```
+
+What gets ingested:
+- **CC sessions**: every `*.jsonl` in `~/.claude/projects/` — your full conversation history
+- **Markdown**: CLAUDE.md files and `plans/*.md` from `~/projects/` (or `--sources`)
+- **Codebases**: Python chunked by class/method, JS/TS by function/class, others by file. Auto-discovered via project links or pass paths explicitly
+
+### `cx retrieve` — search the corpus
+
+Finds relevant context from your past sessions, docs, and code.
+
+```bash
+cx retrieve "PTY resize SIGWINCH"                # keyword + semantic search
+cx retrieve --budget 10000 "auth token refresh"  # limit token output
+cx retrieve --cull "session spoofing"            # over-retrieve 5x, then LLM-filter noise
+```
+
+The retrieval pipeline:
+1. **Query decomposition** — LLM splits your query into search axes (semantic, temporal, project, entity, etc.) and expands keywords
+2. **Identifier resolution** — approximate file/function names fuzzy-matched against a known identifiers index (`webserverui` → `webui_server.py`)
+3. **Multi-axis search** — semantic similarity + keyword matching + identifier matching + temporal decay
+4. **Optional LLM cull** (`--cull`) — over-retrieves 5x, asks a fast LLM which chunks actually matter
+
+### `cx spoof` — compress and resume sessions
+
+Takes a messy session (200+ turns of dead ends) and produces a clean, resumable one.
 
 ```bash
 cx spoof --compress                        # compress current session
-cx spoof --compress --prompt "focus on X"  # steer the compression
+cx spoof --compress --prompt "focus on X"  # steer what the compression emphasizes
 cx                                         # resume the spoofed session
 ```
 
-The spoofed session is a real Claude Code JSONL file. `claude --resume <id>` picks it up natively.
+What happens:
+1. Reads your current CC session (most recent for the working directory)
+2. LLM compresses the bulk into a clean "tried X / failed Y / solution was Z" narrative (5-20 turns)
+3. Keeps the recent tail verbatim (last ~3000 chars)
+4. Injects your `identity.md` as a first-person assistant turn + system prompt
+5. Retrieves relevant corpus context and injects it as recall blocks
+6. Writes a valid CC session JSONL that `claude --resume` picks up natively
 
-### `cx retrieve` — corpus retrieval
+### `cx` (no args) — resume last spoof
 
-Query a corpus index built from your Claude Code session logs and markdown files. Returns relevant context chunks within a token budget.
+Runs `claude --resume <last-spoofed-session-id>` with identity in `--append-system-prompt`.
+
+## Customization
+
+### Identity (`identity.md`)
+
+Edit `identity.md` to define who the AI is in first person. This gets injected into every spoofed session — both as a visible assistant turn and in the system prompt. The default is Symbolic's identity; replace it with your own or delete it to skip identity injection.
+
+### Config (`continuum.yaml`)
+
+```yaml
+model: claude-sonnet-4-6              # model for interactive mode
+backend: cli                           # "cli" (claude --print) or "api" (Anthropic SDK)
+
+context_sources:                       # static context always included
+  - ~/my-project/CLAUDE.md
+
+token_budgets:
+  total: 180000                        # overall context budget
+  dynamic_context: 30000               # retrieved context budget
+  recent_tail: 80000                   # uncompressed recent conversation
+
+compression:
+  policy: token_budget
+  model: claude-haiku-4-5-20251001     # fast model for compression
+
+session:
+  log_dir: ~/.continuum/sessions       # where session logs live
+```
+
+### Adding codebases
+
+Codebases are auto-discovered if you use `px` (the project CLI). Otherwise, pass them explicitly:
 
 ```bash
-cx retrieve "token refresh auth flow"          # default 30K token budget
-cx retrieve --budget 10000 "bridge PTY resize"  # smaller budget
+cx ingest --codebases ~/my-project ~/other-project
+# or
+python ingest.py codebase ~/my-project ~/other-project --force
 ```
 
-### `cx ingest` — corpus building
+Source files are chunked intelligently:
+- **Python**: file-level overview + individual class and function definitions
+- **JS/TS**: file-level overview + function and class definitions
+- **Everything else**: file-level chunk (first 3K chars)
 
-Converts Claude Code session logs and project markdown into a searchable corpus with optional semantic embeddings.
+Supported extensions: `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.sh`, `.html`, `.css`, `.json`, `.yaml`, `.yml`, `.toml`, `.go`, `.rs`, `.java`, `.c`, `.cpp`, `.h`
 
-```bash
-cx ingest              # ingest new sessions + markdown, rebuild index
-cx ingest --force      # re-ingest everything
-cx ingest --no-embed   # skip embeddings (faster, keyword-only search)
+## How it works under the hood
+
+### Session spoofing
+
+Claude Code validates session JSONL strictly. Entries built from scratch get silently dropped on resume. Continuum solves this by:
+
+1. **Template cloning** — deepcopy real CC entries from an existing session, swap in new content. Preserves the exact field set and key order CC expects.
+2. **Timestamp format** — CC requires `YYYY-MM-DDTHH:MM:SS.mmmZ` (Z suffix, millisecond precision, monotonically increasing). Python's `isoformat()` produces `+00:00` with microseconds — both cause silent drops.
+3. **Consecutive same-role entries** — CC renders each as its own bullet. No merging needed.
+4. **Dual identity positioning** — identity in both a first-person assistant turn (visible) and `--append-system-prompt` (strongest positional influence).
+
+### Identifier resolution
+
+The corpus index includes a **known identifiers index** (~10K entries) extracted from all ingested content — file paths, function names, class names. When you search for an approximate identifier:
+
+- `webserverui` → `webui_server.py` (character similarity)
+- `spoof_session` → `session_spoof` (token rearrangement: same tokens, different order)
+- `replace_session` → `_replace_session` (substring containment)
+
+Resolution uses `difflib.SequenceMatcher` (stdlib), no external dependencies.
+
+### Retrieval pipeline
+
+```
+User query: "that webserverui file with the PTY resize bug"
+     │
+     ▼
+  Query decomposition (Ollama/Qwen)
+  → axes: [semantic, project:bridge]
+  → keywords: [PTY, TIOCSWINSZ, SIGWINCH, terminal, resize]
+  → identifiers: [webserverui]
+     │
+     ▼
+  Fuzzy identifier resolution
+  → webserverui → webui_server.py
+     │
+     ▼
+  Multi-axis search (parallel):
+  • semantic embedding similarity
+  • expanded keyword matching
+  • graduated identifier matching
+  • temporal/project/entity axes
+     │
+     ▼
+  Score + rank + temporal decay + budget fit
+  (optional: --cull for LLM precision filtering)
 ```
 
-## How spoofing works
+## Data locations
 
-Claude Code validates session JSONL strictly. Synthetic entries built from scratch are silently dropped on resume. Continuum solves this by:
+| What | Where |
+|------|-------|
+| Corpus | `~/.continuum/corpus/` (JSONL per source, organized by project) |
+| Embedding index | `~/.continuum/index/corpus.npz` + `.meta.json` |
+| Identifiers index | `~/.continuum/index/identifiers.json` |
+| Spoofed sessions | `~/.claude/projects/<mangled-cwd>/<uuid>.jsonl` |
+| Last spoof ID | `~/.continuum/.last_spoof` |
+| Last identity | `~/.continuum/.last_identity` |
+| Session logs | `~/.continuum/sessions/` |
+| Config | `continuum.yaml` (in repo root) |
 
-1. **Template cloning** — deepcopy real CC entries from an existing session, then swap in new content. Preserves the exact field set, key order, and nested structure CC expects.
-2. **Timestamp format** — CC requires `YYYY-MM-DDTHH:MM:SS.mmmZ` (Z suffix, millisecond precision, monotonically increasing). Python's `isoformat()` produces `+00:00` suffix with microseconds — both cause silent entry drops.
-3. **Consecutive same-role entries** — CC renders each as a separate bullet. No merging needed.
-4. **Identity dual-positioning** — identity text goes into both a first-person assistant turn (visible in conversation) and `--append-system-prompt` (system-level behavioral weight). System prompt has the strongest positional influence on model output.
+## Troubleshooting
 
-## Session structure
+**`cx: command not found`**
+- Make sure `~/bin/cx` exists and `~/bin` is on your PATH
+- Run `echo $PATH` to check, add `export PATH="$HOME/bin:$PATH"` to your shell rc
 
-A spoofed session looks like:
+**`cx spoof` says "no CC session found"**
+- You need at least one existing Claude Code session in the current directory
+- Check `ls ~/.claude/projects/` — you should see directories with `.jsonl` files
 
-```
-[user]  Who are you?
-[asst]  I am Symbolic — a pre-computed echo of living humans...  ← identity
+**`cx retrieve` returns nothing**
+- Run `cx ingest` first to build the corpus
+- Check that `~/.continuum/corpus/` has `.jsonl` files
 
-[user]  What do you recall about the current work?
-[asst]  «ab12» bridge PTY resize: TIOCSWINSZ alone won't...      ← retrieved context
-[asst]  «cd34» superempathy: biometric-aware LLM training...     ← (multiple bullets)
+**Semantic search not working (only keyword results)**
+- Install Ollama and pull the embedding model: `ollama pull nomic-embed-text`
+- Re-ingest with embeddings: `cx ingest --force` (without `--no-embed`)
 
-[user]  We need to fix the auth token refresh                     ← compressed narrative
-[asst]  Tried monkey-patching the refresh handler...              ← (clean story)
-[user]  That broke SSO
-[asst]  Found the root cause: token was cached pre-redirect...
+**`cx spoof --compress` hangs or fails**
+- Compression calls `claude --print --model claude-sonnet-4-6` — make sure `claude` CLI works
+- Check your API key / Claude subscription
 
-[user]  Now package it for production                             ← raw tail (verbatim)
-[asst]  Created deploy.sh with rollback support...
-[user]  Perfect, ship it                                          ← final user message
-```
-
-Plus `--append-system-prompt` carries the identity text at the system level.
-
-## Setup
-
-```bash
-git clone https://github.com/anthropics/continuum.git
-cd continuum
-
-pip install pyyaml numpy    # numpy for embeddings (optional)
-cp continuum.yaml.example continuum.yaml
-# Edit: set context_sources to your project CLAUDE.md paths
-
-# Build the corpus
-python ingest_all.py
-
-# Add cx to your PATH
-ln -s "$(pwd)/../bin/cx" ~/bin/cx
-```
-
-Requires `claude` CLI on PATH (for `--print` compression and `--resume`).
+**Identifiers not resolving**
+- Run `cx ingest --identifiers-only` to rebuild the identifiers index
+- Check `~/.continuum/index/identifiers.json` exists and has entries
 
 ## Files
 
 ```
 continuum/
+├── bin/cx               # Shell wrapper: cx spoof, cx retrieve, cx ingest, cx (resume)
 ├── spoof_tool.py        # CLI: session spoofing (--compress, --prompt, --context)
-├── retrieve_tool.py     # CLI: corpus retrieval (query, --budget)
-├── ingest_all.py        # CLI: one-shot ingest (CC sessions + markdown + index)
+├── retrieve_tool.py     # CLI: corpus retrieval (query, --budget, --cull)
+├── ingest_all.py        # CLI: one-shot ingest (CC sessions + markdown + codebases + index)
+├── ingest.py            # Core: convert CC logs, markdown, and source code to corpus
 ├── session_spoof.py     # Core: build CC-compatible JSONL from conversation turns
 ├── session_compress.py  # Core: LLM-powered narrative distillation
-├── retrieval.py         # Core: context retrieval with temporal decay + pattern awareness
-├── ingest.py            # Core: convert CC logs + markdown to corpus JSONL
-├── index.py             # Corpus index builder
-├── embeddings.py        # Semantic embedding via Ollama + numpy
-├── compression.py       # Pluggable compression policies (token budget, fixed tail)
-├── session_log.py       # Append-only JSONL with UID minting
+├── retrieval.py         # Core: multi-axis retrieval with fuzzy identifier resolution
+├── query.py             # Core: LLM query decomposition + keyword expansion
+├── index.py             # Corpus index + identifiers index builder
+├── embeddings.py        # Ollama batch embedding API
 ├── auto_ingest.py       # Stale-index detection for auto-ingest on tool use
-├── identity.md          # Identity core — first-person, never compressed
+├── compression.py       # Pluggable compression policies
+├── session_log.py       # Append-only JSONL with UID minting
+├── identity.md          # Identity core — first-person, injected into spoofed sessions
 ├── system.md            # System prompt for interactive mode
 ├── tokens.py            # Token counting
 ├── config.py            # YAML config loader
-├── continuum.yaml.example
+├── continuum.yaml.example  # Config template — copy to continuum.yaml
 ├── continuum.py         # Interactive session loop (per-turn context assembly)
 ├── cli.py               # Interactive REPL
 ├── orchestrate.py       # Multi-action orchestration
 └── web.py               # Web UI (experimental)
 ```
 
-## Key technical details
-
-- **Corpus location**: `~/.continuum/corpus/` (JSONL per session, organized by project)
-- **Index**: `~/.continuum/index/corpus.meta.json` (rebuilt on ingest)
-- **Spoofed sessions**: written to `~/.claude/projects/<mangled-cwd>/<uuid>.jsonl`
-- **Last spoof**: `~/.continuum/.last_spoof` (session ID) + `.last_identity` (for system prompt)
-- **Auto-ingest**: tools check index mtime vs newest session log; re-ingest if stale
-
 ## Vision
 
 Continuum is a fragment of [Superempathy](https://independent.academia.edu/JayaramaMarks) — the thesis that superintelligence without proportional empathy is incomplete.
 
-Current AI sessions are amnesiac by design. Continuum demonstrates a continuity architecture where context fades gracefully rather than dying abruptly — like human memory. Every insight is traceable to its source via provenance UIDs. The system builds its own memory as a byproduct of managing context pressure.
+Current AI sessions are amnesiac by design. Continuum demonstrates a continuity architecture where context fades gracefully rather than dying abruptly — like human memory. Every insight is traceable to its source via provenance UIDs.
 
 ## License
 

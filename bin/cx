@@ -1,0 +1,68 @@
+#!/bin/bash
+# cx — continuum CLI wrapper
+# Usage:
+#   cx                          # resume last spoofed session
+#   cx spoof                    # spoof current session (raw tail)
+#   cx spoof --compress         # spoof with LLM compression
+#   cx spoof --compress --prompt "focus on X"
+#   cx retrieve "query"         # retrieve context
+#   cx ingest                   # ingest ALL THE THINGS
+
+# Resolve continuum dir relative to this script (works from symlinks too)
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+CONTINUUM_DIR="$(dirname "$SCRIPT_DIR")"
+
+case "${1:-resume}" in
+  resume)
+    if [ -f "$HOME/.continuum/.last_spoof" ]; then
+      SPOOF_ID="$(cat "$HOME/.continuum/.last_spoof")"
+      if [ -f "$HOME/.continuum/.last_identity" ]; then
+        exec claude --resume "$SPOOF_ID" --append-system-prompt "$(cat "$HOME/.continuum/.last_identity")"
+      else
+        exec claude --resume "$SPOOF_ID"
+      fi
+    else
+      echo "No spoofed session found. Run: cx spoof --compress" >&2
+      exit 1
+    fi
+    ;;
+  spoof)
+    shift
+    python3 "$CONTINUUM_DIR/spoof_tool.py" "$@"
+    echo ""
+    echo "Resume with: cx"
+    ;;
+  retrieve)
+    shift
+    python3 "$CONTINUUM_DIR/retrieve_tool.py" "$@"
+    ;;
+  ingest)
+    shift
+    python3 "$CONTINUUM_DIR/ingest_all.py" "$@"
+    ;;
+  help|--help|-h)
+    echo "cx — Continuum CLI"
+    echo ""
+    echo "Commands:"
+    echo "  cx                    Resume last spoofed session"
+    echo "  cx spoof [opts]       Spoof current session"
+    echo "    --compress            LLM-compress the session narrative"
+    echo "    --prompt 'text'       Steer what the compression emphasizes"
+    echo "  cx retrieve 'query'   Search the corpus"
+    echo "    --budget N            Token budget (default: 30000)"
+    echo "    --cull                Over-retrieve 5x, then LLM-filter noise"
+    echo "  cx ingest [opts]      Ingest everything and rebuild index"
+    echo "    --force               Re-ingest already-processed files"
+    echo "    --no-embed            Skip semantic embeddings (faster)"
+    echo "    --no-code             Skip codebase ingestion"
+    echo "    --identifiers-only    Just rebuild identifiers index"
+    echo "    --sources dir1 dir2   Additional markdown directories"
+    echo "    --codebases d1 d2     Codebase directories (default: auto-discover)"
+    echo ""
+    echo "First time? Run: cx ingest --no-embed"
+    ;;
+  *)
+    echo "Unknown command: $1 (try: cx help)" >&2
+    exit 1
+    ;;
+esac
