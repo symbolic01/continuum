@@ -173,9 +173,12 @@ python ingest.py codebase ~/my-project ~/other-project --force
 ```
 
 Source files are chunked by language:
-- **Python**: file-level overview + individual class and function/method definitions
-- **JS/TS**: file-level overview + function and class definitions
-- **All other supported types**: file-level chunk (first 3K chars) — enough for keyword/identifier search but no structural parsing yet
+- **Python**: file overview + individual class and function/method definitions
+- **JS/TS**: file overview + function and class definitions
+- **Java**: file overview + class/interface/enum + individual method definitions (brace-matched)
+- **Go**: file overview + type (struct/interface) + func definitions (brace-matched)
+- **JSON**: small files as-is; large files split by top-level key (great for configs, JSON-e templates)
+- **Everything else** (`.sh`, `.html`, `.css`, `.yaml`, etc.): file-level chunk (first 3K chars)
 
 Supported extensions: `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.sh`, `.html`, `.css`, `.json`, `.yaml`, `.yml`, `.toml`, `.go`, `.rs`, `.java`, `.c`, `.cpp`, `.h`
 

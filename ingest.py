@@ -503,8 +503,224 @@ def _chunk_js(text: str, file_path: str) -> list[dict]:
     return chunks
 
 
+def _chunk_java(text: str, file_path: str) -> list[dict]:
+    """Chunk Java source into file-level + class/method-level entries."""
+    chunks = []
+
+    # File-level chunk
+    file_preview = text[:2000] if len(text) > 2000 else text
+    chunks.append({
+        "content": file_preview,
+        "heading": file_path,
+        "source": file_path,
+        "chunk_type": "file",
+    })
+
+    # Extract class, interface, enum, and method definitions
+    # Matches: public class Foo, private void bar(, static int baz(, etc.
+    def_re = re.compile(
+        r'^[ \t]*(?:(?:public|private|protected|static|final|abstract|synchronized|native)\s+)*'
+        r'(?:'
+        r'(?:class|interface|enum|record)\s+(\w+)'  # group 1: class/interface/enum name
+        r'|'
+        r'(?:[\w<>\[\],\s]+?)\s+(\w+)\s*\('         # group 2: method name (return_type methodName()
+        r')',
+        re.MULTILINE,
+    )
+
+    lines = text.split("\n")
+    for m in def_re.finditer(text):
+        class_name = m.group(1)
+        method_name = m.group(2)
+        name = class_name or method_name
+        if not name or len(name) < 2:
+            continue
+        # Skip common false positives
+        if name in ("if", "for", "while", "switch", "catch", "new", "return", "throw"):
+            continue
+
+        kind = "class" if class_name else "method"
+
+        # Find the line number and extract up to the closing brace
+        start = m.start()
+        # Count braces to find the end of the block
+        brace_depth = 0
+        found_open = False
+        pos = start
+        end = len(text)
+        char_limit = 5000  # don't extract more than 5K chars per chunk
+        while pos < len(text) and (pos - start) < char_limit:
+            ch = text[pos]
+            if ch == '{':
+                brace_depth += 1
+                found_open = True
+            elif ch == '}':
+                brace_depth -= 1
+                if found_open and brace_depth <= 0:
+                    end = pos + 1
+                    break
+            pos += 1
+
+        chunk_text = text[start:end]
+        if len(chunk_text.strip()) > 20:
+            chunks.append({
+                "content": chunk_text,
+                "heading": f"{file_path}:{name}",
+                "source": file_path,
+                "chunk_type": kind,
+            })
+
+    return chunks
+
+
+def _chunk_go(text: str, file_path: str) -> list[dict]:
+    """Chunk Go source into file-level + type/func-level entries."""
+    chunks = []
+
+    # File-level chunk
+    file_preview = text[:2000] if len(text) > 2000 else text
+    chunks.append({
+        "content": file_preview,
+        "heading": file_path,
+        "source": file_path,
+        "chunk_type": "file",
+    })
+
+    # Match: func Name(, func (r *Receiver) Name(, type Name struct/interface
+    def_re = re.compile(
+        r'^(?:'
+        r'func\s+(?:\([^)]+\)\s+)?(\w+)\s*\('   # group 1: func name (with optional receiver)
+        r'|'
+        r'type\s+(\w+)\s+(?:struct|interface)\b'  # group 2: type name
+        r')',
+        re.MULTILINE,
+    )
+
+    for m in def_re.finditer(text):
+        func_name = m.group(1)
+        type_name = m.group(2)
+        name = func_name or type_name
+        if not name:
+            continue
+
+        kind = "type" if type_name else "function"
+
+        # Brace-matching to find end of block
+        start = m.start()
+        brace_depth = 0
+        found_open = False
+        pos = start
+        end = len(text)
+        char_limit = 5000
+        while pos < len(text) and (pos - start) < char_limit:
+            ch = text[pos]
+            if ch == '{':
+                brace_depth += 1
+                found_open = True
+            elif ch == '}':
+                brace_depth -= 1
+                if found_open and brace_depth <= 0:
+                    end = pos + 1
+                    break
+            pos += 1
+
+        chunk_text = text[start:end]
+        if len(chunk_text.strip()) > 20:
+            chunks.append({
+                "content": chunk_text,
+                "heading": f"{file_path}:{name}",
+                "source": file_path,
+                "chunk_type": kind,
+            })
+
+    return chunks
+
+
+def _chunk_json(text: str, file_path: str) -> list[dict]:
+    """Chunk JSON/YAML into top-level keys.
+
+    For large JSON files (configs, templates, JSON-e), each top-level key
+    becomes its own chunk. Small files stay as a single chunk.
+    """
+    chunks = []
+
+    # Small files: single chunk
+    if len(text) <= 3000:
+        chunks.append({
+            "content": text,
+            "heading": file_path,
+            "source": file_path,
+            "chunk_type": "file",
+        })
+        return chunks
+
+    # Try to parse and chunk by top-level keys
+    try:
+        data = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        # Unparseable — file-level truncated
+        chunks.append({
+            "content": text[:3000],
+            "heading": file_path,
+            "source": file_path,
+            "chunk_type": "file",
+        })
+        return chunks
+
+    if isinstance(data, dict):
+        # File overview: list of top-level keys
+        key_list = ", ".join(list(data.keys())[:50])
+        overview = f"// {file_path}\n// Top-level keys: {key_list}\n"
+        if len(data) <= 3:
+            # Few keys — just dump the whole thing truncated
+            overview += text[:3000]
+        chunks.append({
+            "content": overview,
+            "heading": file_path,
+            "source": file_path,
+            "chunk_type": "file",
+        })
+
+        # Each top-level key as its own chunk
+        for key, value in data.items():
+            value_str = json.dumps(value, indent=2)
+            # Truncate very large values
+            if len(value_str) > 3000:
+                value_str = value_str[:3000] + "\n  // ... truncated"
+            chunk_content = f'"{key}": {value_str}'
+            chunks.append({
+                "content": chunk_content,
+                "heading": f"{file_path}:{key}",
+                "source": file_path,
+                "chunk_type": "key",
+            })
+
+    elif isinstance(data, list):
+        # Arrays: overview + sample items
+        overview = f"// {file_path}\n// Array with {len(data)} items\n"
+        sample = json.dumps(data[:3], indent=2)
+        if len(sample) > 3000:
+            sample = sample[:3000]
+        overview += sample
+        chunks.append({
+            "content": overview,
+            "heading": file_path,
+            "source": file_path,
+            "chunk_type": "file",
+        })
+    else:
+        chunks.append({
+            "content": text[:3000],
+            "heading": file_path,
+            "source": file_path,
+            "chunk_type": "file",
+        })
+
+    return chunks
+
+
 def _chunk_generic(text: str, file_path: str) -> list[dict]:
-    """File-level chunk only for non-Python/JS files."""
+    """File-level chunk only for unrecognized file types."""
     preview = text[:3000] if len(text) > 3000 else text
     return [{
         "content": preview,
@@ -521,6 +737,12 @@ def chunk_source_file(text: str, file_path: str) -> list[dict]:
         return _chunk_python(text, file_path)
     elif ext in (".js", ".ts", ".jsx", ".tsx"):
         return _chunk_js(text, file_path)
+    elif ext == ".java":
+        return _chunk_java(text, file_path)
+    elif ext == ".go":
+        return _chunk_go(text, file_path)
+    elif ext == ".json":
+        return _chunk_json(text, file_path)
     else:
         return _chunk_generic(text, file_path)
 
