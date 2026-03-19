@@ -26,7 +26,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from session_log import mint_uid
+from .session_log import mint_uid
 
 
 # ── Claude Code format parsing ─────────────────────────────────────────
@@ -146,7 +146,7 @@ def convert_claude_code_session(
     # Batch embed all entries at once
     if embed and entries:
         try:
-            from embeddings import embed_batch
+            from .embeddings import embed_batch
             texts = [e["content"] for e in entries]
             vectors = embed_batch(texts)
             for entry, vec in zip(entries, vectors):
@@ -302,7 +302,7 @@ def convert_markdown_file(source_path: Path, project: str, embed: bool = False) 
     # Batch embed all entries at once
     if embed and entries:
         try:
-            from embeddings import embed_batch
+            from .embeddings import embed_batch
             texts = [e["content"] for e in entries]
             vectors = embed_batch(texts)
             for entry, vec in zip(entries, vectors):
@@ -794,7 +794,7 @@ def convert_codebase(
     # Batch embed
     if embed and entries:
         try:
-            from embeddings import embed_batch
+            from .embeddings import embed_batch
             texts = [e["content"] for e in entries]
             vectors = embed_batch(texts)
             for entry, vec in zip(entries, vectors):

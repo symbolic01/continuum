@@ -31,7 +31,7 @@ def main():
         print("── Identifiers only ──", file=sys.stderr)
         subprocess.run(
             [sys.executable, "-c",
-             "from index import build_identifiers; build_identifiers()"],
+             "from core.index import build_identifiers; build_identifiers()"],
             cwd=str(_CONTINUUM_DIR),
         )
         return
@@ -45,21 +45,21 @@ def main():
     # 1. Ingest Claude Code sessions
     print("── CC sessions ──", file=sys.stderr)
     subprocess.run(
-        [sys.executable, str(_CONTINUUM_DIR / "ingest.py"), "claude-code"] + embed_flag + force_flag,
+        [sys.executable, "-m", "core.ingest", "claude-code"] + embed_flag + force_flag,
         cwd=str(_CONTINUUM_DIR),
     )
 
     # 2. Ingest markdown (always --force since files change in place)
     print("\n── Markdown ──", file=sys.stderr)
     subprocess.run(
-        [sys.executable, str(_CONTINUUM_DIR / "ingest.py"), "markdown"] + embed_flag + ["--force"] + sources_flag,
+        [sys.executable, "-m", "core.ingest", "markdown"] + embed_flag + ["--force"] + sources_flag,
         cwd=str(_CONTINUUM_DIR),
     )
 
     # 3. Ingest codebases (auto-discover or explicit paths)
     if not args.no_code:
         print("\n── Codebases ──", file=sys.stderr)
-        code_cmd = [sys.executable, str(_CONTINUUM_DIR / "ingest.py"), "codebase"] + force_flag
+        code_cmd = [sys.executable, "-m", "core.ingest", "codebase"] + force_flag
         # Don't embed codebases by default — too many chunks, keyword+identifier search handles code well
         if args.codebases is not None:
             code_cmd.extend(args.codebases)
@@ -68,7 +68,7 @@ def main():
     # 4. Rebuild index (includes identifiers)
     print("\n── Index rebuild ──", file=sys.stderr)
     subprocess.run(
-        [sys.executable, "-c", "from index import build_index; build_index(force=True)"],
+        [sys.executable, "-c", "from core.index import build_index; build_index(force=True)"],
         cwd=str(_CONTINUUM_DIR),
     )
 

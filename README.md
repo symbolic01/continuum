@@ -307,29 +307,35 @@ User query: "that webserverui file with the PTY resize bug"
 
 ```
 continuum/
-├── bin/cx               # Shell wrapper: cx spoof, cx retrieve, cx ingest, cx (resume)
-├── spoof_tool.py        # CLI: session spoofing (--compress, --prompt, --context)
-├── retrieve_tool.py     # CLI: corpus retrieval (query, --budget, --cull)
-├── ingest_all.py        # CLI: one-shot ingest (CC sessions + markdown + codebases + index)
-├── ingest.py            # Core: convert CC logs, markdown, and source code to corpus
-├── session_spoof.py     # Core: build CC-compatible JSONL from conversation turns
-├── session_compress.py  # Core: LLM-powered narrative distillation
-├── retrieval.py         # Core: multi-axis retrieval with fuzzy identifier resolution
-├── query.py             # Core: LLM query decomposition + keyword expansion
-├── index.py             # Corpus index + identifiers index builder
-├── embeddings.py        # Ollama batch embedding API
-├── auto_ingest.py       # Stale-index detection for auto-ingest on tool use
-├── compression.py       # Pluggable compression policies
-├── session_log.py       # Append-only JSONL with UID minting
-├── identity.md          # Identity core — first-person, injected into spoofed sessions
-├── system.md            # System prompt for interactive mode
-├── tokens.py            # Token counting
-├── config.py            # YAML config loader
-├── continuum.yaml.example  # Config template — copy to continuum.yaml
-├── continuum.py         # Interactive session loop (per-turn context assembly)
-├── cli.py               # Interactive REPL
-├── orchestrate.py       # Multi-action orchestration
-└── web.py               # Web UI (experimental)
+├── bin/cx                     # Shell wrapper: cx spoof, cx retrieve, cx ingest, cx (resume)
+├── spoof_tool.py              # CLI: session spoofing (--compress, --prompt, --context)
+├── retrieve_tool.py           # CLI: corpus retrieval (query, --budget, --no-cull)
+├── ingest_all.py              # CLI: one-shot ingest (CC sessions + markdown + codebases + index)
+├── identity.md                # Identity core — first-person, injected into spoofed sessions
+├── system.md                  # System prompt for interactive mode
+├── continuum.yaml.example     # Config template — copy to continuum.yaml
+│
+├── core/                      # Library modules
+│   ├── ingest.py              # Convert CC logs, markdown, and source code to corpus
+│   ├── retrieval.py           # Multi-axis retrieval with fuzzy identifier resolution
+│   ├── query.py               # LLM query decomposition + keyword expansion
+│   ├── index.py               # Corpus index + identifiers index builder
+│   ├── embeddings.py          # Ollama batch embedding API
+│   ├── session_spoof.py       # Build CC-compatible JSONL from conversation turns
+│   ├── session_compress.py    # LLM-powered narrative distillation
+│   ├── session_log.py         # Append-only JSONL with UID minting
+│   ├── compression.py         # Pluggable compression policies
+│   ├── auto_ingest.py         # Stale-index detection for auto-ingest on tool use
+│   ├── tokens.py              # Token counting
+│   ├── config.py              # YAML config loader
+│   ├── backend.py             # CLI and API backends
+│   └── actions.py             # Action parsing and execution
+│
+└── interactive/               # Interactive mode (experimental)
+    ├── continuum.py           # Per-turn context assembly + session loop
+    ├── cli.py                 # Interactive REPL
+    ├── orchestrate.py         # Multi-action orchestration
+    └── web.py                 # Web UI
 ```
 
 ## Vision

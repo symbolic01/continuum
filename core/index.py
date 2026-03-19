@@ -5,7 +5,7 @@ import os
 import re
 from pathlib import Path
 
-from embeddings import EmbeddingIndex
+from .embeddings import EmbeddingIndex
 
 
 DEFAULT_CORPUS_DIR = Path.home() / ".continuum" / "corpus"

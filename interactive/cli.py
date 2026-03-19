@@ -7,13 +7,13 @@ import argparse
 from pathlib import Path
 from datetime import datetime, timezone
 
-from config import load_config
-from session_log import SessionLog
-from retrieval import ContextRetriever
-from compression import FixedTailPolicy, TokenBudgetPolicy
-from continuum import ContextAssembler, Session
-from backend import make_backend
-from index import load_index, DEFAULT_INDEX_PATH
+from core.config import load_config
+from core.session_log import SessionLog
+from core.retrieval import ContextRetriever
+from core.compression import FixedTailPolicy, TokenBudgetPolicy
+from .continuum import ContextAssembler, Session
+from core.backend import make_backend
+from core.index import load_index, DEFAULT_INDEX_PATH
 
 
 def make_session(config: dict, session_name: str | None = None) -> Session:

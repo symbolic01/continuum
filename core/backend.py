@@ -16,7 +16,7 @@ import shutil
 import subprocess
 from abc import ABC, abstractmethod
 
-from tokens import count_tokens
+from .tokens import count_tokens
 
 
 class Backend(ABC):

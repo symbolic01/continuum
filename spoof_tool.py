@@ -22,13 +22,13 @@ _CONTINUUM_DIR = Path(__file__).resolve().parent
 if str(_CONTINUUM_DIR) not in sys.path:
     sys.path.insert(0, str(_CONTINUUM_DIR))
 
-from auto_ingest import auto_ingest
-from session_spoof import (
+from core.auto_ingest import auto_ingest
+from core.session_spoof import (
     build_spoofed_session,
     write_cc_session,
     extract_text_from_cc_entry,
 )
-from session_log import SessionLog
+from core.session_log import SessionLog
 
 import shlex
 
@@ -150,7 +150,7 @@ def main():
 
     # Compress if requested — keep recent tail raw
     if args.compress:
-        from session_compress import compress_session
+        from core.session_compress import compress_session
 
         # Split: compress the bulk, keep the recent tail verbatim
         # ~50 lines of screen content ≈ last few turns

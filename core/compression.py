@@ -15,7 +15,7 @@ import subprocess
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from tokens import count_tokens
+from .tokens import count_tokens
 
 
 class CompressedBlock:

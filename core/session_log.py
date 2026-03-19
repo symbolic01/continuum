@@ -71,7 +71,7 @@ class SessionLog:
         # Mint embedding at write time (async-safe: failures produce None)
         if self._embed:
             try:
-                from embeddings import embed_text
+                from .embeddings import embed_text
                 vec = embed_text(content)
                 if vec is not None:
                     entry["embedding"] = vec

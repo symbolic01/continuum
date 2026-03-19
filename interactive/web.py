@@ -36,11 +36,11 @@ from urllib.parse import parse_qs, urlparse
 # Add continuum to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import load_config
-from session_log import SessionLog
-from retrieval import ContextRetriever
-from index import load_index
-from session_spoof import (
+from core.config import load_config
+from core.session_log import SessionLog
+from core.retrieval import ContextRetriever
+from core.index import load_index
+from core.session_spoof import (
     build_spoofed_session,
     write_cc_session,
     read_cc_new_entries,

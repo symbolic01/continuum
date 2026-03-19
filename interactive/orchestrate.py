@@ -29,12 +29,12 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from config import load_config
-from session_log import SessionLog
-from retrieval import ContextRetriever
-from compression import TokenBudgetPolicy
-from index import load_index
-from session_spoof import (
+from core.config import load_config
+from core.session_log import SessionLog
+from core.retrieval import ContextRetriever
+from core.compression import TokenBudgetPolicy
+from core.index import load_index
+from core.session_spoof import (
     build_spoofed_session,
     write_cc_session,
     read_cc_new_entries,

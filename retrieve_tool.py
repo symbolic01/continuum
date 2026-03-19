@@ -15,11 +15,11 @@ _CONTINUUM_DIR = Path(__file__).resolve().parent
 if str(_CONTINUUM_DIR) not in sys.path:
     sys.path.insert(0, str(_CONTINUUM_DIR))
 
-from auto_ingest import auto_ingest
-from index import load_index
-from retrieval import ContextRetriever
-from config import load_config
-from tokens import count_tokens
+from core.auto_ingest import auto_ingest
+from core.index import load_index
+from core.retrieval import ContextRetriever
+from core.config import load_config
+from core.tokens import count_tokens
 
 
 def main():

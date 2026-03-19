@@ -19,10 +19,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tokens import count_tokens
-from embeddings import embed_text, EmbeddingIndex
-from index import load_identifiers
-from query import decompose_query
+from .tokens import count_tokens
+from .embeddings import embed_text, EmbeddingIndex
+from .index import load_identifiers
+from .query import decompose_query
 
 
 class ContextRetriever:

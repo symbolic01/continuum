@@ -15,12 +15,12 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from tokens import count_tokens, count_messages_tokens
-from session_log import SessionLog
-from retrieval import ContextRetriever
-from compression import CompressionPolicy, CompressedBlock, TokenBudgetPolicy
-from actions import parse_actions, strip_actions, execute_action
-from backend import Backend, CLIBackend, make_backend
+from core.tokens import count_tokens, count_messages_tokens
+from core.session_log import SessionLog
+from core.retrieval import ContextRetriever
+from core.compression import CompressionPolicy, CompressedBlock, TokenBudgetPolicy
+from core.actions import parse_actions, strip_actions, execute_action
+from core.backend import Backend, CLIBackend, make_backend
 
 
 class ContextAssembler:
