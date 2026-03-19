@@ -172,10 +172,10 @@ cx ingest --codebases ~/my-project ~/other-project
 python ingest.py codebase ~/my-project ~/other-project --force
 ```
 
-Source files are chunked intelligently:
-- **Python**: file-level overview + individual class and function definitions
+Source files are chunked by language:
+- **Python**: file-level overview + individual class and function/method definitions
 - **JS/TS**: file-level overview + function and class definitions
-- **Everything else**: file-level chunk (first 3K chars)
+- **All other supported types**: file-level chunk (first 3K chars) — enough for keyword/identifier search but no structural parsing yet
 
 Supported extensions: `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.sh`, `.html`, `.css`, `.json`, `.yaml`, `.yml`, `.toml`, `.go`, `.rs`, `.java`, `.c`, `.cpp`, `.h`
 
