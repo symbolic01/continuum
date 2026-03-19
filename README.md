@@ -101,16 +101,16 @@ What gets ingested:
 Finds relevant context from your past sessions, docs, and code.
 
 ```bash
-cx retrieve "PTY resize SIGWINCH"                # keyword + semantic search
+cx retrieve "PTY resize SIGWINCH"                # keyword + semantic + LLM-filtered
 cx retrieve --budget 10000 "auth token refresh"  # limit token output
-cx retrieve --cull "session spoofing"            # over-retrieve 5x, then LLM-filter noise
+cx retrieve --no-cull "session spoofing"         # skip LLM filtering (faster, noisier)
 ```
 
 The retrieval pipeline:
 1. **Query decomposition** — LLM splits your query into search axes (semantic, temporal, project, entity, etc.) and expands keywords
 2. **Identifier resolution** — approximate file/function names fuzzy-matched against a known identifiers index (`webserverui` → `webui_server.py`)
 3. **Multi-axis search** — semantic similarity + keyword matching + identifier matching + temporal decay
-4. **Optional LLM cull** (`--cull`) — over-retrieves 5x, asks a fast LLM which chunks actually matter
+4. **LLM cull** (on by default) — over-retrieves 5x, asks a fast LLM which chunks actually matter. Skip with `--no-cull`
 
 ### `cx spoof` — compress and resume sessions
 
@@ -224,7 +224,7 @@ User query: "that webserverui file with the PTY resize bug"
      │
      ▼
   Score + rank + temporal decay + budget fit
-  (optional: --cull for LLM precision filtering)
+  (LLM precision cull — default on, --no-cull to skip)
 ```
 
 ## Data locations

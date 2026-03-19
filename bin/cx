@@ -50,7 +50,7 @@ case "${1:-resume}" in
     echo "    --prompt 'text'       Steer what the compression emphasizes"
     echo "  cx retrieve 'query'   Search the corpus"
     echo "    --budget N            Token budget (default: 30000)"
-    echo "    --cull                Over-retrieve 5x, then LLM-filter noise"
+    echo "    --no-cull             Skip LLM precision filtering (faster, noisier)"
     echo "  cx ingest [opts]      Ingest everything and rebuild index"
     echo "    --force               Re-ingest already-processed files"
     echo "    --no-embed            Skip semantic embeddings (faster)"
