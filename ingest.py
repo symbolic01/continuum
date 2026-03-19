@@ -20,7 +20,9 @@ Usage:
 
 import argparse
 import json
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -371,6 +373,302 @@ def ingest_markdown(args):
         print(f"Corpus: {output_dir / '_markdown'}")
 
 
+# ── Codebase ingestion ────────────────────────────────────────────────
+
+# File extensions to ingest
+_CODE_EXTENSIONS = {
+    ".py", ".js", ".ts", ".jsx", ".tsx", ".sh", ".bash",
+    ".html", ".css", ".json", ".yaml", ".yml", ".toml",
+    ".go", ".rs", ".java", ".c", ".cpp", ".h",
+}
+
+# Directories to skip
+_SKIP_DIRS = {
+    "__pycache__", "node_modules", ".git", ".venv", "venv",
+    "dist", "build", ".next", ".cache", "vendor", ".tox",
+    "egg-info", ".eggs", ".mypy_cache", ".pytest_cache",
+}
+
+
+def _chunk_python(text: str, file_path: str) -> list[dict]:
+    """Chunk Python source into file-level + class/method-level entries."""
+    chunks = []
+    lines = text.split("\n")
+
+    # Always add file-level chunk (truncated)
+    file_preview = text[:2000] if len(text) > 2000 else text
+    chunks.append({
+        "content": file_preview,
+        "heading": file_path,
+        "source": file_path,
+        "chunk_type": "file",
+    })
+
+    # Extract class and function definitions
+    current_def = None
+    current_lines = []
+    current_indent = 0
+
+    for i, line in enumerate(lines):
+        stripped = line.lstrip()
+
+        # Detect class/function definitions at module level or class level
+        is_def = False
+        if stripped.startswith("class ") or stripped.startswith("def ") or stripped.startswith("async def "):
+            indent = len(line) - len(stripped)
+            # New top-level or class-level definition
+            if indent <= current_indent or current_def is None:
+                # Save previous definition
+                if current_def and current_lines:
+                    content = "\n".join(current_lines)
+                    if len(content.strip()) > 20:  # skip trivial defs
+                        chunks.append({
+                            "content": content,
+                            "heading": f"{file_path}:{current_def}",
+                            "source": file_path,
+                            "chunk_type": "class" if current_def.startswith("class ") else "function",
+                        })
+
+                # Start new definition
+                if stripped.startswith("class "):
+                    name = stripped.split("(")[0].split(":")[0].replace("class ", "")
+                    current_def = f"class {name}"
+                else:
+                    name = stripped.replace("async def ", "def ").split("(")[0].replace("def ", "")
+                    current_def = f"def {name}"
+                current_lines = [line]
+                current_indent = indent
+                is_def = True
+
+        if not is_def and current_def is not None:
+            current_lines.append(line)
+
+    # Save last definition
+    if current_def and current_lines:
+        content = "\n".join(current_lines)
+        if len(content.strip()) > 20:
+            chunks.append({
+                "content": content,
+                "heading": f"{file_path}:{current_def}",
+                "source": file_path,
+                "chunk_type": "class" if current_def.startswith("class ") else "function",
+            })
+
+    return chunks
+
+
+def _chunk_js(text: str, file_path: str) -> list[dict]:
+    """Chunk JS/TS source into file-level + function-level entries."""
+    chunks = []
+
+    # File-level chunk
+    file_preview = text[:2000] if len(text) > 2000 else text
+    chunks.append({
+        "content": file_preview,
+        "heading": file_path,
+        "source": file_path,
+        "chunk_type": "file",
+    })
+
+    # Extract function/class definitions
+    func_re = re.compile(
+        r'^(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|class\s+(\w+)|const\s+(\w+)\s*=\s*(?:async\s+)?\()',
+        re.MULTILINE,
+    )
+    for m in func_re.finditer(text):
+        name = m.group(1) or m.group(2) or m.group(3)
+        if not name:
+            continue
+        # Extract ~50 lines from the match
+        start = m.start()
+        end = text.find("\n", start)
+        line_count = 0
+        pos = start
+        while pos < len(text) and line_count < 50:
+            nl = text.find("\n", pos)
+            if nl == -1:
+                break
+            pos = nl + 1
+            line_count += 1
+        chunk_text = text[start:pos]
+        if len(chunk_text.strip()) > 20:
+            kind = "class" if m.group(2) else "function"
+            chunks.append({
+                "content": chunk_text,
+                "heading": f"{file_path}:{name}",
+                "source": file_path,
+                "chunk_type": kind,
+            })
+
+    return chunks
+
+
+def _chunk_generic(text: str, file_path: str) -> list[dict]:
+    """File-level chunk only for non-Python/JS files."""
+    preview = text[:3000] if len(text) > 3000 else text
+    return [{
+        "content": preview,
+        "heading": file_path,
+        "source": file_path,
+        "chunk_type": "file",
+    }]
+
+
+def chunk_source_file(text: str, file_path: str) -> list[dict]:
+    """Chunk a source code file by file/class/method."""
+    ext = Path(file_path).suffix.lower()
+    if ext == ".py":
+        return _chunk_python(text, file_path)
+    elif ext in (".js", ".ts", ".jsx", ".tsx"):
+        return _chunk_js(text, file_path)
+    else:
+        return _chunk_generic(text, file_path)
+
+
+def convert_codebase(
+    codebase_dir: Path,
+    project: str,
+    embed: bool = False,
+) -> list[dict]:
+    """Convert a codebase directory into corpus entries (chunked by file/class/method)."""
+    entries = []
+
+    for root, dirs, files in os.walk(codebase_dir):
+        # Skip unwanted directories
+        dirs[:] = [d for d in dirs if d not in _SKIP_DIRS and not d.startswith(".")]
+
+        for fname in sorted(files):
+            fpath = Path(root) / fname
+            if fpath.suffix.lower() not in _CODE_EXTENSIONS:
+                continue
+            # Skip very large files
+            try:
+                if fpath.stat().st_size > 500_000:  # 500KB
+                    continue
+            except OSError:
+                continue
+
+            try:
+                text = fpath.read_text(encoding="utf-8", errors="replace")
+            except (OSError, PermissionError):
+                continue
+
+            rel_path = str(fpath.relative_to(codebase_dir))
+            chunks = chunk_source_file(text, rel_path)
+
+            for chunk in chunks:
+                entries.append({
+                    "uid": mint_uid(),
+                    "role": "code",
+                    "content": chunk["content"],
+                    "turn": 0,
+                    "ts": "",
+                    "thread": project,
+                    "source_file": str(fpath),
+                    "heading": chunk["heading"],
+                    "chunk_type": chunk["chunk_type"],
+                })
+
+    # Batch embed
+    if embed and entries:
+        try:
+            from embeddings import embed_batch
+            texts = [e["content"] for e in entries]
+            vectors = embed_batch(texts)
+            for entry, vec in zip(entries, vectors):
+                if vec is not None:
+                    entry["embedding"] = vec
+        except Exception:
+            pass
+
+    return entries
+
+
+def _discover_codebases() -> list[tuple[str, Path]]:
+    """Discover linked codebases from px."""
+    codebases = []
+    try:
+        px_bin = Path.home() / "projects" / "px"
+        result = subprocess.run(
+            [str(px_bin), "list", "--flat"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode != 0:
+            return codebases
+        for line in result.stdout.strip().split("\n"):
+            project = line.strip()
+            if not project:
+                continue
+            cb_result = subprocess.run(
+                [str(px_bin), "codebase", project],
+                capture_output=True, text=True, timeout=5,
+            )
+            if cb_result.returncode == 0 and cb_result.stdout.strip():
+                cb_path = Path(cb_result.stdout.strip())
+                if cb_path.is_dir():
+                    codebases.append((project, cb_path))
+    except Exception:
+        pass
+    return codebases
+
+
+def ingest_codebase(args):
+    """Ingest source code from codebase directories."""
+    output_dir = Path.home() / ".continuum" / "corpus"
+
+    if args.paths:
+        # Explicit paths
+        codebases = []
+        for p in args.paths:
+            path = Path(p).expanduser().resolve()
+            if path.is_dir():
+                project = path.name
+                codebases.append((project, path))
+            else:
+                print(f"  skipping {p} (not found)", file=sys.stderr)
+    else:
+        # Auto-discover from px
+        codebases = _discover_codebases()
+
+    if not codebases:
+        print("No codebases found. Pass paths explicitly or link via px.")
+        return
+
+    print(f"Found {len(codebases)} codebase(s): {', '.join(p for p, _ in codebases)}")
+
+    total_entries = 0
+    total_codebases = 0
+
+    for project, cb_path in codebases:
+        out_path = output_dir / "_codebase" / f"{project}.jsonl"
+
+        if out_path.exists() and not args.force:
+            print(f"  {project} (skipped, use --force)")
+            continue
+
+        if args.dry_run:
+            # Count files
+            count = sum(1 for _ in cb_path.rglob("*")
+                       if _.suffix.lower() in _CODE_EXTENSIONS
+                       and not any(s in str(_) for s in _SKIP_DIRS))
+            print(f"  [dry-run] {project} @ {cb_path} ({count} files)")
+            total_codebases += 1
+            continue
+
+        entries = convert_codebase(cb_path, project, embed=args.embed)
+        if not entries:
+            continue
+
+        write_corpus(entries, out_path)
+        total_entries += len(entries)
+        total_codebases += 1
+        file_chunks = sum(1 for e in entries if e.get("chunk_type") == "file")
+        func_chunks = sum(1 for e in entries if e.get("chunk_type") in ("function", "class"))
+        print(f"  {project} → {len(entries)} chunks ({file_chunks} files, {func_chunks} functions/classes)")
+
+    print(f"\nIngested: {total_codebases} codebases, {total_entries} chunks")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Continuum Ingest — convert session logs to corpus")
 
@@ -393,6 +691,12 @@ def main():
     md_parser.add_argument("--force", action="store_true", help="Re-ingest already-ingested files")
     md_parser.add_argument("--sources", nargs="+", help="Source directories (default: ~/projects/)")
 
+    code_parser = sub.add_parser("codebase", help="Ingest source code files from codebase directories")
+    code_parser.add_argument("paths", nargs="*", help="Codebase directories (default: discover via px)")
+    code_parser.add_argument("--embed", action="store_true", help="Mint embeddings per chunk (slower)")
+    code_parser.add_argument("--dry-run", action="store_true", help="Show what would be ingested")
+    code_parser.add_argument("--force", action="store_true", help="Re-ingest already-ingested files")
+
     args = parser.parse_args()
 
     if args.command == "claude-code":
@@ -401,6 +705,8 @@ def main():
         ingest_file(args)
     elif args.command == "markdown":
         ingest_markdown(args)
+    elif args.command == "codebase":
+        ingest_codebase(args)
     else:
         parser.print_help()
 
