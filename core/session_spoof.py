@@ -190,8 +190,26 @@ def build_spoofed_session(
     """
     entries = []
     prev_uuid = None
-    # Generate monotonically increasing timestamps (CC needs unique, ordered ts)
-    _base_time = datetime.now(timezone.utc)
+
+    # Ground timestamps in the source session's time window
+    log_entries = continuum_log.entries
+    _first_ts = None
+    _last_ts = None
+    for e in log_entries:
+        ts = e.get("ts", "")
+        if ts:
+            if _first_ts is None:
+                _first_ts = ts
+            _last_ts = ts
+
+    if _first_ts:
+        try:
+            _base_time = datetime.fromisoformat(_first_ts.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            _base_time = datetime.now(timezone.utc)
+    else:
+        _base_time = datetime.now(timezone.utc)
+
     _entry_idx = [0]
 
     def _next_ts() -> str:
