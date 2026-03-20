@@ -21,7 +21,7 @@ from pathlib import Path
 
 from .tokens import count_tokens
 from .embeddings import embed_text, EmbeddingIndex
-from .index import load_identifiers
+from .index import load_identifiers, load_all_metadata
 from .query import decompose_query
 
 
@@ -42,11 +42,18 @@ class ContextRetriever:
         self.index = index
         self.decompose_model = decompose_model
         self._known_identifiers: list[str] | None = None
+        self._all_metadata: list[dict] | None = None
 
     def _get_known_identifiers(self) -> list[str]:
         if self._known_identifiers is None:
             self._known_identifiers = load_identifiers()
         return self._known_identifiers
+
+    def _get_all_metadata(self) -> list[dict]:
+        """Get full metadata (all corpus entries, not just embedded ones)."""
+        if self._all_metadata is None:
+            self._all_metadata = load_all_metadata()
+        return self._all_metadata
 
     def _resolve_paths(self) -> list[Path]:
         """Expand globs and resolve all source paths."""
@@ -100,8 +107,6 @@ class ContextRetriever:
 
     def _retrieve_corpus(self, query: str, decomposition: dict, token_budget: int) -> str:
         """Retrieve from corpus using decomposed query axes."""
-        if not self.index or len(self.index) == 0:
-            return ""
 
         axes = decomposition.get("axes", [])
         rewritten = decomposition.get("rewritten_query", query)
@@ -231,6 +236,8 @@ class ContextRetriever:
 
     def _search_semantic(self, query: str, k: int = 30) -> list[tuple[dict, float]]:
         """Semantic search via embedding similarity."""
+        if not self.index or len(self.index) == 0:
+            return []
         vec = embed_text(query)
         if vec is None:
             return []
@@ -238,7 +245,7 @@ class ContextRetriever:
 
     def _search_temporal(self, filt: str, k: int = 20) -> list[tuple[dict, float]]:
         """Temporal search — find entries by time."""
-        all_meta = self.index.metadata
+        all_meta = self._get_all_metadata()
         if not all_meta:
             return []
 
@@ -269,43 +276,48 @@ class ContextRetriever:
             return self._search_semantic(query, k)
 
         project_lower = project.lower()
-        # Filter index metadata by project
-        matching_indices = [
-            i for i, m in enumerate(self.index.metadata)
+        # Filter all metadata by project
+        all_meta = self._get_all_metadata()
+        matching = [
+            m for m in all_meta
             if project_lower in m.get("thread", "").lower()
         ]
 
-        if not matching_indices:
+        if not matching:
             return []
 
-        # Semantic search within project
+        # Semantic search within project (if embeddings available)
         vec = embed_text(query)
-        if vec is None:
-            return [(self.index.metadata[i], 0.5) for i in matching_indices[:k]]
+        if vec is not None and self.index and len(self.index) > 0:
+            import numpy as np
+            q = np.array(vec, dtype=np.float32)
+            q = q / (np.linalg.norm(q) or 1)
 
-        import numpy as np
-        q = np.array(vec, dtype=np.float32)
-        q = q / (np.linalg.norm(q) or 1)
+            # Find project entries that are also in the embedding index
+            project_uids = {m.get("uid") for m in matching}
+            scores = []
+            for i, m in enumerate(self.index.metadata):
+                if m.get("uid") in project_uids:
+                    v = self.index.vectors[i]
+                    v_norm = np.linalg.norm(v)
+                    if v_norm > 0:
+                        scores.append((m, float(np.dot(v / v_norm, q))))
+            scores.sort(key=lambda x: -x[1])
+            return scores[:k]
 
-        scores = []
-        for i in matching_indices:
-            v = self.index.vectors[i]
-            v_norm = np.linalg.norm(v)
-            if v_norm == 0:
-                scores.append((i, 0.0))
-            else:
-                scores.append((i, float(np.dot(v / v_norm, q))))
-
-        scores.sort(key=lambda x: -x[1])
-        return [(self.index.metadata[i], s) for i, s in scores[:k]]
+        # Fallback: return project entries ranked by recency
+        matching.sort(key=lambda m: m.get("ts", ""), reverse=True)
+        return [(m, 0.5) for m in matching[:k]]
 
     def _search_keyword(self, query: str, k: int = 30) -> list[tuple[dict, float]]:
         """Keyword search — exact term matching against content.
 
         Splits query into terms, scores by how many terms match.
         Critical for: file paths, function names, error messages, UIDs.
+        Searches ALL corpus entries (not just those with embeddings).
         """
-        if not self.index or not self.index.metadata:
+        all_meta = self._get_all_metadata()
+        if not all_meta:
             return []
 
         # Extract meaningful terms (3+ chars, skip common words)
@@ -319,7 +331,7 @@ class ContextRetriever:
             return []
 
         matches = []
-        for m in self.index.metadata:
+        for m in all_meta:
             content = m.get("content", "").lower()
             hits = sum(1 for t in terms if t in content)
             if hits > 0:
@@ -381,13 +393,17 @@ class ContextRetriever:
             return base_score * max(0.3, decay)
 
     def _search_entity(self, entity: str, k: int = 20) -> list[tuple[dict, float]]:
-        """Entity search — find mentions of a specific name/term."""
+        """Entity search — find mentions of a specific name/term.
+
+        Searches ALL corpus entries (not just those with embeddings).
+        """
         if not entity:
             return []
 
+        all_meta = self._get_all_metadata()
         entity_lower = entity.lower()
         matches = []
-        for m in self.index.metadata:
+        for m in all_meta:
             content = m.get("content", "").lower()
             if entity_lower in content:
                 matches.append((m, 0.8))
@@ -472,8 +488,10 @@ class ContextRetriever:
         """Search corpus for entries containing specific identifiers.
 
         Graduated scoring: exact filename > path suffix > stem > substring.
+        Searches ALL corpus entries (not just those with embeddings).
         """
-        if not identifiers or not self.index or not self.index.metadata:
+        all_meta = self._get_all_metadata()
+        if not identifiers or not all_meta:
             return []
 
         matches: dict[str, tuple[dict, float]] = {}  # uid → (meta, best_score)
@@ -484,7 +502,7 @@ class ContextRetriever:
             basename = os.path.basename(ident)
             stem = os.path.splitext(basename)[0] if "." in basename else basename
 
-            for m in self.index.metadata:
+            for m in all_meta:
                 uid = m.get("uid", "")
                 content = m.get("content", "")
                 content_lower = content.lower()
@@ -582,7 +600,10 @@ Which of these retrieved context chunks are relevant? Return ONLY the numbers of
                 so that short follow-up questions ("what about the file viewer?")
                 carry the conversational context that triggered them.
         """
-        if self.index and len(self.index) > 0:
+        has_embeddings = self.index and len(self.index) > 0
+        has_metadata = len(self._get_all_metadata()) > 0
+
+        if has_embeddings or has_metadata:
             # Enrich the query with conversation tail for better embeddings
             enriched_query = query
             if conversation_tail:
@@ -601,6 +622,6 @@ Which of these retrieved context chunks are relevant? Return ONLY the numbers of
             else:
                 return self._retrieve_corpus(enriched_query, decomposition, token_budget)
 
-        # Fallback: static sources if no index
+        # Fallback: static sources if no index at all
         static_text, _ = self._retrieve_static(token_budget)
         return static_text

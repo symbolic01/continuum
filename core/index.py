@@ -11,6 +11,7 @@ from .embeddings import EmbeddingIndex
 DEFAULT_CORPUS_DIR = Path.home() / ".continuum" / "corpus"
 DEFAULT_INDEX_PATH = Path.home() / ".continuum" / "index" / "corpus"
 DEFAULT_IDENTIFIERS_PATH = Path.home() / ".continuum" / "index" / "identifiers.json"
+DEFAULT_ALL_META_PATH = Path.home() / ".continuum" / "index" / "all_metadata.json"
 
 # Patterns for extracting identifiers from corpus content
 _FILE_PATH_RE = re.compile(r'(?:~/|/home/|/tmp/|\./)[\w./-]+\.\w{1,5}')  # ~/foo/bar.py, /home/.../file.js
@@ -42,8 +43,8 @@ def build_index(
     idx.path = index_path
     corpus_files = sorted(corpus_dir.rglob("*.jsonl"))
 
-    total = 0
-    skipped = 0
+    embedded = 0
+    all_metadata = []
 
     for cf in corpus_files:
         with open(cf) as f:
@@ -56,11 +57,6 @@ def build_index(
                 except json.JSONDecodeError:
                     continue
 
-                embedding = entry.get("embedding")
-                if not embedding:
-                    skipped += 1
-                    continue
-
                 meta = {
                     "uid": entry.get("uid", ""),
                     "role": entry.get("role", ""),
@@ -70,13 +66,29 @@ def build_index(
                     "thread": entry.get("thread", ""),
                     "source_session": entry.get("source_session", ""),
                     "source_file": str(cf),
+                    "heading": entry.get("heading", ""),
+                    "chunk_type": entry.get("chunk_type", ""),
                 }
 
-                idx.add(embedding, meta)
-                total += 1
+                # ALL entries go into the metadata index (keyword/identifier search)
+                all_metadata.append(meta)
+
+                # Only entries with embeddings go into the vector index (semantic search)
+                embedding = entry.get("embedding")
+                if embedding:
+                    idx.add(embedding, meta)
+                    embedded += 1
 
     idx.save()
-    print(f"Index built: {total} entries ({skipped} skipped, no embedding)")
+
+    # Save all-metadata index for keyword/identifier search
+    all_meta_path = index_path.parent / "all_metadata.json"
+    all_meta_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(all_meta_path, "w") as f:
+        json.dump(all_metadata, f)
+
+    total = len(all_metadata)
+    print(f"Index built: {total} entries total, {embedded} with embeddings, {total - embedded} keyword-only")
 
     # Also rebuild identifiers index (piggybacks on same corpus scan)
     build_identifiers(corpus_dir)
@@ -182,6 +194,14 @@ def load_identifiers(identifiers_path: Path = DEFAULT_IDENTIFIERS_PATH) -> list[
     """Load known identifiers from disk."""
     if identifiers_path.is_file():
         with open(identifiers_path) as f:
+            return json.load(f)
+    return []
+
+
+def load_all_metadata(meta_path: Path = DEFAULT_ALL_META_PATH) -> list[dict]:
+    """Load the full metadata index (all corpus entries, not just embedded ones)."""
+    if meta_path.is_file():
+        with open(meta_path) as f:
             return json.load(f)
     return []
 
