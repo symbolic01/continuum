@@ -1,0 +1,7 @@
+# Core (no dependencies required for basic spoof/retrieve/ingest)
+
+# Optional: semantic embeddings + numpy similarity search
+numpy
+
+# Optional: continuum.yaml config file support
+pyyaml

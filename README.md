@@ -9,8 +9,10 @@ Cross-session memory for Claude Code. Ingest your past sessions, retrieve what m
 ```bash
 git clone https://github.com/symbolic01/continuum.git
 cd continuum
-pip install pyyaml numpy   # numpy is optional (for semantic embeddings)
+pip install -r requirements.txt   # numpy + pyyaml (both optional, see below)
 ```
+
+No dependencies are required for basic `cx spoof` / `cx retrieve` / `cx ingest` usage. `numpy` enables semantic embeddings. `pyyaml` enables `continuum.yaml` config (env vars work without it).
 
 ### 2. Configure
 
