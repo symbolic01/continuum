@@ -63,7 +63,7 @@ def _truncate_middle(turns: list[dict], max_chars: int = 120_000) -> list[dict]:
 def compress_session(
     turns: list[dict],
     user_prompt: str = "",
-    model: str = "claude-sonnet-4-6",
+    model: str = "",
     timeout: int = 120,
 ) -> list[dict]:
     """Compress raw session turns into a clean narrative via LLM.
@@ -77,6 +77,10 @@ def compress_session(
     Returns:
         Compressed list of {role, content} dicts (5-20 turns)
     """
+    if not model:
+        from .config import get_model
+        model = get_model("compress")
+
     if len(turns) <= 20:
         return turns  # already short enough
 

@@ -42,13 +42,17 @@ Examples:
 - "check the webserverui file" → {"axes": [{"axis": "semantic", "weight": 0.5}, {"axis": "entity", "weight": 0.5, "filter": "webserverui"}], "rewritten_query": "web server UI file", "keywords": ["webui", "server", "HTTP", "handler", "endpoint"], "identifiers": ["webserverui"]}"""
 
 
-def decompose_query(query: str, model: str = "qwen2.5:7b") -> dict:
+def decompose_query(query: str, model: str = "") -> dict:
     """Decompose a query into retrieval axes via local LLM.
 
     Returns:
         {"axes": [{"axis": str, "weight": float, "filter": str|None}],
          "rewritten_query": str}
     """
+    if not model:
+        import os
+        model = os.environ.get("CONTINUUM_DECOMPOSE_MODEL", "").strip() or "qwen2.5:7b"
+
     payload = json.dumps({
         "model": model,
         "messages": [

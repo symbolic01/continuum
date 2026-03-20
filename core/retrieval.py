@@ -36,10 +36,13 @@ class ContextRetriever:
         self,
         sources: list[str],
         index: EmbeddingIndex | None = None,
-        decompose_model: str = "qwen2.5:7b",
+        decompose_model: str = "",
     ):
         self.sources = sources
         self.index = index
+        if not decompose_model:
+            from .config import get_model
+            decompose_model = get_model("decompose")
         self.decompose_model = decompose_model
         self._known_identifiers: list[str] | None = None
         self._all_metadata: list[dict] | None = None
@@ -531,12 +534,16 @@ class ContextRetriever:
         return ranked[:k]
 
     def _cull_with_llm(self, query: str, chunks: list[str], budget_tokens: int,
-                       model: str = "claude-haiku-4-5-20251001") -> list[str]:
+                       model: str = "") -> list[str]:
         """Over-retrieve then LLM-cull: keep only chunks relevant to the query.
 
         Takes a list of retrieved chunks (already ranked), asks a fast LLM
         which ones are actually relevant, drops the noise.
         """
+        if not model:
+            from .config import get_model
+            model = get_model("cull")
+
         if not chunks or len(chunks) <= 5:
             return chunks  # too few to bother culling
 

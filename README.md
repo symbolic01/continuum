@@ -72,9 +72,52 @@ That's it. You now have cross-session memory.
 
 ## Prerequisites
 
-- **Python 3.10+**
-- **Claude CLI** (`claude`) on PATH — needed for `--print` (compression) and `--resume` (spoofing)
-- **Ollama** (optional) — for semantic embeddings and query decomposition. Without it, keyword + identifier search still works.
+- **Python 3.10+** with `pyyaml` (`pip install pyyaml`)
+- **Claude CLI** (`claude`) on PATH — needed for `--print` (compression, culling) and `--resume` (spoofing)
+- **Ollama** (optional) — for semantic embeddings and query decomposition. Without it, keyword + identifier search still works
+
+### Local models (Ollama)
+
+```bash
+# Required for semantic embeddings (cx ingest without --no-embed)
+ollama pull nomic-embed-text       # 768-dim, fast, ~270MB
+
+# Required for query decomposition (keyword expansion, identifier extraction)
+ollama pull qwen2.5:7b             # ~4.4GB
+```
+
+Without Ollama, retrieval falls back to raw keyword search (no decomposition, no embeddings). Everything else still works.
+
+### Model configuration
+
+Continuum uses three LLM roles. Each is configurable via env var or `continuum.yaml`:
+
+| Role | What it does | Default | Env var |
+|------|-------------|---------|---------|
+| **compress** | Session narrative compression (`cx spoof --compress`) | `claude-sonnet-4-6` | `CONTINUUM_COMPRESS_MODEL` |
+| **cull** | Retrieval precision filtering | `claude-haiku-4-5-20251001` | `CONTINUUM_CULL_MODEL` |
+| **decompose** | Query decomposition + keyword expansion (Ollama) | `qwen2.5:7b` | `CONTINUUM_DECOMPOSE_MODEL` |
+
+Compress and cull run via `claude --print` — they use whatever model names your Claude CLI understands. Decompose runs via Ollama's local API.
+
+**At work with LiteLLM / custom model names:**
+
+```bash
+# In your .bashrc / .zshrc:
+export CONTINUUM_COMPRESS_MODEL="bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0"
+export CONTINUUM_CULL_MODEL="bedrock/anthropic.claude-3-haiku-20240307-v1:0"
+# decompose still uses local Ollama — no change needed
+```
+
+Or in `continuum.yaml`:
+
+```yaml
+compress_model: bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0
+cull_model: bedrock/anthropic.claude-3-haiku-20240307-v1:0
+decompose_model: qwen2.5:7b
+```
+
+Env vars take precedence over config file.
 
 ## What each command does
 

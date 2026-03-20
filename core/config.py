@@ -1,5 +1,6 @@
 """Configuration loader for Continuum."""
 
+import os
 import yaml
 from pathlib import Path
 
@@ -58,3 +59,46 @@ def load_config(path: str | Path | None = None) -> dict:
                     config[key] = user_config[key]
 
     return config
+
+
+def get_model(role: str, config: dict | None = None) -> str:
+    """Resolve model name for a given role.
+
+    Priority: env var > config > hardcoded default.
+
+    Roles:
+        compress   — LLM compression (spoof --compress)
+        cull       — retrieval precision filtering
+        decompose  — query decomposition (Ollama)
+    """
+    env_map = {
+        "compress": "CONTINUUM_COMPRESS_MODEL",
+        "cull": "CONTINUUM_CULL_MODEL",
+        "decompose": "CONTINUUM_DECOMPOSE_MODEL",
+    }
+    config_map = {
+        "compress": "compress_model",
+        "cull": "cull_model",
+        "decompose": "decompose_model",
+    }
+    defaults = {
+        "compress": "claude-sonnet-4-6",
+        "cull": "claude-haiku-4-5-20251001",
+        "decompose": "qwen2.5:7b",
+    }
+
+    # 1. Env var
+    env_key = env_map.get(role, "")
+    if env_key:
+        val = os.environ.get(env_key, "").strip()
+        if val:
+            return val
+
+    # 2. Config file
+    if config:
+        config_key = config_map.get(role, "")
+        if config_key and config_key in config:
+            return config[config_key]
+
+    # 3. Default
+    return defaults.get(role, "claude-sonnet-4-6")
