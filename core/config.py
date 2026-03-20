@@ -1,7 +1,6 @@
 """Configuration loader for Continuum."""
 
 import os
-import yaml
 from pathlib import Path
 
 
@@ -46,6 +45,10 @@ def load_config(path: str | Path | None = None) -> dict:
     if path is not None:
         path = Path(path)
         if path.exists():
+            try:
+                import yaml
+            except ImportError:
+                return config
             with open(path) as f:
                 user_config = yaml.safe_load(f) or {}
             # Merge (shallow for top-level, deep for token_budgets)
