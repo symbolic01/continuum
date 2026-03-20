@@ -72,6 +72,44 @@ def main():
         cwd=str(_CONTINUUM_DIR),
     )
 
+    # 5. Git-commit the data directory so embeddings survive deletion
+    _git_commit_data()
+
+
+def _git_commit_data():
+    """Auto-commit ~/.continuum/ so expensive index files are recoverable."""
+    data_dir = Path.home() / ".continuum"
+    if not data_dir.is_dir():
+        return
+
+    # Initialize git repo if needed
+    git_dir = data_dir / ".git"
+    if not git_dir.is_dir():
+        subprocess.run(["git", "init"], cwd=str(data_dir),
+                       capture_output=True)
+        # Ignore session logs (large, ephemeral) — keep corpus + index
+        gitignore = data_dir / ".gitignore"
+        if not gitignore.exists():
+            gitignore.write_text("sessions/\n.last_spoof\n.last_identity\n")
+
+    # Stage and commit
+    subprocess.run(["git", "add", "-A"], cwd=str(data_dir),
+                   capture_output=True)
+
+    # Check if there are changes to commit
+    result = subprocess.run(["git", "diff", "--cached", "--quiet"],
+                           cwd=str(data_dir), capture_output=True)
+    if result.returncode != 0:
+        subprocess.run(
+            ["git", "commit", "-m", "ingest: auto-commit corpus + index"],
+            cwd=str(data_dir), capture_output=True,
+        )
+        print("\n── Git checkpoint ──", file=sys.stderr)
+        print("  ~/.continuum/ committed (git log to see history)", file=sys.stderr)
+    else:
+        print("\n── Git checkpoint ──", file=sys.stderr)
+        print("  no changes to commit", file=sys.stderr)
+
 
 if __name__ == "__main__":
     main()
