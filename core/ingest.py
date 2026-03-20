@@ -193,10 +193,12 @@ def ingest_claude_code(args):
         project = detect_project_from_path(sf)
         out_path = output_dir / project / f"{sf.stem}.jsonl"
 
-        # Skip if already converted (unless --force)
+        # Skip if already converted AND source hasn't grown (unless --force)
         if out_path.exists() and not args.force:
-            skipped += 1
-            continue
+            if sf.stat().st_mtime <= out_path.stat().st_mtime:
+                skipped += 1
+                continue
+            # Source is newer — re-ingest (session grew since last ingest)
 
         if args.dry_run:
             print(f"  [dry-run] {sf.name} → {project} ({sf.stat().st_size // 1024}KB)")
