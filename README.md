@@ -266,16 +266,41 @@ User query: "that webserverui file with the PTY resize bug"
 
 ## Data locations
 
-| What | Where |
-|------|-------|
-| Corpus | `~/.continuum/corpus/` (JSONL per source, organized by project) |
-| Embedding index | `~/.continuum/index/corpus.npz` + `.meta.json` |
-| Identifiers index | `~/.continuum/index/identifiers.json` |
-| Spoofed sessions | `~/.claude/projects/<mangled-cwd>/<uuid>.jsonl` |
-| Last spoof ID | `~/.continuum/.last_spoof` |
-| Last identity | `~/.continuum/.last_identity` |
-| Session logs | `~/.continuum/sessions/` |
-| Config | `continuum.yaml` (in repo root) |
+Everything Continuum produces lives under `~/.continuum/`. The embedding index (`corpus.npz`) is the most expensive to rebuild — it takes hours for large corpora. **Do not delete it.** If it gets corrupted, re-embed with `cx ingest --force`.
+
+### `~/.continuum/` — Continuum's data directory
+
+```
+~/.continuum/
+├── corpus/                     # Ingested content (JSONL per source)
+│   ├── home/                   #   CC sessions by project
+│   ├── bridge/
+│   ├── _markdown/              #   Markdown sections
+│   └── _codebase/              #   Source code chunks
+│
+├── index/                      # Search indexes (rebuilt by cx ingest)
+│   ├── corpus.npz              #   ⚠️ EXPENSIVE: embedding vectors (hours to rebuild)
+│   ├── corpus.meta.json        #   Metadata for embedded entries only
+│   ├── all_metadata.json       #   Metadata for ALL entries (keyword/identifier search)
+│   └── identifiers.json        #   Known file paths, function names, class names
+│
+├── sessions/                   # Interactive mode session logs
+├── .last_spoof                 # Session ID of last cx spoof
+└── .last_identity              # Identity text for --append-system-prompt
+```
+
+### `~/.claude/projects/` — Claude Code's data (not ours)
+
+Spoofed sessions are written here so `claude --resume` finds them:
+```
+~/.claude/projects/<mangled-cwd>/<spoofed-uuid>.jsonl
+```
+
+### In the repo
+
+```
+continuum.yaml                  # Your local config (git-ignored)
+```
 
 ## Troubleshooting
 
