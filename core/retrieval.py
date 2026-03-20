@@ -108,7 +108,8 @@ class ContextRetriever:
 
         return "\n".join(chunks), total_tokens
 
-    def _retrieve_corpus(self, query: str, decomposition: dict, token_budget: int) -> str:
+    def _retrieve_corpus(self, query: str, decomposition: dict, token_budget: int,
+                         role_filter: str = "", project_filter: str = "") -> str:
         """Retrieve from corpus using decomposed query axes."""
 
         axes = decomposition.get("axes", [])
@@ -207,6 +208,19 @@ class ContextRetriever:
                     else:
                         all_candidates[uid] = (meta, score * 0.6)
 
+        # Apply filters
+        if role_filter or project_filter:
+            role_f = role_filter.lower()
+            proj_f = project_filter.lower()
+            filtered = {}
+            for uid, (meta, score) in all_candidates.items():
+                if role_f and meta.get("role", "").lower() != role_f:
+                    continue
+                if proj_f and proj_f not in meta.get("thread", "").lower():
+                    continue
+                filtered[uid] = (meta, score)
+            all_candidates = filtered
+
         # Apply temporal decay + role-based scoring
         decayed = []
         for meta, score in all_candidates.values():
@@ -225,8 +239,16 @@ class ContextRetriever:
             thread = meta.get("thread", "?")
             ts = meta.get("ts", "?")[:10]
             uid = meta.get("uid", "")
+            heading = meta.get("heading", "")
+            chunk_type = meta.get("chunk_type", "")
 
-            chunk = f"[{uid} {thread} {ts} {role}] {content}"
+            # Code entries: show heading (file:function) instead of generic label
+            if role == "code" and heading:
+                label = f"[{uid} {thread} {chunk_type}] {heading}"
+                chunk = f"{label}\n{content}"
+            else:
+                chunk = f"[{uid} {thread} {ts} {role}] {content}"
+
             chunk_tokens = count_tokens(chunk)
 
             if tokens_used + chunk_tokens > token_budget:
@@ -596,7 +618,8 @@ Which of these retrieved context chunks are relevant? Return ONLY the numbers of
         return chunks  # fallback: return all
 
     def retrieve(self, query: str, token_budget: int, conversation_tail: str = "",
-                 cull: bool = False, cull_factor: int = 5) -> str:
+                 cull: bool = False, cull_factor: int = 5,
+                 role_filter: str = "", project_filter: str = "") -> str:
         """Retrieve context from index via LLM-routed query decomposition.
 
         Args:
@@ -622,12 +645,14 @@ Which of these retrieved context chunks are relevant? Return ONLY the numbers of
 
             if cull:
                 # Over-retrieve then LLM-cull for precision
-                raw = self._retrieve_corpus(enriched_query, decomposition, token_budget * cull_factor)
+                raw = self._retrieve_corpus(enriched_query, decomposition, token_budget * cull_factor,
+                                            role_filter=role_filter, project_filter=project_filter)
                 chunks = [line for line in raw.split("\n") if line.strip()]
                 culled = self._cull_with_llm(query, chunks, token_budget)
                 return "\n".join(culled)
             else:
-                return self._retrieve_corpus(enriched_query, decomposition, token_budget)
+                return self._retrieve_corpus(enriched_query, decomposition, token_budget,
+                                            role_filter=role_filter, project_filter=project_filter)
 
         # Fallback: static sources if no index at all
         static_text, _ = self._retrieve_static(token_budget)

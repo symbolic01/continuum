@@ -14,6 +14,9 @@ Search the Continuum corpus for relevant context.
 - `/retrieve <query>` — search with LLM cull (default)
 - `/retrieve --no-cull <query>` — skip LLM precision filtering (faster, noisier)
 - `/retrieve --budget N <query>` — limit output to N tokens (default: 30000)
+- `/retrieve --code <query>` — only return code chunks (skip sessions/markdown)
+- `/retrieve --project bridge <query>` — filter to a specific project/codebase
+- `/retrieve --code --project bridge <query>` — combine: code from a specific project
 
 ## How to Run
 

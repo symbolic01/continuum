@@ -28,6 +28,8 @@ def main():
     parser.add_argument("--budget", type=int, default=30000, help="Token budget (default: 30000)")
     parser.add_argument("--no-cull", action="store_true", help="Skip LLM precision filtering (faster, noisier)")
     parser.add_argument("--cull-factor", type=int, default=5, help="Over-retrieval multiplier (default: 5)")
+    parser.add_argument("--code", action="store_true", help="Only return code chunks (skip sessions/markdown)")
+    parser.add_argument("--project", default="", help="Filter to a specific project/codebase")
     parser.add_argument("--no-ingest", action="store_true", help="Skip auto-ingest check")
     args = parser.parse_args()
 
@@ -52,6 +54,8 @@ def main():
         conversation_tail="",
         cull=not args.no_cull,
         cull_factor=args.cull_factor,
+        role_filter="code" if args.code else "",
+        project_filter=args.project,
     )
 
     if not result.strip():
