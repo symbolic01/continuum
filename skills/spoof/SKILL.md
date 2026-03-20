@@ -18,25 +18,20 @@ Compress the current session into a clean, resumable Claude Code session.
 
 ## How to Run
 
-Find the continuum directory. Check these locations in order:
-1. `~/continuum/`
-2. `~/+/continuum/`
-3. The directory containing this skill file (walk up from SKILL.md)
-
-Then run:
+Use `cx` if on PATH, otherwise find and run `spoof_tool.py` directly:
 
 ```bash
-python3 <continuum_dir>/spoof_tool.py --compress
-```
-
-The tool prints the spoofed session ID to stdout and the resume command to stderr.
-
-If `cx` is on PATH:
-
-```bash
+# Option 1: cx on PATH
 cx spoof --compress
-cx    # resume the spoofed session
+
+# Option 2: find spoof_tool.py
+CONTINUUM_DIR="$([ -d ~/+/continuum ] && echo ~/+/continuum || [ -d ~/continuum ] && echo ~/continuum || echo "")"
+python3 "$CONTINUUM_DIR/spoof_tool.py" --compress
 ```
+
+IMPORTANT: Always try `cx spoof` first. If that fails, use the `CONTINUUM_DIR` resolution above. Never hardcode a path without checking it exists.
+
+The tool prints the spoofed session ID to stdout and the resume command to stderr. Resume with `cx` or `claude --resume <id>`.
 
 ## What It Does
 
@@ -46,11 +41,9 @@ cx    # resume the spoofed session
 4. Injects `identity.md` as a first-person assistant turn
 5. Retrieves relevant corpus context and injects as recall blocks
 6. Writes a valid CC session JSONL to `~/.claude/projects/`
-7. Saves session ID to `~/.continuum/.last_spoof` for easy resume
 
 ## When to Use
 
 - Session is getting long and messy with dead ends
 - Context is filling up and you need to start fresh without losing history
 - User says "let's clean this up" or "compress this session"
-- Before a handoff to preserve session knowledge

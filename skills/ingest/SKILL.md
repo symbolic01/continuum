@@ -21,35 +21,30 @@ Build or update the Continuum corpus from all available sources.
 
 ## How to Run
 
-Find the continuum directory. Check these locations in order:
-1. `~/continuum/`
-2. `~/+/continuum/`
-3. The directory containing this skill file (walk up from SKILL.md)
-
-Then run:
+Use `cx` if on PATH, otherwise find and run `ingest_all.py` directly:
 
 ```bash
-python3 <continuum_dir>/ingest_all.py
-```
-
-If `cx` is on PATH:
-
-```bash
+# Option 1: cx on PATH
 cx ingest
-cx ingest --no-embed --codebases ~/work/my-service
+
+# Option 2: find ingest_all.py
+CONTINUUM_DIR="$([ -d ~/+/continuum ] && echo ~/+/continuum || [ -d ~/continuum ] && echo ~/continuum || echo "")"
+python3 "$CONTINUUM_DIR/ingest_all.py"
 ```
+
+IMPORTANT: Always try `cx ingest` first. If that fails, use the `CONTINUUM_DIR` resolution above. Never hardcode a path without checking it exists.
 
 ## What It Does
 
-1. **CC sessions**: scans `~/.claude/projects/` for session JSONL files. Incremental — skips sessions already ingested unless source is newer (session grew). `--force` re-ingests all.
-2. **Markdown**: scans `~/projects/` (or `--sources`) for CLAUDE.md and plans/*.md. Always re-ingests (files change in place).
-3. **Codebases**: auto-discovers linked codebases or uses `--codebases`. Chunks Python by class/method, JS/TS by function/class, Java by class/method, Go by type/func, JSON by top-level key.
-4. **Index rebuild**: builds embedding index (`corpus.npz`), full metadata index (`all_metadata.json`), and identifiers index (`identifiers.json`).
-5. **Git checkpoint**: auto-commits `~/.continuum/` so expensive index files are recoverable.
+1. **CC sessions**: scans `~/.claude/projects/` for session JSONL files (incremental)
+2. **Markdown**: scans `~/projects/` for CLAUDE.md and plans/*.md (always re-ingests)
+3. **Codebases**: auto-discovers linked codebases, chunks by file/class/method
+4. **Index rebuild**: builds embedding index, full metadata index, and identifiers index
+5. **Git checkpoint**: auto-commits `~/.continuum/` so index files are recoverable
 
 ## When to Use
 
-- First time setup: `/ingest --no-embed` to get started fast
-- After pulling new code at work: `/ingest --codebases ~/work/repo --force`
+- First time setup: `/ingest --no-embed`
+- After pulling new code: `/ingest --codebases ~/work/repo --force`
 - After long sessions: `/ingest` to pick up new session data
-- After editing CLAUDE.md or plans: `/ingest` (markdown always re-ingests)
+- After editing CLAUDE.md or plans: `/ingest`

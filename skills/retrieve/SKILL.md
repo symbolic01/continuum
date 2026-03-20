@@ -17,29 +17,18 @@ Search the Continuum corpus for relevant context.
 
 ## How to Run
 
-Find the continuum directory. Check these locations in order:
-1. `~/continuum/`
-2. `~/+/continuum/`
-3. The directory containing this skill file (walk up from SKILL.md)
-
-Then run:
+Use `cx` if on PATH, otherwise find and run `retrieve_tool.py` directly:
 
 ```bash
-python3 <continuum_dir>/retrieve_tool.py <args>
+# Option 1: cx on PATH
+cx retrieve "your query here"
+
+# Option 2: find retrieve_tool.py (try these paths in order)
+CONTINUUM_DIR="$([ -d ~/+/continuum ] && echo ~/+/continuum || [ -d ~/continuum ] && echo ~/continuum || echo "")"
+python3 "$CONTINUUM_DIR/retrieve_tool.py" "your query here"
 ```
 
-Example:
-
-```bash
-python3 ~/continuum/retrieve_tool.py "auth token refresh handler"
-python3 ~/continuum/retrieve_tool.py --no-cull --budget 10000 "PTY resize bug"
-```
-
-If `cx` is on PATH, you can also use:
-
-```bash
-cx retrieve "auth token refresh handler"
-```
+IMPORTANT: Always try `cx retrieve` first. If that fails, use the `CONTINUUM_DIR` resolution above. Never hardcode a path without checking it exists.
 
 ## Output
 
