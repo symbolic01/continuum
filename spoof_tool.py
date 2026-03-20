@@ -74,7 +74,7 @@ def _find_source_session(cwd: str, session_id: str | None = None) -> Path | None
 def _read_cc_conversation(session_file: Path) -> list[dict]:
     """Read user/assistant turns from a CC session JSONL.
 
-    Returns a list of {role, content} dicts — clean text only, no tool use.
+    Returns a list of {role, content, ts} dicts — clean text only, no tool use.
     Consecutive same-role entries are preserved (CC renders each as a separate bullet).
     """
     turns = []
@@ -88,23 +88,24 @@ def _read_cc_conversation(session_file: Path) -> list[dict]:
                 entry_type = entry.get("type", "")
                 if entry_type not in ("user", "assistant"):
                     continue
+                ts = entry.get("timestamp", "")
                 msg = entry.get("message", {})
                 role = msg.get("role", "")
                 if role == "user":
                     content = msg.get("content", "")
                     if isinstance(content, str) and content.strip():
-                        turns.append({"role": "user", "content": content})
+                        turns.append({"role": "user", "content": content, "ts": ts})
                     elif isinstance(content, list):
                         # Extract text blocks from list content
                         texts = [b.get("text", "") for b in content
                                  if isinstance(b, dict) and b.get("type") == "text"]
                         text = "\n".join(t for t in texts if t.strip())
                         if text.strip():
-                            turns.append({"role": "user", "content": text})
+                            turns.append({"role": "user", "content": text, "ts": ts})
                 elif role == "assistant":
                     text = extract_text_from_cc_entry(entry)
                     if text.strip() and not text.startswith("["):
-                        turns.append({"role": "assistant", "content": text})
+                        turns.append({"role": "assistant", "content": text, "ts": ts})
     except Exception:
         pass
     return turns
@@ -148,7 +149,14 @@ def main():
 
     print(f" ({len(cc_turns)} turns from {raw_count} entries)", file=sys.stderr)
 
+    # Capture source time range from all turns
+    source_timestamps = [t.get("ts", "") for t in cc_turns if t.get("ts")]
+    source_time_range = None
+    if source_timestamps:
+        source_time_range = (source_timestamps[0], source_timestamps[-1])
+
     # Compress if requested — keep recent tail raw
+    head_time_range = None
     if args.compress:
         from core.session_compress import compress_session
 
@@ -166,6 +174,11 @@ def main():
         tail = cc_turns[tail_start:]
         raw_count_turns = len(cc_turns)
 
+        # Capture head time window before compression destroys timestamps
+        head_ts = [t.get("ts", "") for t in head if t.get("ts")]
+        if head_ts:
+            head_time_range = (head_ts[0], head_ts[-1])
+
         if len(head) > 20:
             head = compress_session(head, user_prompt=args.prompt)
 
@@ -178,7 +191,7 @@ def main():
     try:
         log = SessionLog(tmp.name)
         for turn in cc_turns:
-            log.append(turn["role"], turn["content"])
+            log.append(turn["role"], turn["content"], ts=turn.get("ts", ""))
 
         # Load identity
         identity_text = ""
@@ -203,6 +216,8 @@ def main():
             retrieved_context=retrieved_context,
             identity_text=identity_text,
             cwd=cwd,
+            source_time_range=source_time_range,
+            head_time_range=head_time_range,
         )
 
         write_cc_session(cc_session_id, entries, cwd=cwd)

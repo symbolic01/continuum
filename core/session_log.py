@@ -49,7 +49,7 @@ class SessionLog:
     def entries(self) -> list[dict]:
         return list(self._entries)
 
-    def append(self, role: str, content: str, thread: str = "default") -> dict:
+    def append(self, role: str, content: str, thread: str = "default", ts: str = "") -> dict:
         """Append a turn to the log. Returns the entry.
 
         If embed=True was set on init, mints a semantic embedding alongside
@@ -64,7 +64,7 @@ class SessionLog:
             "role": role,
             "content": content,
             "turn": self._turn,
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": ts or datetime.now(timezone.utc).isoformat(),
             "thread": thread,
         }
 

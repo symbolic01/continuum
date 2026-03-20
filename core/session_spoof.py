@@ -175,6 +175,21 @@ def make_cc_entry(
     }
 
 
+def _parse_ts(ts_str: str) -> datetime | None:
+    """Parse a timestamp string to datetime, handling CC and ISO formats."""
+    if not ts_str:
+        return None
+    try:
+        return datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+
+
+def _format_ts(dt: datetime) -> str:
+    """Format datetime to CC's required timestamp format."""
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{dt.microsecond // 1000:03d}Z"
+
+
 def build_spoofed_session(
     session_id: str,
     continuum_log: SessionLog,
@@ -183,51 +198,57 @@ def build_spoofed_session(
     tail_budget: int = 80_000,
     identity_text: str = "",
     cwd: str = "/home/symbolic/projects",
+    source_time_range: tuple[str, str] | None = None,
+    head_time_range: tuple[str, str] | None = None,
 ) -> list[dict]:
     """Build a Claude Code session JSONL from Continuum state.
+
+    Timestamps follow three zones:
+    - Zone 1 (identity/context): session start, +1s each
+    - Zone 2 (compressed narrative): spread across head_time_range
+    - Zone 3 (raw tail): inherit original timestamps from source
 
     Returns a list of CC-format entries ready to write.
     """
     entries = []
     prev_uuid = None
-
-    # Ground timestamps in the source session's time window
     log_entries = continuum_log.entries
-    _first_ts = None
-    _last_ts = None
-    for e in log_entries:
-        ts = e.get("ts", "")
-        if ts:
-            if _first_ts is None:
-                _first_ts = ts
-            _last_ts = ts
+    from datetime import timedelta
 
-    if _first_ts:
-        try:
-            _base_time = datetime.fromisoformat(_first_ts.replace("Z", "+00:00"))
-        except (ValueError, TypeError):
-            _base_time = datetime.now(timezone.utc)
+    # Resolve base time from source_time_range or log entries
+    _base_time = datetime.now(timezone.utc)
+    if source_time_range:
+        parsed = _parse_ts(source_time_range[0])
+        if parsed:
+            _base_time = parsed
     else:
-        _base_time = datetime.now(timezone.utc)
+        for e in log_entries:
+            parsed = _parse_ts(e.get("ts", ""))
+            if parsed:
+                _base_time = parsed
+                break
 
-    _entry_idx = [0]
+    # Zone 1: synthetic counter for identity/context injection
+    # Offset 60s before session start so zone 1 doesn't collide with zone 2
+    _zone1_base = _base_time - timedelta(seconds=60)
+    _zone1_idx = [0]
 
-    def _next_ts() -> str:
-        ts = _base_time.replace(microsecond=0) + __import__("datetime").timedelta(seconds=_entry_idx[0])
-        _entry_idx[0] += 1
-        return ts.strftime("%Y-%m-%dT%H:%M:%S.") + f"{ts.microsecond // 1000:03d}Z"
+    def _zone1_ts() -> str:
+        dt = _zone1_base.replace(microsecond=0) + timedelta(seconds=_zone1_idx[0])
+        _zone1_idx[0] += 1
+        return _format_ts(dt)
 
     # 1. Inject identity as first-person assistant statement
     if identity_text:
         # Seed with a user prompt so the assistant identity is a response
         u = make_cc_entry("user", "user", "Who are you?", session_id,
-                          parent_uuid=prev_uuid, cwd=cwd, timestamp=_next_ts())
+                          parent_uuid=prev_uuid, cwd=cwd, timestamp=_zone1_ts())
         entries.append(u)
         prev_uuid = u["uuid"]
 
         a = make_cc_entry("assistant", "assistant",
                           [{"type": "text", "text": identity_text}],
-                          session_id, parent_uuid=prev_uuid, cwd=cwd, timestamp=_next_ts())
+                          session_id, parent_uuid=prev_uuid, cwd=cwd, timestamp=_zone1_ts())
         entries.append(a)
         prev_uuid = a["uuid"]
 
@@ -249,7 +270,7 @@ def build_spoofed_session(
             chunks.append("\n".join(current_chunk))
 
         u = make_cc_entry("user", "user", "What do you recall about the current work?", session_id,
-                          parent_uuid=prev_uuid, cwd=cwd, timestamp=_next_ts())
+                          parent_uuid=prev_uuid, cwd=cwd, timestamp=_zone1_ts())
         entries.append(u)
         prev_uuid = u["uuid"]
 
@@ -258,7 +279,7 @@ def build_spoofed_session(
                 continue
             a = make_cc_entry("assistant", "assistant",
                               [{"type": "text", "text": chunk.strip()}],
-                              session_id, parent_uuid=prev_uuid, cwd=cwd, timestamp=_next_ts())
+                              session_id, parent_uuid=prev_uuid, cwd=cwd, timestamp=_zone1_ts())
             entries.append(a)
             prev_uuid = a["uuid"]
 
@@ -268,19 +289,18 @@ def build_spoofed_session(
             summary = block.to_message()["content"]
             u = make_cc_entry("user", "user",
                               f"<compressed_history>\n{summary}\n</compressed_history>",
-                              session_id, parent_uuid=prev_uuid, cwd=cwd, timestamp=_next_ts())
+                              session_id, parent_uuid=prev_uuid, cwd=cwd, timestamp=_zone1_ts())
             entries.append(u)
             prev_uuid = u["uuid"]
 
             a = make_cc_entry("assistant", "assistant",
                               [{"type": "text", "text": "Noted."}],
-                              session_id, parent_uuid=prev_uuid, cwd=cwd, timestamp=_next_ts())
+                              session_id, parent_uuid=prev_uuid, cwd=cwd, timestamp=_zone1_ts())
             entries.append(a)
             prev_uuid = a["uuid"]
 
     # 3. Recent session tail at full fidelity
     log_entries = continuum_log.entries
-
 
     tail_tokens = 0
     tail_start = len(log_entries)
@@ -293,21 +313,74 @@ def build_spoofed_session(
         tail_tokens += entry_tokens
         tail_start = i
 
+    # Zone 2: compressed narrative timestamps — spread across head time window
+    # The entries before the tail are compressed. If we have head_time_range,
+    # spread their timestamps evenly across that window.
+    head_entries = log_entries[:tail_start]
+    if head_entries:
+        head_start_dt = _base_time
+        head_end_dt = _base_time + timedelta(hours=1)  # default 1hr window
+
+        if head_time_range:
+            parsed_start = _parse_ts(head_time_range[0])
+            parsed_end = _parse_ts(head_time_range[1])
+            if parsed_start:
+                head_start_dt = parsed_start
+            if parsed_end:
+                head_end_dt = parsed_end
+
+        # Calculate interval between compressed entries
+        n_head = len(head_entries)
+        if n_head > 1:
+            total_span = (head_end_dt - head_start_dt).total_seconds()
+            interval = max(1.0, total_span / (n_head - 1))
+        else:
+            interval = 1.0
+
+        for i, entry in enumerate(head_entries):
+            role = entry.get("role", "user")
+            content = entry.get("content", "")
+            zone2_dt = head_start_dt + timedelta(seconds=i * interval)
+            zone2_ts = _format_ts(zone2_dt)
+
+            if role == "user":
+                cc = make_cc_entry("user", "user", content, session_id,
+                                   parent_uuid=prev_uuid, cwd=cwd, timestamp=zone2_ts)
+            else:
+                cc = make_cc_entry("assistant", "assistant",
+                                   [{"type": "text", "text": content}],
+                                   session_id, parent_uuid=prev_uuid, cwd=cwd,
+                                   timestamp=zone2_ts)
+            entries.append(cc)
+            prev_uuid = cc["uuid"]
+
+    # Zone 3: raw tail — inherit original timestamps
     tail = log_entries[tail_start:]
+    # Fallback timestamp: continues from end of zone 2 or head
+    _fallback_base = _base_time + timedelta(hours=2)
+    _fallback_idx = [0]
+
+    def _fallback_ts() -> str:
+        dt = _fallback_base + timedelta(seconds=_fallback_idx[0])
+        _fallback_idx[0] += 1
+        return _format_ts(dt)
 
     for entry in tail:
         role = entry.get("role", "user")
         content = entry.get("content", "")
         ts = entry.get("ts", "")
 
+        # Use original timestamp if available and valid, otherwise fallback
+        entry_ts = _normalize_timestamp(ts) if ts else _fallback_ts()
+
         if role == "user":
             cc = make_cc_entry("user", "user", content, session_id,
-                               parent_uuid=prev_uuid, cwd=cwd, timestamp=_next_ts())
+                               parent_uuid=prev_uuid, cwd=cwd, timestamp=entry_ts)
         else:
             cc = make_cc_entry("assistant", "assistant",
                                [{"type": "text", "text": content}],
                                session_id, parent_uuid=prev_uuid, cwd=cwd,
-                               timestamp=_next_ts())
+                               timestamp=entry_ts)
         entries.append(cc)
         prev_uuid = cc["uuid"]
 
