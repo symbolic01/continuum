@@ -100,24 +100,26 @@ Continuum uses three LLM roles. Each is configurable via env var or `continuum.y
 
 Compress and cull run via `claude --print` — they use whatever model names your Claude CLI understands. Decompose runs via Ollama's local API.
 
-**At work with LiteLLM / custom model names:**
+**At work with LiteLLM / Bedrock / custom model names:**
+
+The model name is passed directly to `claude --print --model <name>`. It must match exactly what your proxy expects — not a made-up shorthand.
 
 ```bash
 # In your .bashrc / .zshrc:
-export CONTINUUM_COMPRESS_MODEL="bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0"
-export CONTINUUM_CULL_MODEL="bedrock/anthropic.claude-3-haiku-20240307-v1:0"
+export CONTINUUM_COMPRESS_MODEL="bedrock/us.anthropic.claude-sonnet-4-6-v1"
+export CONTINUUM_CULL_MODEL="bedrock/us.anthropic.claude-haiku-4-5-20251001-v1"
 # decompose still uses local Ollama — no change needed
 ```
 
 Or in `continuum.yaml`:
 
 ```yaml
-compress_model: bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0
-cull_model: bedrock/anthropic.claude-3-haiku-20240307-v1:0
+compress_model: bedrock/us.anthropic.claude-sonnet-4-6-v1
+cull_model: bedrock/us.anthropic.claude-haiku-4-5-20251001-v1
 decompose_model: qwen2.5:7b
 ```
 
-Env vars take precedence over config file.
+Env vars take precedence over config file. If compression silently fails (90→90 turns with no reduction), the model name is probably wrong — check `claude --print --model <your-model> "hello"` works on its own first.
 
 ## What each command does
 
