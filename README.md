@@ -55,7 +55,18 @@ Make sure `~/bin` is on your PATH. If not, add to your `.bashrc` / `.zshrc`:
 export PATH="$HOME/bin:$PATH"
 ```
 
-### 5. Try it
+### 5. Install Claude Code skills (optional)
+
+This gives you `/retrieve`, `/spoof`, and `/ingest` slash commands inside any Claude Code session:
+
+```bash
+mkdir -p ~/.claude/skills
+ln -s "$(pwd)/skills/retrieve" ~/.claude/skills/retrieve
+ln -s "$(pwd)/skills/spoof" ~/.claude/skills/spoof
+ln -s "$(pwd)/skills/ingest" ~/.claude/skills/ingest
+```
+
+### 6. Try it
 
 ```bash
 # Search your past sessions
