@@ -30,7 +30,16 @@ context_sources:
   - ~/work/plans/*.md                    # glob pattern
 ```
 
-### 3. Build the corpus
+### 3. Register install path
+
+```bash
+mkdir -p ~/.continuum
+echo "$(pwd)" > ~/.continuum/.install_path
+```
+
+This lets skills and tools find continuum regardless of where you cloned it.
+
+### 4. Build the corpus
 
 ```bash
 python ingest_all.py --no-embed
@@ -44,7 +53,7 @@ This ingests **everything it can find**:
 
 First run takes 10-30 seconds. Use `--no-embed` to skip semantic embeddings (fast keyword + identifier search still works). Add `--force` to re-ingest previously processed files.
 
-### 4. Set up the `cx` command
+### 5. Set up the `cx` command
 
 ```bash
 mkdir -p ~/bin
@@ -57,7 +66,7 @@ Make sure `~/bin` is on your PATH. If not, add to your `.bashrc` / `.zshrc`:
 export PATH="$HOME/bin:$PATH"
 ```
 
-### 5. Install Claude Code skills (optional)
+### 6. Install Claude Code skills (optional)
 
 This gives you `/retrieve`, `/spoof`, and `/ingest` slash commands inside any Claude Code session:
 
@@ -68,7 +77,7 @@ ln -s "$(pwd)/skills/spoof" ~/.claude/skills/spoof
 ln -s "$(pwd)/skills/ingest" ~/.claude/skills/ingest
 ```
 
-### 6. Try it
+### 7. Try it
 
 ```bash
 # Search your past sessions

@@ -23,12 +23,12 @@ Use `cx` if on PATH, otherwise find and run `retrieve_tool.py` directly:
 # Option 1: cx on PATH
 cx retrieve "your query here"
 
-# Option 2: find retrieve_tool.py (try these paths in order)
-CONTINUUM_DIR="$([ -d ~/+/continuum ] && echo ~/+/continuum || [ -d ~/continuum ] && echo ~/continuum || echo "")"
+# Option 2: read install path from breadcrumb, then run directly
+CONTINUUM_DIR="$(cat ~/.continuum/.install_path 2>/dev/null)"
 python3 "$CONTINUUM_DIR/retrieve_tool.py" "your query here"
 ```
 
-IMPORTANT: Always try `cx retrieve` first. If that fails, use the `CONTINUUM_DIR` resolution above. Never hardcode a path without checking it exists.
+IMPORTANT: Always try `cx retrieve` first. If that fails, use the breadcrumb file. Never hardcode a continuum path.
 
 ## Output
 

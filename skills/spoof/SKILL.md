@@ -24,12 +24,12 @@ Use `cx` if on PATH, otherwise find and run `spoof_tool.py` directly:
 # Option 1: cx on PATH
 cx spoof --compress
 
-# Option 2: find spoof_tool.py
-CONTINUUM_DIR="$([ -d ~/+/continuum ] && echo ~/+/continuum || [ -d ~/continuum ] && echo ~/continuum || echo "")"
+# Option 2: read install path from breadcrumb, then run directly
+CONTINUUM_DIR="$(cat ~/.continuum/.install_path 2>/dev/null)"
 python3 "$CONTINUUM_DIR/spoof_tool.py" --compress
 ```
 
-IMPORTANT: Always try `cx spoof` first. If that fails, use the `CONTINUUM_DIR` resolution above. Never hardcode a path without checking it exists.
+IMPORTANT: Always try `cx spoof` first. If that fails, use the breadcrumb file. Never hardcode a continuum path.
 
 The tool prints the spoofed session ID to stdout and the resume command to stderr. Resume with `cx` or `claude --resume <id>`.
 
