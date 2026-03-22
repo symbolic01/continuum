@@ -229,16 +229,49 @@ class DreamEngine:
             return True, f"token budget ({self.tokens_used} >= {self.max_llm_tokens})"
         if len(self.new_chains) >= self.max_chains:
             return True, f"chain cap ({len(self.new_chains)} >= {self.max_chains})"
-        # Wake-up: stop if user started a claude session (check every ~20s)
+        # Wake-up: stop if user activity or GPU contention detected
         if self._check_wake_up and elapsed > 30:
-            try:
-                result = subprocess.run(
-                    ["pgrep", "-f", "claude"], capture_output=True, timeout=3)
-                if result.returncode == 0:
-                    return True, "woke up (claude process detected)"
-            except (subprocess.TimeoutExpired, FileNotFoundError):
-                pass
+            wake_reason = self._detect_wake_up()
+            if wake_reason:
+                return True, f"woke up ({wake_reason})"
         return False, ""
+
+    def _detect_wake_up(self) -> str | None:
+        """Detect user activity or GPU contention.
+
+        Returns reason string if dream should stop, None otherwise.
+        """
+        # 1. Claude process running
+        try:
+            result = subprocess.run(
+                ["pgrep", "-f", "claude"], capture_output=True, timeout=3)
+            if result.returncode == 0:
+                return "claude process detected"
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+        # 2. GPU contention — new process using VRAM that isn't Ollama
+        try:
+            result = subprocess.run(
+                ["nvidia-smi", "--query-compute-apps=pid,name",
+                 "--format=csv,noheader"],
+                capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                for line in result.stdout.strip().split("\n"):
+                    if not line.strip():
+                        continue
+                    parts = line.split(",")
+                    if len(parts) >= 2:
+                        proc_name = parts[1].strip().lower()
+                        # Ollama runs as python or ollama_llama_server
+                        if proc_name not in ("python", "python3",
+                                             "ollama_llama_server",
+                                             "ollama"):
+                            return f"GPU contention ({proc_name})"
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass  # no nvidia-smi = no GPU to contend
+
+        return None
 
     def _is_converged(self) -> bool:
         """Check if recent passes produced minimal new chains (informational)."""
