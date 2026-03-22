@@ -7,6 +7,7 @@
 #   cx spoof --compress --prompt "focus on X"
 #   cx retrieve "query"         # retrieve context
 #   cx ingest                   # ingest ALL THE THINGS
+#   cx dream                    # offline integration pipeline
 
 # Resolve continuum dir relative to this script (works from symlinks too)
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
@@ -40,6 +41,10 @@ case "${1:-resume}" in
     shift
     python3 "$CONTINUUM_DIR/ingest_all.py" "$@"
     ;;
+  dream)
+    shift
+    python3 "$CONTINUUM_DIR/dream_tool.py" "$@"
+    ;;
   help|--help|-h)
     echo "cx — Continuum CLI"
     echo ""
@@ -58,6 +63,13 @@ case "${1:-resume}" in
     echo "    --identifiers-only    Just rebuild identifiers index"
     echo "    --sources dir1 dir2   Additional markdown directories"
     echo "    --codebases d1 d2     Codebase directories (default: auto-discover)"
+    echo "  cx dream [opts]       Run offline integration pipeline"
+    echo "    --dry-run             Show what would happen"
+    echo "    --max-passes N        Cap integration passes (default: 50)"
+    echo "    --max-time N          Wall time cap in seconds (default: 1800)"
+    echo "    --report              Print markdown report"
+    echo "    --no-ingest           Skip ingestion housekeeping"
+    echo "    --force               Run even if corpus unchanged"
     echo ""
     echo "First time? Run: cx ingest --no-embed"
     ;;

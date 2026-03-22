@@ -130,6 +130,18 @@ def convert_claude_code_session(
             if not content.strip():
                 continue
 
+            # Skip low-signal assistant entries:
+            # - Pure tool-use bracket summaries: [Read: path], [TaskUpdate], etc.
+            # - Common filler: "No response requested.", etc.
+            # These waste embeddings and pollute semantic search.
+            if role == "assistant":
+                stripped = content.strip()
+                if stripped.startswith("[") and stripped.endswith("]") and len(stripped) < 200:
+                    continue
+                if stripped in ("No response requested.",
+                                "I have this context. Ready to continue."):
+                    continue
+
             entry = {
                 "uid": mint_uid(),
                 "role": role,

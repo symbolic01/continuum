@@ -73,21 +73,25 @@ def get_model(role: str, config: dict | None = None) -> str:
         compress   — LLM compression (spoof --compress)
         cull       — retrieval precision filtering
         decompose  — query decomposition (Ollama)
+        dream      — offline integration passes (Ollama)
     """
     env_map = {
         "compress": "CONTINUUM_COMPRESS_MODEL",
         "cull": "CONTINUUM_CULL_MODEL",
         "decompose": "CONTINUUM_DECOMPOSE_MODEL",
+        "dream": "CONTINUUM_DREAM_MODEL",
     }
     config_map = {
         "compress": "compress_model",
         "cull": "cull_model",
         "decompose": "decompose_model",
+        "dream": "dream_model",
     }
     defaults = {
         "compress": "claude-sonnet-4-6",
         "cull": "claude-haiku-4-5-20251001",
         "decompose": "qwen2.5:7b",
+        "dream": "qwen2.5:7b",
     }
 
     # 1. Env var
