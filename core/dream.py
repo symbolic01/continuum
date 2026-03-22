@@ -203,79 +203,116 @@ class DreamEngine:
             return True
         return False
 
-    def _build_clusters(self) -> list[list[dict]]:
-        """Build candidate clusters for integration analysis."""
-        if not self.index or len(self.index) == 0:
-            return []
+    def _build_cluster_for_seed(self, seed_meta: dict, seed_vec) -> list[dict] | None:
+        """Build a single cluster around a seed using multi-axis similarity.
 
-        # Find chunks not yet in any chain (low connectivity)
+        Axes (matching retrieval system):
+        - Semantic: cosine similarity of embeddings (primary)
+        - Temporal: same session or nearby timestamps
+        - Project: same thread/project affinity
+        - Keyword: shared identifiers or terms
+        """
+        # Semantic neighbors (primary axis)
+        neighbors = self.index.search(seed_vec.tolist(), k=self.cluster_size_max * 3)
+
+        seed_thread = seed_meta.get("thread", "")
+        seed_ts = seed_meta.get("ts", "")
+
+        scored: list[tuple[dict, float]] = []
+        for meta, sem_sim in neighbors:
+            if meta.get("role") == "chain" and meta.get("uid") not in self._chain_seed_uids:
+                continue
+            if self._is_low_content(meta):
+                continue
+
+            # Multi-axis scoring
+            score = sem_sim * 0.5  # semantic: 50% weight
+
+            # Project affinity: same project gets a boost
+            if meta.get("thread") == seed_thread and seed_thread:
+                score += 0.15
+            # Cross-project is also interesting — don't penalize, just don't boost
+
+            # Temporal proximity: nearby timestamps get a boost
+            meta_ts = meta.get("ts", "")
+            if seed_ts and meta_ts and len(seed_ts) >= 10 and len(meta_ts) >= 10:
+                try:
+                    from datetime import datetime
+                    dt_seed = datetime.fromisoformat(seed_ts.replace("Z", "+00:00"))
+                    dt_meta = datetime.fromisoformat(meta_ts.replace("Z", "+00:00"))
+                    days_apart = abs((dt_meta - dt_seed).total_seconds()) / 86400
+                    if days_apart < 1:
+                        score += 0.2   # same day
+                    elif days_apart < 7:
+                        score += 0.1   # same week
+                except (ValueError, TypeError):
+                    pass
+
+            # Keyword overlap: shared words in content
+            seed_words = set(seed_meta.get("content", "").lower().split())
+            meta_words = set(meta.get("content", "").lower().split())
+            if seed_words and meta_words:
+                overlap = len(seed_words & meta_words)
+                union = len(seed_words | meta_words)
+                if union > 0:
+                    score += 0.15 * (overlap / union)  # Jaccard
+
+            scored.append((meta, score))
+
+        # Sort by combined score, take top cluster_size_max
+        scored.sort(key=lambda x: x[1], reverse=True)
+        cluster = [meta for meta, _ in scored[:self.cluster_size_max]]
+
+        if len(cluster) >= self.cluster_size_min:
+            return cluster
+        return None
+
+    def _prepare_seed_pool(self) -> list[tuple[dict, any, float]]:
+        """Build the initial seed pool with priorities.
+
+        Returns list of (meta, vector, priority) tuples.
+        Priority: chain chunks > unchained corpus > chained corpus.
+        """
+        import random
+
         chained_uids = set()
         for ms in self.existing_member_sets:
             chained_uids.update(ms)
         for chain in self.new_chains:
             chained_uids.update(chain.get("member_uids", []))
 
-        # Prioritize unchained chunks as seeds, skip low-content noise
         seeds = []
         for i, meta in enumerate(self.index.metadata):
-            uid = meta.get("uid", "")
-            role = meta.get("role", "")
-            # Skip chain chunks as seeds (they're outputs, not inputs)
-            if role == "chain":
-                continue
-            # Skip low-content noise
             if self._is_low_content(meta):
                 continue
-            # Prioritize unchained
-            if uid not in chained_uids:
-                seeds.append(i)
 
-        # If all chunks are chained, sample from all non-chain chunks
-        if not seeds:
-            seeds = [i for i, m in enumerate(self.index.metadata)
-                     if m.get("role") != "chain"]
+            role = meta.get("role", "")
+            uid = meta.get("uid", "")
 
-        if not seeds:
-            return []
+            if role == "chain":
+                # Chain chunks are high-priority seeds (self-reinforcing)
+                seeds.append((meta, self.index.vectors[i], 2.0))
+            elif uid not in chained_uids:
+                # Unchained corpus chunks are medium priority
+                seeds.append((meta, self.index.vectors[i], 1.0))
+            else:
+                # Already-chained chunks are low priority
+                seeds.append((meta, self.index.vectors[i], 0.5))
 
-        # Cap seeds to keep cluster building fast (~1s per seed for search)
-        import random
-        random.shuffle(seeds)
-        max_seeds = min(len(seeds), max(50, self.max_wall_time // 6))
-        seeds = seeds[:max_seeds]
+        # Sort by priority (highest first), shuffle within priority bands
+        seeds.sort(key=lambda x: x[2], reverse=True)
 
-        if self.verbose:
-            print(f"[dream] Building clusters from {max_seeds} seeds "
-                  f"(of {len(seeds)} eligible)...", file=sys.stderr)
+        # Shuffle within each priority band to avoid deterministic ordering
+        bands = {}
+        for s in seeds:
+            bands.setdefault(s[2], []).append(s)
+        result = []
+        for priority in sorted(bands.keys(), reverse=True):
+            band = bands[priority]
+            random.shuffle(band)
+            result.extend(band)
 
-        clusters = []
-        for i, seed_idx in enumerate(seeds):
-            # Find neighbors via semantic similarity
-            seed_vec = self.index.vectors[seed_idx]
-            neighbors = self.index.search(seed_vec.tolist(), k=self.cluster_size_max + 1)
-
-            cluster = []
-            for meta, sim in neighbors:
-                if len(cluster) >= self.cluster_size_max:
-                    break
-                if meta.get("role") == "chain":
-                    continue
-                if self._is_low_content(meta):
-                    continue
-                cluster.append(meta)
-
-            if len(cluster) >= self.cluster_size_min:
-                clusters.append(cluster)
-
-            # Progress for large seed sets
-            if self.verbose and (i + 1) % 25 == 0:
-                print(f"[dream] Clustered {i+1}/{max_seeds} seeds "
-                      f"({len(clusters)} valid clusters)", file=sys.stderr)
-
-        if self.verbose:
-            print(f"[dream] {len(clusters)} clusters built", file=sys.stderr)
-
-        return clusters
+        return result
 
     # ── LLM integration call ───────────────────────────────────────────
 
@@ -413,43 +450,59 @@ class DreamEngine:
     # ── Integration passes ─────────────────────────────────────────────
 
     def run_integration_passes(self) -> dict:
-        """Run continuous integration until time/token/chain cap fires.
+        """Run self-reinforcing integration until time/token/chain cap fires.
 
-        No artificial pass boundaries — builds clusters from shuffled seeds
-        and processes them one by one until a termination condition hits.
-        Progress is reported every 30 seconds.
+        Dreamlike: new chain chunks become preferred seeds for the next
+        cluster. The dream feeds on its own discoveries, building
+        higher-order connections from lower-order ones.
+
+        Multi-axis clustering: semantic + temporal + project + keyword.
         """
         self.start_time = time.time()
         self.new_chains = []
         self.pass_history = []
         self.tokens_used = 0
+        self._chain_seed_uids = set()  # track which chains we've used as seeds
 
-        print(f"[dream] Starting continuous integration (model: {self.model})", file=sys.stderr)
+        print(f"[dream] Starting self-reinforcing integration (model: {self.model})",
+              file=sys.stderr)
         print(f"[dream] Limits: {self.max_wall_time}s wall, "
               f"{self.max_llm_tokens} tokens, "
               f"{self.max_chains} chains", file=sys.stderr)
 
-        clusters_processed = 0
-        last_progress = self.start_time
-
-        # Build all candidate clusters up front (shuffled)
-        clusters = self._build_clusters()
-        if not clusters:
-            print(f"[dream] No clusters to process", file=sys.stderr)
+        # Build prioritized seed pool: chains > unchained > chained
+        seed_pool = self._prepare_seed_pool()
+        if not seed_pool:
+            print(f"[dream] No seeds available", file=sys.stderr)
             return self._make_stats(0)
 
-        print(f"[dream] {len(clusters)} candidate clusters from "
-              f"{len(self.all_metadata)} entries", file=sys.stderr)
+        chain_seeds = sum(1 for _, _, p in seed_pool if p >= 2.0)
+        corpus_seeds = len(seed_pool) - chain_seeds
+        print(f"[dream] Seed pool: {chain_seeds} chain seeds + "
+              f"{corpus_seeds} corpus seeds", file=sys.stderr)
 
-        for i, cluster in enumerate(clusters):
+        clusters_processed = 0
+        seed_idx = 0
+        last_progress = self.start_time
+
+        while seed_idx < len(seed_pool):
             stop, reason = self._should_stop()
             if stop:
                 print(f"[dream] Stopped: {reason}", file=sys.stderr)
                 break
 
+            seed_meta, seed_vec, priority = seed_pool[seed_idx]
+            seed_idx += 1
+
+            # Build cluster around this seed (multi-axis)
+            cluster = self._build_cluster_for_seed(seed_meta, seed_vec)
+            if not cluster:
+                continue
+
             if self.dry_run:
                 uids = [m.get("uid", "?") for m in cluster]
-                print(f"  [dry-run] Cluster {i+1}/{len(clusters)}: "
+                kind = "chain→" if priority >= 2.0 else ""
+                print(f"  [dry-run] {kind}Cluster {clusters_processed+1}: "
                       f"{len(cluster)} chunks ({', '.join(uids[:3])}...)")
                 clusters_processed += 1
                 continue
@@ -464,23 +517,45 @@ class DreamEngine:
                         frozenset(entry["member_uids"]))
                     new_in_cluster += 1
 
+                    # Self-reinforcing: add new chain as a preferred seed
+                    embedding = entry.get("embedding")
+                    if embedding:
+                        import numpy as np
+                        chain_meta = {
+                            "uid": entry["uid"],
+                            "role": "chain",
+                            "content": entry["content"],
+                            "thread": entry["thread"],
+                            "ts": entry["ts"],
+                        }
+                        vec = np.array(embedding, dtype=np.float32)
+                        # Insert near the front of remaining seeds (preferred)
+                        seed_pool.insert(seed_idx, (chain_meta, vec, 3.0))
+                        self._chain_seed_uids.add(entry["uid"])
+
             clusters_processed += 1
 
+            # Logging
+            kind = "chain→" if priority >= 2.0 else ""
             if self.verbose:
                 threads = set(m.get("thread", "?") for m in cluster)
-                print(f"[dream] Cluster {clusters_processed}/{len(clusters)}: "
+                remaining = len(seed_pool) - seed_idx
+                print(f"[dream] {kind}Cluster {clusters_processed}: "
                       f"{len(cluster)} chunks → {len(raw_chains)} raw, "
                       f"{new_in_cluster} new | "
-                      f"projects: {', '.join(threads)}",
+                      f"projects: {', '.join(threads)} | "
+                      f"{remaining} seeds left",
                       file=sys.stderr)
 
             # Progress every 30 seconds (non-verbose)
             now = time.time()
             if not self.verbose and now - last_progress >= 30:
                 elapsed = now - self.start_time
-                print(f"[dream] Progress: {clusters_processed}/{len(clusters)} clusters, "
+                remaining = len(seed_pool) - seed_idx
+                print(f"[dream] Progress: {clusters_processed} clusters, "
                       f"{len(self.new_chains)} chains, "
                       f"{self.tokens_used} tokens, "
+                      f"{remaining} seeds left, "
                       f"{elapsed:.0f}s",
                       file=sys.stderr)
                 last_progress = now
