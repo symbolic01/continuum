@@ -45,6 +45,10 @@ case "${1:-resume}" in
     shift
     python3 "$CONTINUUM_DIR/dream_tool.py" "$@"
     ;;
+  dream-daemon|daemon)
+    shift
+    python3 "$CONTINUUM_DIR/dream_daemon.py" "$@"
+    ;;
   help|--help|-h)
     echo "cx — Continuum CLI"
     echo ""
@@ -70,6 +74,11 @@ case "${1:-resume}" in
     echo "    --report              Print markdown report"
     echo "    --no-ingest           Skip ingestion housekeeping"
     echo "    --force               Run even if corpus unchanged"
+    echo "  cx daemon [opts]       Start dream daemon (auto-trigger on idle)"
+    echo "    --idle N              Minutes of inactivity before dreaming (default: 15)"
+    echo "    --dream N             Minutes to dream for (default: 30)"
+    echo "    --gap N               Minimum minutes between runs (default: 60)"
+    echo "    --once                Check once and exit (for cron)"
     echo ""
     echo "First time? Run: cx ingest --no-embed"
     ;;
