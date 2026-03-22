@@ -172,8 +172,6 @@ class DreamEngine:
             return True, f"token budget ({self.tokens_used} >= {self.max_llm_tokens})"
         if len(self.new_chains) >= self.max_chains:
             return True, f"chain cap ({len(self.new_chains)} >= {self.max_chains})"
-        if len(self.pass_history) >= self.max_passes:
-            return True, f"pass cap ({len(self.pass_history)} >= {self.max_passes})"
         return False, ""
 
     def _is_converged(self) -> bool:
@@ -240,18 +238,18 @@ class DreamEngine:
         if not seeds:
             return []
 
-        # Sample seeds (don't process entire corpus each pass)
+        # Cap seeds to keep cluster building fast (~1s per seed for search)
         import random
-        max_seeds = 30  # process up to 30 clusters per pass
-        if len(seeds) > max_seeds:
-            random.shuffle(seeds)
-            seeds = seeds[:max_seeds]
+        random.shuffle(seeds)
+        max_seeds = min(len(seeds), max(50, self.max_wall_time // 6))
+        seeds = seeds[:max_seeds]
+
+        if self.verbose:
+            print(f"[dream] Building clusters from {max_seeds} seeds "
+                  f"(of {len(seeds)} eligible)...", file=sys.stderr)
 
         clusters = []
-        used = set()
-        for seed_idx in seeds:
-            if seed_idx in used:
-                continue
+        for i, seed_idx in enumerate(seeds):
             # Find neighbors via semantic similarity
             seed_vec = self.index.vectors[seed_idx]
             neighbors = self.index.search(seed_vec.tolist(), k=self.cluster_size_max + 1)
@@ -268,9 +266,14 @@ class DreamEngine:
 
             if len(cluster) >= self.cluster_size_min:
                 clusters.append(cluster)
-                for m in cluster:
-                    # Don't mark as used — overlapping clusters are fine
-                    pass
+
+            # Progress for large seed sets
+            if self.verbose and (i + 1) % 25 == 0:
+                print(f"[dream] Clustered {i+1}/{max_seeds} seeds "
+                      f"({len(clusters)} valid clusters)", file=sys.stderr)
+
+        if self.verbose:
+            print(f"[dream] {len(clusters)} clusters built", file=sys.stderr)
 
         return clusters
 
@@ -410,70 +413,89 @@ class DreamEngine:
     # ── Integration passes ─────────────────────────────────────────────
 
     def run_integration_passes(self) -> dict:
-        """Run integration passes until termination condition met."""
+        """Run continuous integration until time/token/chain cap fires.
+
+        No artificial pass boundaries — builds clusters from shuffled seeds
+        and processes them one by one until a termination condition hits.
+        Progress is reported every 30 seconds.
+        """
         self.start_time = time.time()
         self.new_chains = []
         self.pass_history = []
         self.tokens_used = 0
 
-        print(f"[dream] Starting integration passes (model: {self.model})", file=sys.stderr)
+        print(f"[dream] Starting continuous integration (model: {self.model})", file=sys.stderr)
         print(f"[dream] Limits: {self.max_wall_time}s wall, "
               f"{self.max_llm_tokens} tokens, "
-              f"{self.max_passes} passes, "
               f"{self.max_chains} chains", file=sys.stderr)
 
-        pass_num = 0
-        while True:
-            pass_num += 1
+        clusters_processed = 0
+        last_progress = self.start_time
+
+        # Build all candidate clusters up front (shuffled)
+        clusters = self._build_clusters()
+        if not clusters:
+            print(f"[dream] No clusters to process", file=sys.stderr)
+            return self._make_stats(0)
+
+        print(f"[dream] {len(clusters)} candidate clusters from "
+              f"{len(self.all_metadata)} entries", file=sys.stderr)
+
+        for i, cluster in enumerate(clusters):
             stop, reason = self._should_stop()
             if stop:
                 print(f"[dream] Stopped: {reason}", file=sys.stderr)
                 break
 
-            clusters = self._build_clusters()
-            if not clusters:
-                print(f"[dream] No more clusters to process", file=sys.stderr)
-                break
+            if self.dry_run:
+                uids = [m.get("uid", "?") for m in cluster]
+                print(f"  [dry-run] Cluster {i+1}/{len(clusters)}: "
+                      f"{len(cluster)} chunks ({', '.join(uids[:3])}...)")
+                clusters_processed += 1
+                continue
 
-            pass_chains = 0
-            for i, cluster in enumerate(clusters):
-                stop, reason = self._should_stop()
-                if stop:
-                    print(f"[dream] Stopped mid-pass: {reason}", file=sys.stderr)
-                    break
+            raw_chains = self._call_llm(cluster)
+            new_in_cluster = 0
+            for chain_data in raw_chains:
+                entry = self._create_chain_chunk(chain_data, clusters_processed)
+                if entry:
+                    self.new_chains.append(entry)
+                    self.existing_member_sets.append(
+                        frozenset(entry["member_uids"]))
+                    new_in_cluster += 1
 
-                if self.dry_run:
-                    uids = [m.get("uid", "?") for m in cluster]
-                    print(f"  [dry-run] Pass {pass_num}, cluster {i+1}/{len(clusters)}: "
-                          f"{len(cluster)} chunks ({', '.join(uids[:3])}...)")
-                    continue
+            clusters_processed += 1
 
-                raw_chains = self._call_llm(cluster)
-                for chain_data in raw_chains:
-                    entry = self._create_chain_chunk(chain_data, pass_num)
-                    if entry:
-                        self.new_chains.append(entry)
-                        self.existing_member_sets.append(
-                            frozenset(entry["member_uids"]))
-                        pass_chains += 1
+            if self.verbose:
+                threads = set(m.get("thread", "?") for m in cluster)
+                print(f"[dream] Cluster {clusters_processed}/{len(clusters)}: "
+                      f"{len(cluster)} chunks → {len(raw_chains)} raw, "
+                      f"{new_in_cluster} new | "
+                      f"projects: {', '.join(threads)}",
+                      file=sys.stderr)
 
-            self.pass_history.append(pass_chains)
-            elapsed = time.time() - self.start_time
-            converged = self._is_converged()
-            print(f"[dream] Pass {pass_num}: {pass_chains} new chains, "
-                  f"{len(clusters)} clusters, "
-                  f"{self.tokens_used} tokens, "
-                  f"{elapsed:.0f}s elapsed"
-                  f"{' (converged)' if converged else ''}",
-                  file=sys.stderr)
+            # Progress every 30 seconds (non-verbose)
+            now = time.time()
+            if not self.verbose and now - last_progress >= 30:
+                elapsed = now - self.start_time
+                print(f"[dream] Progress: {clusters_processed}/{len(clusters)} clusters, "
+                      f"{len(self.new_chains)} chains, "
+                      f"{self.tokens_used} tokens, "
+                      f"{elapsed:.0f}s",
+                      file=sys.stderr)
+                last_progress = now
 
+        return self._make_stats(clusters_processed)
+
+    def _make_stats(self, clusters_processed: int) -> dict:
+        """Build stats dict for the integration run."""
         return {
-            "passes": pass_num,
+            "passes": clusters_processed,
             "chains_created": len(self.new_chains),
             "tokens_used": self.tokens_used,
             "elapsed_seconds": time.time() - self.start_time,
-            "converged": self._is_converged(),
-            "pass_history": self.pass_history,
+            "converged": False,
+            "clusters_total": 0,
         }
 
     # ── Temporal reconnection ──────────────────────────────────────────
@@ -856,7 +878,7 @@ class DreamEngine:
         print(f"\n**Corpus**: {stats.get('corpus_entries', 0)} entries "
               f"({stats.get('embedded_entries', 0)} embedded)")
         print(f"**Chains created**: {stats.get('chains_created', 0)}")
-        print(f"**Passes**: {stats.get('passes', 0)} "
+        print(f"**Clusters processed**: {stats.get('passes', 0)} "
               f"({stats.get('tokens_used', 0)} tokens)")
 
         chains = report.get("chains", {})

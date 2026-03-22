@@ -95,7 +95,7 @@ def main():
         print("[dream] Empty corpus — nothing to dream about", file=sys.stderr)
         return
 
-    # Phase 2: Integration passes
+    # Phase 2: Continuous integration
     stats = engine.run_integration_passes()
 
     # Phase 3: Temporal reconnection
@@ -143,7 +143,7 @@ def main():
               f"{len(engine.all_metadata)} entries.", file=sys.stderr)
 
     # Summary
-    print(f"\n[dream] Done: {stats.get('passes', 0)} passes, "
+    print(f"\n[dream] Done: {stats.get('passes', 0)} clusters, "
           f"{stats.get('chains_created', 0)} integration chains"
           f"{f', {len(temporal_links)} temporal links' if temporal_links else ''}, "
           f"{stats.get('tokens_used', 0)} tokens, "
