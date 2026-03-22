@@ -258,6 +258,14 @@ function render() {
   const totalChains = Object.values(chains).reduce((a, arr) => a + arr.length, 0);
   const hasKernels = kernels && kernels.length > 0;
 
+  // Build chain lookup by UID for kernel drill-down
+  const chainLookup = {};
+  for (const arr of Object.values(chains)) {
+    for (const c of arr) {
+      if (c.uid) chainLookup[c.uid] = c;
+    }
+  }
+
   let html = `
     <header class="header">
       <div class="brand">Continuum Dream Report</div>
@@ -344,8 +352,11 @@ function render() {
             ${items.sort((a,b) => (b.importance||5) - (a.importance||5)).map((k, i) => {
               const imp = k.importance || 5;
               const impClass = imp >= 8 ? 'importance-high' : imp >= 5 ? 'importance-med' : 'importance-low';
+              const kid = `kernel-${ktype}-${i}`;
+              const refs = k.chain_refs || [];
+              const backingChains = refs.map(ref => chainLookup[ref]).filter(Boolean);
               return `
-                <div class="chain-item" style="cursor:default">
+                <div class="chain-item" id="${kid}" onclick="toggleDrill('${kid}')" style="cursor:pointer">
                   <div class="chain-top">
                     <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:2px 7px;border-radius:4px;flex-shrink:0;margin-top:2px" class="${impClass}">${imp}</div>
                     <div class="chain-text">${k.content || ''}</div>
@@ -353,6 +364,24 @@ function render() {
                   <div class="chain-badges">
                     ${k.cross_project ? '<span class="badge badge-cross">cross-project</span>' : ''}
                     <span class="badge badge-type">${ktype}</span>
+                    ${refs.length ? `<span class="badge badge-type">${refs.length} chains</span>` : ''}
+                  </div>
+                  <div class="drill-down" id="drill-${kid}">
+                    <div class="drill-content">
+                      <div class="drill-label">Backing chains (${backingChains.length})</div>
+                      ${backingChains.map(c => `
+                        <div class="member-item">
+                          <div class="member-header">
+                            <span class="member-uid">${c.uid || ''}</span>
+                            <span class="badge badge-type">${c.type || ''}</span>
+                            ${(c.projects||[]).map(p => `<span class="member-project">${p}</span>`).join('')}
+                            <span class="badge badge-type">${c.member_count || 0} chunks</span>
+                          </div>
+                          <div class="member-content">${escapeHtml(c.synthesis || '')}</div>
+                        </div>
+                      `).join('')}
+                      ${backingChains.length === 0 ? '<div style="color:var(--text-muted);font-size:12px">Chain refs not resolved in current report data</div>' : ''}
+                    </div>
                   </div>
                 </div>
               `;
