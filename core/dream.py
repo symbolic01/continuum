@@ -1165,7 +1165,7 @@ class DreamEngine:
         report = {
             "profile": {
                 "name": "Symbolic",
-                "generated": datetime.now(timezone.utc).isoformat(),
+                "generated": datetime.now().astimezone().isoformat(),
                 "stats": {
                     "corpus_entries": len(self.all_metadata),
                     "embedded_entries": len(self.index) if self.index else 0,
