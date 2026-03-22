@@ -45,6 +45,8 @@ def main():
                         help="Write markdown report to file")
     parser.add_argument("--no-temporal", action="store_true",
                         help="Skip temporal reconnection phase")
+    parser.add_argument("--no-synthesis", action="store_true",
+                        help="Skip synthesis pass (Claude)")
     parser.add_argument("--stop-on-convergence", action="store_true",
                         help="Stop when convergence detected (default: use time/token caps)")
     parser.add_argument("--force", action="store_true",
@@ -122,8 +124,13 @@ def main():
         # Git commit the corpus changes
         engine.git_commit()
 
-        # Generate report (includes ALL chains, not just this run)
-        report = engine.generate_report(stats, temporal_links)
+        # Synthesis pass — compress chains into human-meaningful kernels
+        synthesis = None
+        if not args.no_synthesis:
+            synthesis = engine.run_synthesis()
+
+        # Generate report (includes ALL chains + synthesis)
+        report = engine.generate_report(stats, temporal_links, synthesis)
 
         # Copy report JSON next to HTML for serving
         import shutil

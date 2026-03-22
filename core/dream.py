@@ -80,6 +80,62 @@ CHUNKS:
 Output JSON only."""
 
 
+# ── Synthesis prompt (second stage — human-meaningful insights) ─────────
+
+SYNTHESIS_SYSTEM_PROMPT = """You are a reflective analyst synthesizing patterns from a developer's work sessions. You take raw chain connections and compress them into human-meaningful insights — the kind that make someone say "oh right, I forgot about that" or "we keep making that mistake."
+
+Your job is to produce KERNELS — dense, actionable insights organized by significance.
+
+For each kernel, provide:
+- type: one of [correction, orphan, pattern, stress, growth, question]
+  - correction: "we keep doing X wrong, the fix is Y" — anti-pattern → correct approach
+  - orphan: "this was started but never finished, and it matters because..." — unfinished business
+  - pattern: "across projects/time, there's a recurring theme of..." — behavioral/workflow patterns
+  - stress: "this situation causes friction/frustration/rework" — pain points
+  - growth: "this approach worked well and should be repeated" — positive patterns to reinforce
+  - question: "this remains unresolved and keeps coming up" — persistent open questions
+- content: 1-2 sentences, specific (use names, projects, dates when available)
+- importance: 1-10 (10 = "must not forget this", 1 = "mildly interesting")
+- chain_refs: which chain UIDs this kernel synthesizes from
+- cross_project: true if the insight spans multiple projects
+
+Focus on:
+- NON-OBVIOUS insights — not "code was edited" but "the same bug was fixed 3 times because the root cause was never addressed"
+- HUMAN significance — would this matter to the person living this life, or just to a log parser?
+- UNFINISHED BUSINESS — what was started and deserves attention?
+- RECURRING CORRECTIONS — what keeps going wrong despite being fixed before?
+- EMOTIONAL/BEHAVIORAL patterns — stress, avoidance, enthusiasm clusters
+
+Do NOT include:
+- Trivial file edits or routine tool use
+- Chains that are just "these chunks are about the same project" with no deeper insight
+- Anything that wouldn't pass the "so what?" test
+
+Output valid JSON:
+{
+  "kernels": [
+    {
+      "type": "correction|orphan|pattern|stress|growth|question",
+      "content": "specific, human-meaningful insight",
+      "importance": 1-10,
+      "chain_refs": ["«chain_uid1»", "«chain_uid2»"],
+      "cross_project": true/false
+    }
+  ],
+  "data_story": "2-3 sentence narrative of the overall arc — what's the person focused on, struggling with, excited about?",
+  "top_insights": ["the 3 most important things to remember"]
+}"""
+
+SYNTHESIS_USER_TEMPLATE = """Here are {count} chains found by analyzing {corpus_size} corpus entries across {project_count} projects.
+
+Synthesize these into human-meaningful kernels. Be specific and ruthless — only include insights that pass the "so what?" test.
+
+CHAINS:
+{chains}
+
+Output JSON only."""
+
+
 # ── DreamEngine ────────────────────────────────────────────────────────
 
 class DreamEngine:
@@ -186,20 +242,26 @@ class DreamEngine:
     # ── Cluster building ───────────────────────────────────────────────
 
     def _is_low_content(self, meta: dict) -> bool:
-        """Check if a chunk has too little semantic content for integration.
-
-        Matches the same filter applied during ingest — these entries
-        should not have been embedded in the first place.
-        """
+        """Check if a chunk has too little semantic content for integration."""
+        role = meta.get("role", "")
+        # Never filter kernels or chains
+        if role in ("kernel", "chain"):
+            return False
         content = meta.get("content", "").strip()
         if not content:
             return True
-        # Pure tool-use bracket summaries: [Read: path], [TaskUpdate], etc.
+        # Pure tool-use bracket summaries
         if content.startswith("[") and content.endswith("]") and len(content) < 200:
             return True
-        # Common filler responses
+        # Common filler
         if content in ("No response requested.",
                        "I have this context. Ready to continue."):
+            return True
+        # Tool result rejection boilerplate
+        if "The user doesn't want to proceed with this tool use" in content and len(content) < 400:
+            return True
+        # Empty tool results
+        if content.startswith("[{'tool_use_id':") and len(content) < 80:
             return True
         return False
 
@@ -775,6 +837,135 @@ class DreamEngine:
 
         return results
 
+    # ── Synthesis pass (human-meaningful kernels) ────────────────────────
+
+    def run_synthesis(self, all_chains: list[dict] | None = None) -> dict | None:
+        """Synthesize chains into human-meaningful kernels via Claude.
+
+        This is the second stage — takes raw chain connections and compresses
+        them into insights that pass the "so what?" test.
+        Uses claude --print (Sonnet) for quality, like the hackathon did.
+        """
+        if all_chains is None:
+            all_chains = self._load_all_chains()
+
+        if not all_chains:
+            print(f"[dream] No chains to synthesize", file=sys.stderr)
+            return None
+
+        # Format chains for the synthesis prompt
+        chain_lines = []
+        projects = set()
+        for chain in all_chains:
+            uid = chain.get("uid", "?")
+            ctype = chain.get("chain_type", "?")
+            content = chain.get("content", "")
+            member_count = len(chain.get("member_uids", []))
+            chain_projects = chain.get("member_projects", [])
+            projects.update(chain_projects)
+            xp = " [cross-project]" if chain.get("cross_project") else ""
+            chain_lines.append(
+                f"[{uid}] ({ctype}) {content} "
+                f"[{member_count} members, projects: {', '.join(chain_projects)}]{xp}"
+            )
+
+        user_prompt = SYNTHESIS_USER_TEMPLATE.format(
+            count=len(all_chains),
+            corpus_size=len(self.all_metadata),
+            project_count=len(projects),
+            chains="\n".join(chain_lines),
+        )
+
+        print(f"[dream] Running synthesis on {len(all_chains)} chains "
+              f"across {len(projects)} projects...", file=sys.stderr)
+
+        # Use claude --print for synthesis (like hackathon)
+        synthesis_model = get_model("compress", self.config)
+        full_prompt = SYNTHESIS_SYSTEM_PROMPT + "\n\n" + user_prompt + \
+            "\n\nRespond with ONLY valid JSON, no markdown fences."
+
+        import os
+        env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+
+        try:
+            result = subprocess.run(
+                ["claude", "--print", "--model", synthesis_model],
+                input=full_prompt, env=env,
+                capture_output=True, text=True, timeout=180,
+            )
+            content = result.stdout.strip()
+            if result.returncode != 0:
+                print(f"[dream] Synthesis error (exit {result.returncode}): "
+                      f"{result.stderr[:200]}", file=sys.stderr)
+                return None
+        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+            print(f"[dream] Synthesis failed: {e}", file=sys.stderr)
+            return None
+
+        # Strip markdown fences if present
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0]
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0]
+
+        try:
+            synthesis = json.loads(content)
+            kernels = synthesis.get("kernels", [])
+            print(f"[dream] Synthesized {len(kernels)} kernels "
+                  f"(model: {synthesis_model})", file=sys.stderr)
+
+            # Write kernels as first-class corpus entries
+            if kernels and not self.dry_run:
+                self._write_kernel_chunks(kernels)
+
+            return synthesis
+        except json.JSONDecodeError as e:
+            print(f"[dream] Synthesis JSON parse failed: {e}", file=sys.stderr)
+            print(f"[dream] Content: {content[:300]}", file=sys.stderr)
+            return None
+
+    def _write_kernel_chunks(self, kernels: list[dict]):
+        """Write synthesized kernels as first-class corpus entries.
+
+        Kernels are higher-value than raw chains — they carry a 'kernel'
+        role and get embedded for retrieval with provenance back to chains.
+        """
+        CHAINS_DIR.mkdir(parents=True, exist_ok=True)
+        now = datetime.now(timezone.utc)
+        out_path = CHAINS_DIR / f"kernels_{now.strftime('%Y%m%d_%H%M%S')}.jsonl"
+
+        entries = []
+        for kernel in kernels:
+            uid = mint_uid()
+            content = kernel.get("content", "")
+            entry = {
+                "uid": uid,
+                "role": "kernel",
+                "content": content,
+                "turn": 0,
+                "ts": now.isoformat(),
+                "thread": "dream",
+                "source_file": "dream:synthesis",
+                "heading": f"kernel: {content[:60]}",
+                "chunk_type": "kernel",
+                "kernel_type": kernel.get("type", "pattern"),
+                "importance": kernel.get("importance", 5),
+                "chain_refs": kernel.get("chain_refs", []),
+                "cross_project": kernel.get("cross_project", False),
+                "dream_run": now.isoformat(),
+            }
+            embedding = embed_text(content)
+            if embedding:
+                entry["embedding"] = embedding
+            entries.append(entry)
+
+        with open(out_path, "w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        print(f"[dream] Wrote {len(entries)} kernel chunks to {out_path}",
+              file=sys.stderr)
+
     # ── Post-processing ────────────────────────────────────────────────
 
     def write_chains(self, chains: list[dict]) -> Path | None:
@@ -909,8 +1100,9 @@ class DreamEngine:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pass
 
-    def generate_report(self, stats: dict, temporal_links: list[dict]) -> dict:
-        """Generate report data JSON from ALL chains (not just current run)."""
+    def generate_report(self, stats: dict, temporal_links: list[dict],
+                        synthesis: dict | None = None) -> dict:
+        """Generate report data JSON from ALL chains + synthesis."""
         all_chains = self._load_all_chains()
 
         # Categorize chains
@@ -931,6 +1123,12 @@ class DreamEngine:
                     "tokens_used": stats.get("tokens_used", 0),
                 },
             },
+            # Synthesis results (human-meaningful — primary content)
+            "synthesis": synthesis or {},
+            "kernels": (synthesis or {}).get("kernels", []),
+            "data_story": (synthesis or {}).get("data_story", ""),
+            "top_insights": (synthesis or {}).get("top_insights", []),
+            # Raw chains (drill-down backing data)
             "chains": {
                 "thematic": [self._chain_to_report(c) for c in by_type.get("thematic", [])],
                 "causal": [self._chain_to_report(c) for c in by_type.get("causal", [])],

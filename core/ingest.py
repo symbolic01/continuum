@@ -130,16 +130,22 @@ def convert_claude_code_session(
             if not content.strip():
                 continue
 
-            # Skip low-signal assistant entries:
-            # - Pure tool-use bracket summaries: [Read: path], [TaskUpdate], etc.
-            # - Common filler: "No response requested.", etc.
-            # These waste embeddings and pollute semantic search.
+            # Skip low-signal entries that waste embeddings and pollute search.
+            stripped = content.strip()
             if role == "assistant":
-                stripped = content.strip()
+                # Pure tool-use bracket summaries: [Read: path], [TaskUpdate], etc.
                 if stripped.startswith("[") and stripped.endswith("]") and len(stripped) < 200:
                     continue
+                # Common filler responses
                 if stripped in ("No response requested.",
                                 "I have this context. Ready to continue."):
+                    continue
+            if role == "user":
+                # Tool result rejection boilerplate
+                if "The user doesn't want to proceed with this tool use" in stripped and len(stripped) < 400:
+                    continue
+                # Empty tool results
+                if stripped.startswith("[{'tool_use_id':") and len(stripped) < 80:
                     continue
 
             entry = {

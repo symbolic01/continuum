@@ -26,16 +26,26 @@ FILLER = {
 
 def is_low_signal(entry: dict) -> bool:
     """Check if a corpus entry is low-signal noise."""
-    if entry.get("role") != "assistant":
-        return False
+    role = entry.get("role", "")
     content = entry.get("content", "").strip()
     if not content:
         return True
-    # Pure bracket summaries: [Read: path], [TaskUpdate], [Agent], etc.
-    if content.startswith("[") and content.endswith("]") and len(content) < 200:
-        return True
-    if content in FILLER:
-        return True
+    # Never filter kernels or chains
+    if role in ("kernel", "chain"):
+        return False
+    if role == "assistant":
+        # Pure bracket summaries: [Read: path], [TaskUpdate], [Agent], etc.
+        if content.startswith("[") and content.endswith("]") and len(content) < 200:
+            return True
+        if content in FILLER:
+            return True
+    if role == "user":
+        # Tool result rejection boilerplate
+        if "The user doesn't want to proceed with this tool use" in content and len(content) < 400:
+            return True
+        # Empty tool results
+        if content.startswith("[{'tool_use_id':") and len(content) < 80:
+            return True
     return False
 
 

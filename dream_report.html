@@ -145,6 +145,10 @@ body::before {
 .badge-project { background: rgba(106,143,181,0.1); color: var(--accent-sky); }
 .badge-type { background: rgba(85,82,92,0.2); color: var(--text-muted); }
 
+.importance-high { background: rgba(212,149,106,0.15); color: var(--accent-warm); }
+.importance-med { background: rgba(201,168,76,0.12); color: var(--accent-gold); }
+.importance-low { background: rgba(85,82,92,0.2); color: var(--text-muted); }
+
 /* -- Drill-down -- */
 .drill-down { max-height: 0; overflow: hidden; transition: max-height 0.4s ease, opacity 0.3s; opacity: 0; }
 .drill-down.open { max-height: none; opacity: 1; }
@@ -238,11 +242,21 @@ async function loadData() {
   }
 }
 
+const KERNEL_TYPES = {
+  correction: { color: 'var(--accent-rose)', icon: '!' },
+  orphan:     { color: 'var(--accent-warm)', icon: '?' },
+  pattern:    { color: 'var(--accent-violet)', icon: '~' },
+  stress:     { color: 'var(--accent-rose)', icon: '*' },
+  growth:     { color: 'var(--accent-sage)', icon: '+' },
+  question:   { color: 'var(--text-secondary)', icon: '?' },
+};
+
 function render() {
-  const { profile, chains, unfinished, cross_project } = DATA;
+  const { profile, chains, kernels, data_story, top_insights, cross_project } = DATA;
   const stats = profile.stats || {};
   const generated = profile.generated ? profile.generated.slice(0, 16).replace('T', ' ') : '';
   const totalChains = Object.values(chains).reduce((a, arr) => a + arr.length, 0);
+  const hasKernels = kernels && kernels.length > 0;
 
   let html = `
     <header class="header">
@@ -256,11 +270,11 @@ function render() {
           </div>
         </div>
         <div class="profile-stats">
-          <div class="stat-number">${totalChains}</div>
-          <div class="stat-label">chains found</div>
+          <div class="stat-number">${hasKernels ? kernels.length : totalChains}</div>
+          <div class="stat-label">${hasKernels ? 'kernels' : 'chains'}</div>
           <div style="margin-top:8px">
-            <div class="stat-number">${stats.clusters_processed || stats.passes || 0}</div>
-            <div class="stat-label">clusters processed</div>
+            <div class="stat-number">${totalChains}</div>
+            <div class="stat-label">raw chains</div>
           </div>
         </div>
       </div>
@@ -269,16 +283,27 @@ function render() {
     <div class="divider"></div>
   `;
 
-  // Unfinished business (orphans) — prominent
-  if (unfinished && unfinished.length > 0) {
+  // Data story (synthesis narrative)
+  if (data_story) {
     html += `
-      <section class="unfinished-section">
-        <div class="section-title">Unfinished Business</div>
-        <div class="unfinished-grid">
-          ${unfinished.map(item => `
-            <div class="unfinished-item">
-              <div class="unfinished-dot"></div>
-              <div class="unfinished-text">${item.synthesis || ''}</div>
+      <section style="padding:40px 0;opacity:0;animation:fadeUp 0.8s ease 0.2s forwards">
+        <div class="section-title" style="color:var(--accent-gold)">The Arc</div>
+        <p style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;line-height:1.7;max-width:720px">${data_story}</p>
+      </section>
+      <div class="divider"></div>
+    `;
+  }
+
+  // Top insights (synthesis)
+  if (top_insights && top_insights.length > 0) {
+    html += `
+      <section style="padding:24px 0 40px">
+        <div class="section-title">What Matters Most</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          ${top_insights.map((insight, i) => `
+            <div class="chain-item" style="cursor:default;border-left:3px solid ${['var(--accent-warm)','var(--accent-gold)','var(--accent-sage)'][i] || 'var(--border)'}">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-bottom:8px">0${i+1}</div>
+              <div class="chain-text">${insight}</div>
             </div>
           `).join('')}
         </div>
@@ -287,22 +312,68 @@ function render() {
     `;
   }
 
-  // Cross-project insights — highlight
-  if (cross_project && cross_project.length > 0) {
-    html += `
-      <section class="chain-section">
-        <div class="section-title">Cross-Project Insights</div>
-        <div class="chain-list" style="padding-left:0">
-          ${cross_project.map((chain, i) => renderChainItem(chain, 'xp', i)).join('')}
+  // Synthesized kernels — the primary content
+  if (hasKernels) {
+    // Group by type
+    const byType = {};
+    kernels.forEach(k => {
+      const t = k.type || 'pattern';
+      (byType[t] = byType[t] || []).push(k);
+    });
+
+    // Show orphan/correction first, then others
+    const kernelOrder = ['orphan', 'correction', 'stress', 'pattern', 'growth', 'question'];
+    const kernelLabels = {
+      orphan: 'Unfinished Business', correction: 'Recurring Corrections',
+      stress: 'Pain Points', pattern: 'Patterns', growth: 'What Works', question: 'Open Questions'
+    };
+
+    html += `<section class="chain-section">`;
+    for (const ktype of kernelOrder) {
+      const items = byType[ktype] || [];
+      if (items.length === 0) continue;
+      const kt = KERNEL_TYPES[ktype] || KERNEL_TYPES.pattern;
+      html += `
+        <div class="chain-type-block">
+          <div class="chain-type-header">
+            <div class="chain-type-icon" style="background:rgba(255,255,255,0.03);color:${kt.color}">${kt.icon}</div>
+            <div class="chain-type-name">${kernelLabels[ktype] || ktype}</div>
+            <div class="chain-type-count">${items.length}</div>
+          </div>
+          <div class="chain-list">
+            ${items.sort((a,b) => (b.importance||5) - (a.importance||5)).map((k, i) => {
+              const imp = k.importance || 5;
+              const impClass = imp >= 8 ? 'importance-high' : imp >= 5 ? 'importance-med' : 'importance-low';
+              return `
+                <div class="chain-item" style="cursor:default">
+                  <div class="chain-top">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:2px 7px;border-radius:4px;flex-shrink:0;margin-top:2px" class="${impClass}">${imp}</div>
+                    <div class="chain-text">${k.content || ''}</div>
+                  </div>
+                  <div class="chain-badges">
+                    ${k.cross_project ? '<span class="badge badge-cross">cross-project</span>' : ''}
+                    <span class="badge badge-type">${ktype}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
         </div>
-      </section>
-      <div class="divider"></div>
-    `;
+      `;
+    }
+    html += `</section><div class="divider"></div>`;
   }
 
-  // Chain types
-  html += `<section class="chain-section">`;
-  const typeOrder = ['correction', 'causal', 'thematic', 'temporal_link'];
+  // Raw chains — drill-down backing data (collapsed by default)
+  html += `
+    <section class="chain-section">
+      <div class="section-title" style="cursor:pointer" onclick="document.getElementById('raw-chains').style.display=document.getElementById('raw-chains').style.display==='none'?'block':'none'">
+        Raw Chains (${totalChains}) &mdash; click to ${hasKernels ? 'expand' : 'view'}
+      </div>
+      <div id="raw-chains" style="${hasKernels ? 'display:none' : ''}">
+  `;
+
+  const typeOrder = ['correction', 'orphan', 'causal', 'thematic', 'temporal_link'];
   for (const ctype of typeOrder) {
     const items = chains[ctype] || [];
     if (items.length === 0) continue;
@@ -320,7 +391,7 @@ function render() {
       </div>
     `;
   }
-  html += `</section>`;
+  html += `</div></section>`;
 
   // Footer
   html += `
