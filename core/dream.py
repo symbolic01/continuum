@@ -153,6 +153,7 @@ class DreamEngine:
         cluster_size_max: int = 8,
         model: str = "",
         verbose: bool = False,
+        focus_project: str = "",
     ):
         self.config = config or load_config()
         self.dry_run = dry_run
@@ -164,6 +165,7 @@ class DreamEngine:
         self.cluster_size_max = cluster_size_max
         self.model = model or get_model("dream", self.config)
         self.verbose = verbose
+        self.focus_project = focus_project  # project-biased seeding
 
         # State
         self.all_metadata: list[dict] = []
@@ -380,23 +382,81 @@ class DreamEngine:
             return cluster
         return None
 
-    def _prepare_seed_pool(self) -> list[tuple[dict, any, float]]:
-        """Build the initial seed pool with interleaved priorities.
+    def _select_focus_project(self) -> str:
+        """Select a focus project for this dream cycle.
 
-        Strategy: start with newest corpus chunks (most likely to have
-        unprocessed connections), then interleave chain seeds to build
-        higher-order connections from lower-order ones. Avoids pure
-        chain inbreeding by mixing fresh corpus throughout.
+        If self.focus_project is set, use it. Otherwise auto-select:
+        round-robin through all projects, prioritizing those with
+        fewest existing chains (least-dreamed-about).
+        """
+        if self.focus_project:
+            return self.focus_project
+
+        # Count chains per project
+        from collections import Counter
+        chain_projects = Counter()
+        for chain in self._load_all_chains():
+            for p in chain.get("member_projects", []):
+                chain_projects[p] += 1
+
+        # Count corpus entries per project
+        all_projects = set()
+        for meta in self.all_metadata:
+            t = meta.get("thread", "")
+            if t and meta.get("role") not in ("chain", "kernel"):
+                all_projects.add(t)
+
+        if not all_projects:
+            return ""
+
+        # Score: projects with low chain coverage get priority
+        # coverage = chains / corpus_entries for that project
+        project_counts = Counter(
+            m.get("thread", "") for m in self.all_metadata
+            if m.get("role") not in ("chain", "kernel") and m.get("thread")
+        )
+        scored = []
+        for proj in all_projects:
+            corpus_count = project_counts.get(proj, 0)
+            chain_count = chain_projects.get(proj, 0)
+            if corpus_count == 0:
+                continue
+            coverage = chain_count / corpus_count
+            scored.append((proj, coverage, corpus_count))
+
+        # Sort by coverage ascending (least-dreamed first)
+        scored.sort(key=lambda x: x[1])
+
+        if scored:
+            chosen = scored[0][0]
+            if self.verbose:
+                print(f"[dream] Auto-selected focus project: {chosen} "
+                      f"(coverage: {scored[0][1]:.2%}, "
+                      f"{scored[0][2]} entries)",
+                      file=sys.stderr)
+            return chosen
+        return ""
+
+    def _prepare_seed_pool(self) -> list[tuple[dict, any, float]]:
+        """Build project-biased seed pool.
+
+        Dream cycles start with a heavy bias toward the focus project.
+        Cross-project integration remains — just not the default starting
+        point. Ensures small but important projects (fence, family, health)
+        get adequate dream attention despite low corpus volume.
 
         Returns list of (meta, vector, priority) tuples.
         Priority levels:
           3.0 — newly created chains (self-reinforcing, inserted during run)
+          2.5 — focus project seeds (project-biased)
           2.0 — existing chain chunks
           1.5 — newest unchained corpus (last 7 days)
-          1.0 — unchained corpus
+          1.0 — unchained corpus (other projects)
           0.5 — already-chained corpus
         """
         import random
+
+        focus = self._select_focus_project()
 
         chained_uids = set()
         for ms in self.existing_member_sets:
@@ -408,6 +468,7 @@ class DreamEngine:
         from datetime import datetime, timedelta, timezone
         recent_cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
 
+        focus_seeds = []
         chain_seeds = []
         fresh_seeds = []
         corpus_seeds = []
@@ -420,9 +481,13 @@ class DreamEngine:
             role = meta.get("role", "")
             uid = meta.get("uid", "")
             ts = meta.get("ts", "")
+            thread = meta.get("thread", "")
 
             if role == "chain":
                 chain_seeds.append((meta, self.index.vectors[i], 2.0))
+            elif focus and thread == focus:
+                # Focus project gets highest corpus priority
+                focus_seeds.append((meta, self.index.vectors[i], 2.5))
             elif uid not in chained_uids:
                 if ts >= recent_cutoff:
                     fresh_seeds.append((meta, self.index.vectors[i], 1.5))
@@ -432,28 +497,28 @@ class DreamEngine:
                 stale_seeds.append((meta, self.index.vectors[i], 0.5))
 
         # Shuffle each band
-        for band in [chain_seeds, fresh_seeds, corpus_seeds, stale_seeds]:
+        for band in [focus_seeds, chain_seeds, fresh_seeds, corpus_seeds, stale_seeds]:
             random.shuffle(band)
 
-        # Interleave: fresh first, then alternate chain/corpus seeds
-        # Pattern: [fresh...] [chain, corpus, chain, corpus, ...] [stale...]
-        result = list(fresh_seeds)
+        # Build pool: focus seeds first, then interleave chain+fresh+corpus
+        result = list(focus_seeds)
 
-        # Interleave chains and corpus (not pure chain-first)
-        ci, co = 0, 0
-        while ci < len(chain_seeds) or co < len(corpus_seeds):
-            if ci < len(chain_seeds):
-                result.append(chain_seeds[ci])
-                ci += 1
-            if co < len(corpus_seeds):
-                result.append(corpus_seeds[co])
-                co += 1
+        # Interleave remaining bands
+        bands = [chain_seeds, fresh_seeds, corpus_seeds]
+        indices = [0] * len(bands)
+        while any(indices[j] < len(bands[j]) for j in range(len(bands))):
+            for j in range(len(bands)):
+                if indices[j] < len(bands[j]):
+                    result.append(bands[j][indices[j]])
+                    indices[j] += 1
 
         result.extend(stale_seeds)
 
         if self.verbose:
-            print(f"[dream] Seed pool: {len(fresh_seeds)} fresh, "
+            print(f"[dream] Focus project: {focus or '(global)'}", file=sys.stderr)
+            print(f"[dream] Seed pool: {len(focus_seeds)} focus, "
                   f"{len(chain_seeds)} chain, "
+                  f"{len(fresh_seeds)} fresh, "
                   f"{len(corpus_seeds)} corpus, "
                   f"{len(stale_seeds)} stale",
                   file=sys.stderr)

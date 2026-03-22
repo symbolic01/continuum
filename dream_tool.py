@@ -53,6 +53,8 @@ def main():
                         help="Run even if corpus hasn't changed since last dream")
     parser.add_argument("--wake-on-activity", action="store_true",
                         help="Stop integration if claude process detected (used by daemon)")
+    parser.add_argument("--focus-project", type=str, default="",
+                        help="Bias seeding toward this project (auto-selects if empty)")
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Verbose output")
     args = parser.parse_args()
@@ -77,6 +79,7 @@ def main():
         cluster_size_max=dream_config.get("cluster_size_max", 8),
         model=args.model,
         verbose=args.verbose,
+        focus_project=args.focus_project,
     )
     engine._check_wake_up = args.wake_on_activity
 

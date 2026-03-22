@@ -376,6 +376,14 @@ class ContextRetriever:
         role = meta.get("role", "")
         ts = meta.get("ts", "")
 
+        # Kernel entries (dream synthesis output) — highest value, no decay
+        if role == "kernel":
+            return base_score * 2.0
+
+        # Chain entries (dream integration output) — valuable, no decay
+        if role == "chain":
+            return base_score * 1.3
+
         # Context entries (CLAUDE.md, plans) — no decay, boosted
         if role == "context":
             return base_score * 1.5
