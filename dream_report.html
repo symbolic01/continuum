@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dream Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #0d0f14;
+  --bg-card: #151821;
+  --bg-hover: #1c2030;
+  --bg-surface: #1a1d28;
+  --text-primary: #e8e4dd;
+  --text-secondary: #8a8690;
+  --text-muted: #55525c;
+  --accent-warm: #d4956a;
+  --accent-gold: #c9a84c;
+  --accent-rose: #b86b78;
+  --accent-sage: #6b9b7d;
+  --accent-violet: #8b7bb5;
+  --accent-sky: #6a8fb5;
+  --border: #252836;
+  --border-subtle: #1e2130;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.container { max-width: 840px; margin: 0 auto; padding: 0 24px; }
+
+.ambient-glow {
+  position: fixed; width: 600px; height: 600px; border-radius: 50%;
+  filter: blur(120px); opacity: 0.06; pointer-events: none; z-index: 0;
+}
+.glow-1 { top: -200px; right: -100px; background: var(--accent-violet); }
+.glow-2 { bottom: -200px; left: -200px; background: var(--accent-warm); }
+
+/* -- Header -- */
+.header { padding: 80px 0 48px; position: relative; z-index: 1; }
+
+.brand {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--accent-violet); margin-bottom: 32px;
+  opacity: 0; animation: fadeUp 0.8s ease forwards;
+}
+
+.profile-grid {
+  display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: end;
+  opacity: 0; animation: fadeUp 0.8s ease 0.1s forwards;
+}
+
+.profile-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 48px; font-weight: 700; line-height: 1.1; margin-bottom: 8px;
+}
+
+.profile-meta { font-size: 15px; color: var(--text-secondary); }
+.profile-meta span { display: inline-block; margin-right: 16px; }
+.profile-meta span::before {
+  content: ''; display: inline-block; width: 4px; height: 4px;
+  border-radius: 50%; background: var(--text-muted); margin-right: 8px; vertical-align: middle;
+}
+.profile-meta span:first-child::before { display: none; }
+
+.stat-number { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 500; color: var(--accent-warm); }
+.stat-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+.profile-stats { text-align: right; }
+
+.divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); margin: 40px 0; }
+
+/* -- Unfinished business -- */
+.unfinished-section { padding: 24px 0 40px; opacity: 0; animation: fadeUp 0.8s ease 0.3s forwards; }
+.section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 24px;
+}
+
+.unfinished-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.unfinished-item { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-radius: var(--radius-sm); transition: background 0.2s; }
+.unfinished-item:hover { background: var(--bg-card); }
+.unfinished-dot { width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid var(--accent-rose); flex-shrink: 0; margin-top: 6px; }
+.unfinished-text { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+
+/* -- Chain type sections -- */
+.chain-section { padding: 24px 0 40px; }
+
+.chain-type-block { margin-bottom: 40px; opacity: 0; animation: fadeUp 0.6s ease forwards; }
+
+.chain-type-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+}
+
+.chain-type-icon {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
+}
+
+.chain-type-name { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; }
+.chain-type-count { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); margin-left: auto; }
+
+.chain-list { display: flex; flex-direction: column; gap: 6px; padding-left: 44px; }
+
+.chain-item {
+  background: var(--bg-card); border: 1px solid transparent; border-radius: var(--radius-sm);
+  padding: 16px 20px; cursor: pointer; transition: all 0.25s; position: relative;
+}
+.chain-item:hover { background: var(--bg-hover); border-color: var(--border); }
+.chain-item.expanded { background: var(--bg-hover); border-color: var(--border); }
+
+.chain-top { display: flex; align-items: start; gap: 12px; }
+
+.chain-text { font-size: 15px; line-height: 1.6; flex: 1; }
+
+.chain-badges { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+.badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.5px;
+  padding: 2px 8px; border-radius: 3px; text-transform: uppercase;
+}
+.badge-cross { background: rgba(139,123,181,0.12); color: var(--accent-violet); }
+.badge-project { background: rgba(106,143,181,0.1); color: var(--accent-sky); }
+.badge-type { background: rgba(85,82,92,0.2); color: var(--text-muted); }
+
+/* -- Drill-down -- */
+.drill-down { max-height: 0; overflow: hidden; transition: max-height 0.4s ease, opacity 0.3s; opacity: 0; }
+.drill-down.open { max-height: none; opacity: 1; }
+
+.drill-content { padding: 16px 0 8px; }
+.drill-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+}
+
+.member-item {
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 6px;
+}
+
+.member-header { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; flex-wrap: wrap; }
+
+.member-uid { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent-warm); }
+.member-ts { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); }
+.member-project {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.5px; padding: 1px 5px; border-radius: 3px;
+  background: rgba(106,143,181,0.1); color: var(--accent-sky);
+}
+.member-role {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; text-transform: uppercase;
+  padding: 1px 5px; border-radius: 3px; background: rgba(85,82,92,0.15); color: var(--text-muted);
+}
+
+.member-content { font-size: 13px; color: var(--text-secondary); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+
+/* -- Footer -- */
+.pipeline-footer { padding: 40px 0 60px; border-top: 1px solid var(--border-subtle); }
+.pipeline-steps { display: flex; gap: 4px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.pipeline-step { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); padding: 4px 10px; border-radius: 4px; background: var(--bg-card); }
+.pipeline-arrow { color: var(--text-muted); font-size: 12px; }
+.pipeline-label { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 16px; }
+
+.loading {
+  display: flex; align-items: center; justify-content: center; min-height: 60vh;
+  font-family: 'Cormorant Garamond', serif; font-size: 18px; color: var(--text-muted); font-style: italic;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+  .profile-name { font-size: 32px; }
+  .profile-grid { grid-template-columns: 1fr; }
+  .profile-stats { text-align: left; }
+  .unfinished-grid { grid-template-columns: 1fr; }
+  .chain-list { padding-left: 0; }
+  .drill-content { padding-left: 0; }
+  .header { padding: 48px 0 32px; }
+}
+</style>
+</head>
+<body>
+
+<div class="ambient-glow glow-1"></div>
+<div class="ambient-glow glow-2"></div>
+
+<div id="app" class="container">
+  <div class="loading">Dreaming...</div>
+</div>
+
+<script>
+const CHAIN_TYPES = {
+  correction: { icon: '!', color: 'var(--accent-rose)', bg: 'rgba(184,107,120,0.08)', label: 'Corrections' },
+  orphan:     { icon: '?', color: 'var(--accent-warm)', bg: 'rgba(212,149,106,0.08)', label: 'Unfinished Cycles' },
+  thematic:   { icon: '~', color: 'var(--accent-sage)', bg: 'rgba(107,155,125,0.08)', label: 'Thematic Chains' },
+  causal:     { icon: '>', color: 'var(--accent-gold)', bg: 'rgba(201,168,76,0.08)', label: 'Causal Chains' },
+  temporal_link: { icon: '<>', color: 'var(--accent-violet)', bg: 'rgba(139,123,181,0.08)', label: 'Temporal Links' },
+};
+
+let DATA = null;
+
+async function loadData() {
+  try {
+    // Try query param, then default path
+    const params = new URLSearchParams(window.location.search);
+    const src = params.get('src') || 'dream_report.json';
+    const res = await fetch(src + '?t=' + Date.now());
+    DATA = await res.json();
+    render();
+  } catch (err) {
+    document.getElementById('app').innerHTML =
+      `<div class="loading">Could not load dream_report.json. Run: cx dream --force</div>`;
+  }
+}
+
+function render() {
+  const { profile, chains, unfinished, cross_project } = DATA;
+  const stats = profile.stats || {};
+  const generated = profile.generated ? profile.generated.slice(0, 16).replace('T', ' ') : '';
+  const totalChains = Object.values(chains).reduce((a, arr) => a + arr.length, 0);
+
+  let html = `
+    <header class="header">
+      <div class="brand">Continuum Dream Report</div>
+      <div class="profile-grid">
+        <div>
+          <h1 class="profile-name">${profile.name || 'Dream Report'}</h1>
+          <div class="profile-meta">
+            <span>${generated}</span>
+            <span>${stats.corpus_entries?.toLocaleString() || 0} corpus entries</span>
+          </div>
+        </div>
+        <div class="profile-stats">
+          <div class="stat-number">${totalChains}</div>
+          <div class="stat-label">chains found</div>
+          <div style="margin-top:8px">
+            <div class="stat-number">${stats.clusters_processed || stats.passes || 0}</div>
+            <div class="stat-label">clusters processed</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="divider"></div>
+  `;
+
+  // Unfinished business (orphans) — prominent
+  if (unfinished && unfinished.length > 0) {
+    html += `
+      <section class="unfinished-section">
+        <div class="section-title">Unfinished Business</div>
+        <div class="unfinished-grid">
+          ${unfinished.map(item => `
+            <div class="unfinished-item">
+              <div class="unfinished-dot"></div>
+              <div class="unfinished-text">${item.synthesis || ''}</div>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+      <div class="divider"></div>
+    `;
+  }
+
+  // Cross-project insights — highlight
+  if (cross_project && cross_project.length > 0) {
+    html += `
+      <section class="chain-section">
+        <div class="section-title">Cross-Project Insights</div>
+        <div class="chain-list" style="padding-left:0">
+          ${cross_project.map((chain, i) => renderChainItem(chain, 'xp', i)).join('')}
+        </div>
+      </section>
+      <div class="divider"></div>
+    `;
+  }
+
+  // Chain types
+  html += `<section class="chain-section">`;
+  const typeOrder = ['correction', 'causal', 'thematic', 'temporal_link'];
+  for (const ctype of typeOrder) {
+    const items = chains[ctype] || [];
+    if (items.length === 0) continue;
+    const tc = CHAIN_TYPES[ctype] || CHAIN_TYPES.thematic;
+    html += `
+      <div class="chain-type-block" style="animation-delay:${0.3 + typeOrder.indexOf(ctype) * 0.1}s">
+        <div class="chain-type-header">
+          <div class="chain-type-icon" style="background:${tc.bg};color:${tc.color}">${tc.icon}</div>
+          <div class="chain-type-name">${tc.label}</div>
+          <div class="chain-type-count">${items.length}</div>
+        </div>
+        <div class="chain-list">
+          ${items.map((chain, i) => renderChainItem(chain, ctype, i)).join('')}
+        </div>
+      </div>
+    `;
+  }
+  html += `</section>`;
+
+  // Footer
+  html += `
+    <div class="pipeline-footer">
+      <div class="pipeline-steps">
+        <span class="pipeline-step">${stats.corpus_entries?.toLocaleString() || '?'} entries</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">cluster</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">integrate</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">${totalChains} chains</span>
+      </div>
+      <div class="pipeline-label">
+        cx dream &middot; Ollama (local) &middot; ${stats.tokens_used?.toLocaleString() || '?'} tokens
+      </div>
+    </div>
+  `;
+
+  document.getElementById('app').innerHTML = html;
+}
+
+function renderChainItem(chain, typeKey, idx) {
+  const id = `chain-${typeKey}-${idx}`;
+  const projects = (chain.projects || []).filter(p => p);
+  return `
+    <div class="chain-item" id="${id}" onclick="toggleDrill('${id}')">
+      <div class="chain-top">
+        <div class="chain-text">${chain.synthesis || ''}</div>
+      </div>
+      <div class="chain-badges">
+        ${chain.cross_project ? '<span class="badge badge-cross">cross-project</span>' : ''}
+        ${projects.map(p => `<span class="badge badge-project">${p}</span>`).join('')}
+        <span class="badge badge-type">${chain.type || typeKey}</span>
+        <span class="badge badge-type">${chain.member_count || 0} chunks</span>
+      </div>
+      <div class="drill-down" id="drill-${id}">
+        <div class="drill-content">
+          <div class="drill-label">Member chunks (${(chain.members || []).length})</div>
+          ${(chain.members || []).map(m => `
+            <div class="member-item">
+              <div class="member-header">
+                <span class="member-uid">${m.uid || ''}</span>
+                <span class="member-ts">${(m.ts || '').slice(0, 16)}</span>
+                <span class="member-project">${m.thread || ''}</span>
+                <span class="member-role">${m.role || ''}</span>
+              </div>
+              <div class="member-content">${escapeHtml(m.content || '')}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+function toggleDrill(chainId) {
+  const el = document.getElementById('drill-' + chainId);
+  const item = document.getElementById(chainId);
+  el.classList.toggle('open');
+  item.classList.toggle('expanded');
+}
+
+loadData();
+</script>
+</body>
+</html>

@@ -268,10 +268,20 @@ class DreamEngine:
         return None
 
     def _prepare_seed_pool(self) -> list[tuple[dict, any, float]]:
-        """Build the initial seed pool with priorities.
+        """Build the initial seed pool with interleaved priorities.
+
+        Strategy: start with newest corpus chunks (most likely to have
+        unprocessed connections), then interleave chain seeds to build
+        higher-order connections from lower-order ones. Avoids pure
+        chain inbreeding by mixing fresh corpus throughout.
 
         Returns list of (meta, vector, priority) tuples.
-        Priority: chain chunks > unchained corpus > chained corpus.
+        Priority levels:
+          3.0 — newly created chains (self-reinforcing, inserted during run)
+          2.0 — existing chain chunks
+          1.5 — newest unchained corpus (last 7 days)
+          1.0 — unchained corpus
+          0.5 — already-chained corpus
         """
         import random
 
@@ -281,36 +291,59 @@ class DreamEngine:
         for chain in self.new_chains:
             chained_uids.update(chain.get("member_uids", []))
 
-        seeds = []
+        # Determine recency threshold (7 days)
+        from datetime import datetime, timedelta, timezone
+        recent_cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+
+        chain_seeds = []
+        fresh_seeds = []
+        corpus_seeds = []
+        stale_seeds = []
+
         for i, meta in enumerate(self.index.metadata):
             if self._is_low_content(meta):
                 continue
 
             role = meta.get("role", "")
             uid = meta.get("uid", "")
+            ts = meta.get("ts", "")
 
             if role == "chain":
-                # Chain chunks are high-priority seeds (self-reinforcing)
-                seeds.append((meta, self.index.vectors[i], 2.0))
+                chain_seeds.append((meta, self.index.vectors[i], 2.0))
             elif uid not in chained_uids:
-                # Unchained corpus chunks are medium priority
-                seeds.append((meta, self.index.vectors[i], 1.0))
+                if ts >= recent_cutoff:
+                    fresh_seeds.append((meta, self.index.vectors[i], 1.5))
+                else:
+                    corpus_seeds.append((meta, self.index.vectors[i], 1.0))
             else:
-                # Already-chained chunks are low priority
-                seeds.append((meta, self.index.vectors[i], 0.5))
+                stale_seeds.append((meta, self.index.vectors[i], 0.5))
 
-        # Sort by priority (highest first), shuffle within priority bands
-        seeds.sort(key=lambda x: x[2], reverse=True)
-
-        # Shuffle within each priority band to avoid deterministic ordering
-        bands = {}
-        for s in seeds:
-            bands.setdefault(s[2], []).append(s)
-        result = []
-        for priority in sorted(bands.keys(), reverse=True):
-            band = bands[priority]
+        # Shuffle each band
+        for band in [chain_seeds, fresh_seeds, corpus_seeds, stale_seeds]:
             random.shuffle(band)
-            result.extend(band)
+
+        # Interleave: fresh first, then alternate chain/corpus seeds
+        # Pattern: [fresh...] [chain, corpus, chain, corpus, ...] [stale...]
+        result = list(fresh_seeds)
+
+        # Interleave chains and corpus (not pure chain-first)
+        ci, co = 0, 0
+        while ci < len(chain_seeds) or co < len(corpus_seeds):
+            if ci < len(chain_seeds):
+                result.append(chain_seeds[ci])
+                ci += 1
+            if co < len(corpus_seeds):
+                result.append(corpus_seeds[co])
+                co += 1
+
+        result.extend(stale_seeds)
+
+        if self.verbose:
+            print(f"[dream] Seed pool: {len(fresh_seeds)} fresh, "
+                  f"{len(chain_seeds)} chain, "
+                  f"{len(corpus_seeds)} corpus, "
+                  f"{len(stale_seeds)} stale",
+                  file=sys.stderr)
 
         return result
 

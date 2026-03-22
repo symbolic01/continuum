@@ -125,8 +125,17 @@ def main():
         # Generate report (includes ALL chains, not just this run)
         report = engine.generate_report(stats, temporal_links)
 
+        # Copy report JSON next to HTML for serving
+        import shutil
+        html_dir = _CONTINUUM_DIR
+        report_copy = html_dir / "dream_report.json"
+        from core.dream import DREAM_REPORT_PATH
+        shutil.copy2(str(DREAM_REPORT_PATH), str(report_copy))
+
         if args.report:
             engine.print_report_markdown(report)
+            print(f"\n[dream] HTML report: file://{html_dir}/dream_report.html",
+                  file=sys.stderr)
 
         if args.report_file:
             import io
