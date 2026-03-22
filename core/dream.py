@@ -239,16 +239,24 @@ class DreamEngine:
     def _detect_wake_up(self) -> str | None:
         """Detect user activity or GPU contention.
 
+        Uses session file writes (not process detection) because bridge
+        keeps persistent claude PTY processes alive even when the user
+        is away. A session JSONL write means someone is actually typing.
+
         Returns reason string if dream should stop, None otherwise.
         """
-        # 1. Claude process running
-        try:
-            result = subprocess.run(
-                ["pgrep", "-f", "claude"], capture_output=True, timeout=3)
-            if result.returncode == 0:
-                return "claude process detected"
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass
+        import glob
+        import os
+
+        # 1. Session file activity — a write in the last 2 minutes means
+        #    someone is actively using Claude (not just an idle PTY)
+        cc_pattern = str(Path.home() / ".claude" / "projects" / "*" / "*.jsonl")
+        session_files = glob.glob(cc_pattern)
+        if session_files:
+            newest = max(os.path.getmtime(f) for f in session_files)
+            age_seconds = time.time() - newest
+            if age_seconds < 120:  # active within 2 minutes
+                return f"session activity ({age_seconds:.0f}s ago)"
 
         # 2. GPU contention — new process using VRAM that isn't Ollama
         try:

@@ -94,9 +94,9 @@ def should_dream(idle_minutes: float, min_gap_minutes: float = 60) -> tuple[bool
     if idle_mins < idle_minutes:
         return False, f"sessions active {idle_mins:.0f}m ago (need {idle_minutes:.0f}m)"
 
-    # Check if claude is currently running (don't dream during active use)
-    if is_claude_running():
-        return False, "claude process is running"
+    # Note: we do NOT check for claude processes here because bridge
+    # keeps persistent PTY sessions alive even when the user is away.
+    # Session JSONL mtime is the correct idle signal.
 
     # Check minimum gap since last dream
     last_dream = last_dream_time()
