@@ -12,7 +12,7 @@ cd continuum
 pip install -r requirements.txt   # numpy + pyyaml (both optional, see below)
 ```
 
-No dependencies are required for basic `cx spoof` / `cx retrieve` / `cx ingest` usage. `numpy` enables semantic embeddings. `pyyaml` enables `continuum.yaml` config (env vars work without it).
+No dependencies are required for basic `cx spoof` / `cx retrieve` / `cx ingest` usage. `numpy` enables semantic embeddings. `pyyaml` enables `continuum.yaml` config (env vars work without it). `cx dream` requires Ollama for integration and Claude CLI for synthesis.
 
 ### 2. Configure
 
@@ -68,13 +68,14 @@ export PATH="$HOME/bin:$PATH"
 
 ### 6. Install Claude Code skills (optional)
 
-This gives you `/retrieve`, `/spoof`, and `/ingest` slash commands inside any Claude Code session:
+This gives you `/retrieve`, `/spoof`, `/ingest`, and `/dream` slash commands inside any Claude Code session:
 
 ```bash
 mkdir -p ~/.claude/skills
 ln -s "$(pwd)/skills/retrieve" ~/.claude/skills/retrieve
 ln -s "$(pwd)/skills/spoof" ~/.claude/skills/spoof
 ln -s "$(pwd)/skills/ingest" ~/.claude/skills/ingest
+ln -s "$(pwd)/skills/dream" ~/.claude/skills/dream
 ```
 
 ### 7. Try it
@@ -112,15 +113,16 @@ Without Ollama, retrieval falls back to raw keyword search (no decomposition, no
 
 ### Model configuration
 
-Continuum uses three LLM roles. Each is configurable via env var or `continuum.yaml`:
+Continuum uses four LLM roles. Each is configurable via env var or `continuum.yaml`:
 
 | Role | What it does | Default | Env var |
 |------|-------------|---------|---------|
-| **compress** | Session narrative compression (`cx spoof --compress`) | `claude-sonnet-4-6` | `CONTINUUM_COMPRESS_MODEL` |
+| **compress** | Session compression + dream synthesis | `claude-sonnet-4-6` | `CONTINUUM_COMPRESS_MODEL` |
 | **cull** | Retrieval precision filtering | `claude-haiku-4-5-20251001` | `CONTINUUM_CULL_MODEL` |
 | **decompose** | Query decomposition + keyword expansion (Ollama) | `qwen2.5:7b` | `CONTINUUM_DECOMPOSE_MODEL` |
+| **dream** | Integration pass cluster analysis (Ollama) | `qwen2.5:7b` | `CONTINUUM_DREAM_MODEL` |
 
-Compress and cull run via `claude --print` — they use whatever model names your Claude CLI understands. Decompose runs via Ollama's local API.
+Compress and cull run via `claude --print`. Decompose and dream run via Ollama's local API.
 
 **At work with LiteLLM / Bedrock / custom model names:**
 
@@ -196,6 +198,40 @@ What happens:
 4. Injects your `identity.md` as a first-person assistant turn + system prompt
 5. Retrieves relevant corpus context and injects it as recall blocks
 6. Writes a valid CC session JSONL that `claude --resume` picks up natively
+
+### `cx dream` — offline integration + synthesis
+
+Runs while you're away. Finds connections across your entire corpus — corrections, unfinished work, cross-project patterns — and synthesizes them into human-meaningful kernels.
+
+```bash
+cx dream                           # full pipeline (ingest, integrate, synthesize, report)
+cx dream --max-time 1800           # run for 30 minutes
+cx dream --report                  # print markdown report
+cx dream --dry-run                 # show what would happen
+cx dream --no-synthesis            # skip Claude synthesis (just integration)
+```
+
+**Pipeline:**
+1. **Ingest housekeeping** — pick up new sessions, docs, code changes
+2. **Integration** (Ollama, local) — self-reinforcing loop: clusters corpus chunks by multi-axis similarity (semantic + temporal + project + keyword), sends to LLM to find chains (thematic, causal, corrections, orphans). New chains become preferred seeds — the dream feeds on its own discoveries
+3. **Temporal reconnection** — finds cross-temporal links (things that happened weeks apart but are related)
+4. **Synthesis** (Claude Sonnet) — compresses raw chains into human-meaningful kernels that pass the "so what?" test
+5. **Report** — HTML drill-down at `dream_report.html` + markdown summary
+
+**Auto-trigger:** Set up the daemon to dream automatically when sessions are idle:
+
+```bash
+cx daemon --idle 15 --dream 90 --gap 120    # background daemon
+cx daemon --once                             # single check (for cron/systemd)
+```
+
+The dream wakes up gracefully if you start a Claude session — finishes synthesizing, then stops.
+
+**Kernels** (synthesis output) are written as first-class corpus entries. They're retrievable by `cx retrieve` and carry provenance back to the raw chains that produced them.
+
+### `cx daemon` — auto-dream on idle
+
+Checks every 60s (configurable). Dreams when: no session writes for `--idle` minutes, no claude process running, minimum `--gap` since last dream, and new corpus content exists.
 
 ### `cx` (no args) — resume last spoof
 
@@ -349,7 +385,13 @@ Everything Continuum produces lives under `~/.continuum/`. The embedding index (
 │   ├── corpus.npz              #   ⚠️ EXPENSIVE: embedding vectors (hours to rebuild)
 │   ├── corpus.meta.json        #   Metadata for embedded entries only
 │   ├── all_metadata.json       #   Metadata for ALL entries (keyword/identifier search)
-│   └── identifiers.json        #   Known file paths, function names, class names
+│   ├── identifiers.json        #   Known file paths, function names, class names
+│   └── xrefs.json              #   Cross-reference index (dream chain → member UIDs)
+│
+├── corpus/_chains/             # Dream output: chain + kernel JSONL files
+├── dream_state.json            # Last dream run metadata (idempotency)
+├── dream_report.json           # Latest dream report (loaded by dream_report.html)
+├── dream_daemon.log            # Daemon activity log
 │
 ├── sessions/                   # Interactive mode session logs
 ├── .last_spoof                 # Session ID of last cx spoof
@@ -399,10 +441,14 @@ continuum.yaml                  # Your local config (git-ignored)
 
 ```
 continuum/
-├── bin/cx                     # Shell wrapper: cx spoof, cx retrieve, cx ingest, cx (resume)
+├── bin/cx                     # Shell wrapper: cx spoof, cx retrieve, cx ingest, cx dream, cx daemon
 ├── spoof_tool.py              # CLI: session spoofing (--compress, --prompt, --context)
 ├── retrieve_tool.py           # CLI: corpus retrieval (query, --budget, --no-cull)
 ├── ingest_all.py              # CLI: one-shot ingest (CC sessions + markdown + codebases + index)
+├── dream_tool.py              # CLI: offline integration + synthesis pipeline
+├── dream_daemon.py            # Idle-triggered dream runner (systemd/cron)
+├── dream_report.html          # Dark theme drill-down report UI
+├── clean_corpus.py            # Remove low-signal corpus entries
 ├── identity.md                # Identity core — first-person, injected into spoofed sessions
 ├── system.md                  # System prompt for interactive mode
 ├── continuum.yaml.example     # Config template — copy to continuum.yaml
@@ -417,6 +463,7 @@ continuum/
 │   ├── session_compress.py    # LLM-powered narrative distillation
 │   ├── session_log.py         # Append-only JSONL with UID minting
 │   ├── compression.py         # Pluggable compression policies
+│   ├── dream.py               # DreamEngine: integration passes, synthesis, report
 │   ├── auto_ingest.py         # Stale-index detection for auto-ingest on tool use
 │   ├── tokens.py              # Token counting
 │   ├── config.py              # YAML config loader

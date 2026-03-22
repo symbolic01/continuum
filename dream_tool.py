@@ -51,6 +51,8 @@ def main():
                         help="Stop when convergence detected (default: use time/token caps)")
     parser.add_argument("--force", action="store_true",
                         help="Run even if corpus hasn't changed since last dream")
+    parser.add_argument("--wake-on-activity", action="store_true",
+                        help="Stop integration if claude process detected (used by daemon)")
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Verbose output")
     args = parser.parse_args()
@@ -76,6 +78,7 @@ def main():
         model=args.model,
         verbose=args.verbose,
     )
+    engine._check_wake_up = args.wake_on_activity
 
     # Phase 0: Check if dreaming is needed
     if not args.force and not args.dry_run and not engine.should_dream():

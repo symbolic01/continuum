@@ -122,6 +122,7 @@ def run_dream(dream_minutes: int, verbose: bool = False):
         sys.executable, str(CONTINUUM_DIR / "dream_tool.py"),
         "--max-time", str(dream_seconds),
         "--force",
+        "--wake-on-activity",
         "--report-file", str(Path.home() / ".continuum" / "last_dream_report.md"),
     ]
     if verbose:

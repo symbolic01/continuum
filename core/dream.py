@@ -174,6 +174,7 @@ class DreamEngine:
         self.pass_history: list[int] = []
         self.tokens_used: int = 0
         self.start_time: float = 0.0
+        self._check_wake_up: bool = False  # set by daemon to enable user-activity detection
 
     def load_corpus(self):
         """Load the corpus metadata and embedding index."""
@@ -220,7 +221,7 @@ class DreamEngine:
         return False
 
     def _should_stop(self) -> tuple[bool, str]:
-        """Check termination conditions."""
+        """Check termination conditions, including user-activity wake-up."""
         elapsed = time.time() - self.start_time
         if elapsed >= self.max_wall_time:
             return True, f"wall time ({elapsed:.0f}s >= {self.max_wall_time}s)"
@@ -228,6 +229,15 @@ class DreamEngine:
             return True, f"token budget ({self.tokens_used} >= {self.max_llm_tokens})"
         if len(self.new_chains) >= self.max_chains:
             return True, f"chain cap ({len(self.new_chains)} >= {self.max_chains})"
+        # Wake-up: stop if user started a claude session (check every ~20s)
+        if self._check_wake_up and elapsed > 30:
+            try:
+                result = subprocess.run(
+                    ["pgrep", "-f", "claude"], capture_output=True, timeout=3)
+                if result.returncode == 0:
+                    return True, "woke up (claude process detected)"
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
         return False, ""
 
     def _is_converged(self) -> bool:
