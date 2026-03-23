@@ -1316,6 +1316,15 @@ class DreamEngine:
         import glob
         import re
         projects_dir = Path.home() / "projects"
+        focus = self.focus_project
+
+        # Scope scan to focus project if set
+        if focus:
+            scan_dir = projects_dir / focus
+            if not scan_dir.exists():
+                scan_dir = projects_dir  # fallback to all
+        else:
+            scan_dir = projects_dir
 
         # Collect all chain content for matching
         chain_text = " ".join(c.get("content", "") for c in all_chains).lower()
@@ -1342,7 +1351,7 @@ class DreamEngine:
             r'|^Co-Authored'      # commit signatures
         )
 
-        for claude_md in sorted(glob.glob(str(projects_dir / "**/CLAUDE.md"), recursive=True)):
+        for claude_md in sorted(glob.glob(str(scan_dir / "**/CLAUDE.md"), recursive=True)):
             path = Path(claude_md)
             try:
                 text = path.read_text()
@@ -1366,7 +1375,7 @@ class DreamEngine:
                 planned_items.append((line[:200], f"{project}/CLAUDE.md#{current_section}", project))
 
         # Extract from plans — titles and all substantive lines
-        for plan_file in sorted(glob.glob(str(projects_dir / "**/plans/*.md"), recursive=True)):
+        for plan_file in sorted(glob.glob(str(scan_dir / "**/plans/*.md"), recursive=True)):
             path = Path(plan_file)
             try:
                 text = path.read_text()
@@ -1458,8 +1467,17 @@ class DreamEngine:
                     "evidence_confidence": 1.0 - chain_coverage,
                 })
 
+        # Cap gaps: prioritize "discussed but no chains" (importance 8) over pure gaps (6)
+        # Then cap at 25 to keep synthesis/validation tractable
+        MAX_GAPS = 25
+        gaps.sort(key=lambda g: (-g["importance"], g["evidence_confidence"]))
+        if len(gaps) > MAX_GAPS:
+            gaps = gaps[:MAX_GAPS]
+
         if gaps:
-            print(f"[dream] Gap analysis: {len(gaps)} planned items with no chain activity",
+            discussed = sum(1 for g in gaps if g["importance"] >= 8)
+            print(f"[dream] Gap analysis: {len(gaps)} gaps "
+                  f"({discussed} discussed-but-unacted, {len(gaps) - discussed} pure gaps)",
                   file=sys.stderr)
 
             # Write gap kernels to corpus
