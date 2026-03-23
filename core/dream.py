@@ -1325,6 +1325,20 @@ class DreamEngine:
             except OSError:
                 continue
 
+        # Also check for auto-memory files (Claude Code's accumulated memory)
+        memory_dirs = [
+            Path.home() / ".claude" / "projects" / f"-home-symbolic-projects-{self.focus_project.replace('/', '-')}" / "memory",
+            Path.home() / ".claude" / "projects" / f"-home-symbolic-projects" / "memory",
+        ]
+        for mem_dir in memory_dirs:
+            if mem_dir.is_dir():
+                for mem_file in sorted(mem_dir.glob("*.md")):
+                    try:
+                        text = mem_file.read_text()
+                        parts.append(f"--- memory/{mem_file.name} ---\n{text[:2000]}")
+                    except OSError:
+                        continue
+
         result = "\n\n".join(parts)
         if result and self.verbose:
             print(f"[dream] Loaded {len(parts)} context files for focus project "
