@@ -208,30 +208,62 @@ cx dream                           # full pipeline (ingest, integrate, synthesiz
 cx dream --max-time 1800           # run for 30 minutes
 cx dream --report                  # print markdown report
 cx dream --dry-run                 # show what would happen
-cx dream --no-synthesis            # skip Claude synthesis (just integration)
+cx dream --no-synthesis            # skip Claude synthesis (just integration only, free)
+cx dream --focus-project bridge    # bias seeding + synthesis toward a specific project
+cx daydream 120                    # quick daydream: skip idle check, no wake-up, 2 min
 ```
 
-**Pipeline:**
+**Pipeline (6 stages):**
 1. **Ingest housekeeping** — pick up new sessions, docs, code changes
-2. **Integration** (Ollama, local) — self-reinforcing loop: clusters corpus chunks by multi-axis similarity (semantic + temporal + project + keyword), sends to LLM to find chains (thematic, causal, corrections, orphans). New chains become preferred seeds — the dream feeds on its own discoveries
+2. **Integration** (Ollama, local) — self-reinforcing loop: clusters corpus chunks by multi-axis similarity (semantic + temporal + project + keyword), sends to LLM to find chains (thematic, causal, corrections, orphans). New chains become preferred seeds — the dream feeds on its own discoveries. Large chunks get LLM-summarized instead of truncated
 3. **Temporal reconnection** — finds cross-temporal links (things that happened weeks apart but are related)
-4. **Synthesis** (Claude Sonnet) — compresses raw chains into human-meaningful kernels that pass the "so what?" test
-5. **Report** — HTML drill-down at `dream_report.html` + markdown summary
+4. **Synthesis** (Claude Sonnet) — two-pass when `--focus-project` is set: first synthesizes focus project chains (catches niche topics), then all chains (broad patterns). Includes project CLAUDE.md + plans as context so the model can compare chains against documented plans. Hallucinated chain refs are cleaned automatically
+5. **Evidence validation** (Claude Haiku) — each kernel is validated by retrieving corpus evidence (excluding dream-generated content to prevent circular validation) and asking an LLM judge: supported / contradicted / insufficient. Verdicts shown in report
+6. **Gap analysis** — scans all CLAUDE.md sections, plans, and auto-memory files for documented items with zero chain activity. Flags the *absence* of work as significant. Items discussed in sessions but never acted on get higher importance
+7. **Report** — dark theme HTML drill-down at `dream_report.html` with search, role colors, evidence badges. Versioned copies preserved for history
 
-**Auto-trigger:** Set up the daemon to dream automatically when sessions are idle:
+**Daydream vs Night Dream:**
+- `cx daydream 120` — streaming mode: full pipeline, small scope, immediate results. For when you're actively watching
+- Daemon (night mode) — batched: runs fast integration-only cycles (free, Ollama only). Synthesis triggers on user wakeup, after 7 hours, or at 6:30 AM
 
-```bash
-cx daemon --idle 15 --dream 90 --gap 120    # background daemon
-cx daemon --once                             # single check (for cron/systemd)
-```
+**Report features:**
+- Regex search bar — finds matches across all levels, auto-expands matching sections, highlights specific chunks
+- Role color coding — warm/gold for user-sourced content, cool/blue for assistant, blended for mixed
+- Evidence badges — green (supported), amber (thin), orange (unverified), red (contradicted)
+- Drill-down — group → kernel → backing chain → member chunks
+- Report history — each cycle saves a versioned copy; dropdown to browse past reports
 
-The dream wakes up gracefully if you start a Claude session — finishes synthesizing, then stops.
+**Project-aware seeding:**
+- Each dream cycle auto-selects the least-dreamed-about project as focus (ensures small projects like fence, family, health get adequate attention)
+- `--focus-project` for explicit targeting
+- Focus seeds get priority; cross-project integration still happens via interleaving
 
-**Kernels** (synthesis output) are written as first-class corpus entries. They're retrievable by `cx retrieve` and carry provenance back to the raw chains that produced them.
+**Kernels** (synthesis output) are written as first-class corpus entries with a 2x retrieval boost. They're retrievable by `cx retrieve` and carry provenance back to the raw chains that produced them.
 
 ### `cx daemon` — auto-dream on idle
 
-Checks every 60s (configurable). Dreams when: no session writes for `--idle` minutes, no claude process running, minimum `--gap` since last dream, and new corpus content exists.
+Batched night dreams with wakeup synthesis. Runs integration-only cycles while idle (fast, free). Triggers full synthesis when:
+1. User wakes up (session activity detected)
+2. Max hours elapsed (default 7h)
+3. Morning hour reached (default 6:30 AM)
+
+```bash
+cx daemon --idle 15 --dream 30 --gap 10 --max-hours 7 --morning 6.5
+cx daemon --once                    # single check (for cron/systemd)
+```
+
+**Wake-up detection:** checks session JSONL write recency (not process detection — bridge keeps persistent PTY sessions). Also yields on GPU contention (nvidia-smi).
+
+**Daytime naps:** if you go to lunch, integration cycles accumulate. When you come back and start typing, synthesis runs on the lunch-break chains. Fresh mini-report after every break.
+
+### `cx daydream` — quick manual dream
+
+```bash
+cx daydream 120                    # 2-min integration, full synthesis, report
+cx daydream 60 --focus-project superempathy
+```
+
+Bundles `--force --no-ingest --verbose --report`. Skips idle check and wake-up detection. For interactive exploration.
 
 ### `cx` (no args) — resume last spoof
 
@@ -441,7 +473,7 @@ continuum.yaml                  # Your local config (git-ignored)
 
 ```
 continuum/
-├── bin/cx                     # Shell wrapper: cx spoof, cx retrieve, cx ingest, cx dream, cx daemon
+├── bin/cx                     # Shell wrapper: cx spoof, cx retrieve, cx ingest, cx dream, cx daydream, cx daemon
 ├── spoof_tool.py              # CLI: session spoofing (--compress, --prompt, --context)
 ├── retrieve_tool.py           # CLI: corpus retrieval (query, --budget, --no-cull)
 ├── ingest_all.py              # CLI: one-shot ingest (CC sessions + markdown + codebases + index)
@@ -463,7 +495,7 @@ continuum/
 │   ├── session_compress.py    # LLM-powered narrative distillation
 │   ├── session_log.py         # Append-only JSONL with UID minting
 │   ├── compression.py         # Pluggable compression policies
-│   ├── dream.py               # DreamEngine: integration passes, synthesis, report
+│   ├── dream.py               # DreamEngine: integration, synthesis, validation, gap analysis, report
 │   ├── auto_ingest.py         # Stale-index detection for auto-ingest on tool use
 │   ├── tokens.py              # Token counting
 │   ├── config.py              # YAML config loader
@@ -477,11 +509,22 @@ continuum/
     └── web.py                 # Web UI
 ```
 
+## Corpus cleanup
+
+Remove low-signal entries that waste embeddings and pollute search:
+
+```bash
+python clean_corpus.py              # dry run — show what would be removed
+python clean_corpus.py --apply      # rewrite corpus files + rebuild index
+```
+
+Filters: assistant bracket summaries (`[Read: path]`), filler responses (`No response requested.`), tool result rejection boilerplate. Typically removes ~30% of corpus entries.
+
 ## Vision
 
 Continuum is a fragment of [Superempathy](https://independent.academia.edu/JayaramaMarks) — the thesis that superintelligence without proportional empathy is incomplete.
 
-Current AI sessions are amnesiac by design. Continuum demonstrates a continuity architecture where context fades gracefully rather than dying abruptly — like human memory. Every insight is traceable to its source via provenance UIDs.
+Current AI sessions are amnesiac by design. Continuum demonstrates a continuity architecture where context fades gracefully rather than dying abruptly — like human memory. Every insight is traceable to its source via provenance UIDs. The dream phase takes this further — offline reflection that finds what you forgot, what you keep re-learning, and what you planned but never started.
 
 ## License
 
