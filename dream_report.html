@@ -519,7 +519,34 @@ function render() {
     html += `</section><div class="divider"></div>`;
   }
 
-  // Raw chains accessible only through kernel drill-down (group → kernel → chain → chunk)
+  // Raw chains — hidden by default, shown by search when matches exist only in chains
+  const typeOrder = ['correction', 'orphan', 'causal', 'thematic', 'temporal_link'];
+  html += `
+    <section class="chain-section" id="raw-chains-section" style="display:none">
+      <div class="section-header collapsed" onclick="toggleSection('raw-chains-body', this)">
+        <div class="section-chevron">&#9660;</div>
+        <div class="section-title" style="margin-bottom:0">Raw Chains (${totalChains})</div>
+      </div>
+      <div class="section-body" id="raw-chains-body" style="display:none">
+  `;
+  for (const ctype of typeOrder) {
+    const items = chains[ctype] || [];
+    if (items.length === 0) continue;
+    const tc = CHAIN_TYPES[ctype] || CHAIN_TYPES.thematic;
+    html += `
+      <div class="chain-type-block raw-chain-group" data-chain-type="${ctype}">
+        <div class="chain-type-header">
+          <div class="chain-type-icon" style="background:${tc.bg};color:${tc.color}">${tc.icon}</div>
+          <div class="chain-type-name">${tc.label}</div>
+          <div class="chain-type-count">${items.length}</div>
+        </div>
+        <div class="chain-list">
+          ${items.map((chain, i) => renderChainItem(chain, ctype, i)).join('')}
+        </div>
+      </div>
+    `;
+  }
+  html += `</div></section>`;
 
   // Footer
   html += `
@@ -658,24 +685,30 @@ function doSearch(query) {
     re.lastIndex = 0;
   });
 
-  // Also check chain data
-  const matchingChainTypes = new Set();
+  // Also check raw chain data — find individual matching chains
+  const matchingChains = {};  // ctype -> [indices]
   for (const [ctype, arr] of Object.entries(DATA.chains || {})) {
-    for (const chain of arr) {
+    arr.forEach((chain, i) => {
       const blob = JSON.stringify(chain);
-      if (re.test(blob)) { matchingChainTypes.add(ctype); break; }
+      if (re.test(blob)) {
+        (matchingChains[ctype] = matchingChains[ctype] || []).push(i);
+      }
       re.lastIndex = 0;
-    }
+    });
   }
+  const matchingChainCount = Object.values(matchingChains).reduce((a, b) => a + b.length, 0);
 
-  const totalHits = matchingKernelIds.size + matchingChainTypes.size;
+  const totalHits = matchingKernelIds.size + matchingChainCount;
   if (totalHits === 0) {
     countEl.textContent = `0 matches for "${query}"`;
     app.querySelectorAll('.chain-type-block').forEach(b => b.classList.add('search-hidden'));
+    // Hide raw chains section
+    const rawSec = document.getElementById('raw-chains-section');
+    if (rawSec) rawSec.style.display = 'none';
     return;
   }
 
-  countEl.textContent = `${matchingKernelIds.size} kernels, ${matchingChainTypes.size} chain groups match "${query}"`;
+  countEl.textContent = `${matchingKernelIds.size} kernels, ${matchingChainCount} chains match "${query}"`;
 
   // Show/hide kernel groups and expand matching ones
   app.querySelectorAll('.chain-type-block').forEach(block => {
@@ -727,6 +760,43 @@ function doSearch(query) {
       block.classList.add('search-hidden');
     }
   });
+
+  // Show raw chains section if there are chain matches
+  const rawSec = document.getElementById('raw-chains-section');
+  if (rawSec && matchingChainCount > 0) {
+    rawSec.style.display = 'block';
+    // Expand the section body
+    const rawBody = document.getElementById('raw-chains-body');
+    if (rawBody) rawBody.style.display = 'block';
+    const rawHeader = rawSec.querySelector('.section-header');
+    if (rawHeader) rawHeader.classList.remove('collapsed');
+
+    // Show/hide individual chain groups and items
+    rawSec.querySelectorAll('.raw-chain-group').forEach(group => {
+      const ctype = group.dataset.chainType;
+      const matchIndices = new Set(matchingChains[ctype] || []);
+      if (matchIndices.size === 0) {
+        group.classList.add('search-hidden');
+        return;
+      }
+      group.classList.remove('search-hidden');
+
+      // Show/hide individual chain items
+      group.querySelectorAll('.chain-item').forEach((item, i) => {
+        if (matchIndices.has(i)) {
+          item.classList.remove('search-hidden');
+          // Expand drill-down to show matching content
+          const drill = item.querySelector('.drill-down');
+          if (drill) { drill.classList.add('open'); item.classList.add('expanded'); }
+          highlightMatches(item, re);
+        } else {
+          item.classList.add('search-hidden');
+        }
+      });
+    });
+  } else if (rawSec) {
+    rawSec.style.display = 'none';
+  }
 }
 
 function highlightMatches(el, re) {
