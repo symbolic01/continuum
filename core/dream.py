@@ -1075,7 +1075,11 @@ class DreamEngine:
 
         This is the second stage — takes raw chain connections and compresses
         them into insights that pass the "so what?" test.
-        Uses claude --print (Sonnet) for quality, like the hackathon did.
+
+        When focus_project is set, runs two synthesis passes:
+        1. Focus project chains only (small, targeted — catches niche topics)
+        2. All chains (broad view — catches cross-project patterns)
+        Kernels from both passes are merged.
         """
         if all_chains is None:
             all_chains = self._load_all_chains()
@@ -1084,10 +1088,72 @@ class DreamEngine:
             print(f"[dream] No chains to synthesize", file=sys.stderr)
             return None
 
+        # Two-pass synthesis when focus project is set
+        if self.focus_project:
+            focus = self.focus_project
+            focused = [c for c in all_chains
+                       if any(focus == p or p.startswith(focus + "/")
+                              for p in c.get("member_projects", []))]
+
+            if focused and len(focused) < len(all_chains):
+                print(f"[dream] Two-pass synthesis: {len(focused)} focus chains + "
+                      f"{len(all_chains)} total", file=sys.stderr)
+
+                # Pass 1: focus project
+                result_focus = self._run_synthesis_pass(focused, "focus")
+                # Pass 2: all chains
+                result_all = self._run_synthesis_pass(all_chains, "global")
+
+                # Merge results
+                return self._merge_synthesis(result_focus, result_all)
+
+        return self._run_synthesis_pass(all_chains, "global")
+
+    def _merge_synthesis(self, focus: dict | None, broad: dict | None) -> dict | None:
+        """Merge focus and broad synthesis results, deduplicating kernels."""
+        if not focus and not broad:
+            return None
+        if not focus:
+            return broad
+        if not broad:
+            return focus
+
+        # Use broad as base, add unique focus kernels
+        merged = dict(broad)
+        focus_kernels = focus.get("kernels", [])
+        broad_kernels = broad.get("kernels", [])
+
+        # Dedup by content similarity (exact substring match)
+        broad_contents = {k.get("content", "").lower()[:80] for k in broad_kernels}
+        for fk in focus_kernels:
+            fc = fk.get("content", "").lower()[:80]
+            if fc not in broad_contents:
+                broad_kernels.append(fk)
+
+        merged["kernels"] = broad_kernels
+        # Prefer focus data_story if it exists
+        if focus.get("data_story"):
+            merged["data_story"] = focus["data_story"]
+        # Merge top_insights
+        focus_insights = focus.get("top_insights", [])
+        broad_insights = broad.get("top_insights", [])
+        seen = set()
+        combined = []
+        for i in focus_insights + broad_insights:
+            key = i[:50].lower()
+            if key not in seen:
+                combined.append(i)
+                seen.add(key)
+        merged["top_insights"] = combined[:5]
+
+        return merged
+
+    def _run_synthesis_pass(self, chains: list[dict], label: str) -> dict | None:
+        """Run a single synthesis pass on a set of chains."""
         # Format chains for the synthesis prompt
         chain_lines = []
         projects = set()
-        for chain in all_chains:
+        for chain in chains:
             uid = chain.get("uid", "?")
             ctype = chain.get("chain_type", "?")
             content = chain.get("content", "")
@@ -1103,14 +1169,14 @@ class DreamEngine:
         project_state = self._gather_project_state()
 
         user_prompt = SYNTHESIS_USER_TEMPLATE.format(
-            count=len(all_chains),
+            count=len(chains),
             corpus_size=len(self.all_metadata),
             project_count=len(projects),
             project_state=project_state,
             chains="\n".join(chain_lines),
         )
 
-        print(f"[dream] Running synthesis on {len(all_chains)} chains "
+        print(f"[dream] Running synthesis ({label}) on {len(chains)} chains "
               f"across {len(projects)} projects...", file=sys.stderr)
 
         # Use claude --print for synthesis (like hackathon)
