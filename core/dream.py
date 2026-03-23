@@ -490,7 +490,7 @@ class DreamEngine:
 
             if role == "chain":
                 chain_seeds.append((meta, self.index.vectors[i], 2.0))
-            elif focus and thread == focus:
+            elif focus and (thread == focus or thread.startswith(focus + "/")):
                 # Focus project gets highest corpus priority
                 focus_seeds.append((meta, self.index.vectors[i], 2.5))
             elif uid not in chained_uids:
