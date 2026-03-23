@@ -1168,6 +1168,13 @@ class DreamEngine:
 
         project_state = self._gather_project_state()
 
+        # For focus pass: inject the full CLAUDE.md so synthesis can
+        # compare chains against planned/documented work and flag
+        # items that were planned but never generated session activity
+        focus_context = ""
+        if label == "focus" and self.focus_project:
+            focus_context = self._load_focus_claude_md()
+
         user_prompt = SYNTHESIS_USER_TEMPLATE.format(
             count=len(chains),
             corpus_size=len(self.all_metadata),
@@ -1175,6 +1182,15 @@ class DreamEngine:
             project_state=project_state,
             chains="\n".join(chain_lines),
         )
+
+        if focus_context:
+            user_prompt += (
+                f"\n\nFOCUS PROJECT CLAUDE.md ({self.focus_project}):\n"
+                f"Compare these chains against the project's documented plans below. "
+                f"Flag any planned work that has NO corresponding chains — "
+                f"these are orphans that never generated activity.\n\n"
+                f"{focus_context}"
+            )
 
         print(f"[dream] Running synthesis ({label}) on {len(chains)} chains "
               f"across {len(projects)} projects...", file=sys.stderr)
@@ -1271,6 +1287,36 @@ class DreamEngine:
                 state_lines.append(f"[{project}] {state}")
 
         return "\n\n".join(state_lines) if state_lines else "(no project state available)"
+
+    def _load_focus_claude_md(self) -> str:
+        """Load the CLAUDE.md files for the focus project and its sub-projects."""
+        import glob
+        projects_dir = Path.home() / "projects"
+        focus_dir = projects_dir / self.focus_project
+
+        parts = []
+        for claude_md in sorted(glob.glob(str(focus_dir / "**/CLAUDE.md"), recursive=True)):
+            path = Path(claude_md)
+            try:
+                text = path.read_text()
+                rel = path.parent.relative_to(projects_dir)
+                parts.append(f"--- {rel} ---\n{text[:3000]}")
+            except OSError:
+                continue
+
+        # Also check the focus project's own CLAUDE.md
+        own = focus_dir / "CLAUDE.md"
+        if own.exists() and str(own) not in [str(projects_dir / p) for p in glob.glob(str(focus_dir / "**/CLAUDE.md"), recursive=True)]:
+            try:
+                parts.insert(0, f"--- {self.focus_project} ---\n{own.read_text()[:3000]}")
+            except OSError:
+                pass
+
+        result = "\n\n".join(parts)
+        if result and self.verbose:
+            print(f"[dream] Loaded {len(parts)} CLAUDE.md files for focus project",
+                  file=sys.stderr)
+        return result
 
     def _write_kernel_chunks(self, kernels: list[dict]):
         """Write synthesized kernels as first-class corpus entries.
