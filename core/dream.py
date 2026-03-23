@@ -1103,9 +1103,16 @@ class DreamEngine:
                 result_focus = self._run_synthesis_pass(focused, "focus")
                 # Pass 2: all chains
                 result_all = self._run_synthesis_pass(all_chains, "global")
+                # Pass 3: gap analysis — planned items with no chain activity
+                gap_kernels = self._run_gap_analysis(all_chains)
 
                 # Merge results
-                return self._merge_synthesis(result_focus, result_all)
+                merged = self._merge_synthesis(result_focus, result_all)
+                if gap_kernels and merged:
+                    merged["kernels"] = merged.get("kernels", []) + gap_kernels
+                elif gap_kernels:
+                    merged = {"kernels": gap_kernels, "top_insights": [], "data_story": ""}
+                return merged
 
         return self._run_synthesis_pass(all_chains, "global")
 
@@ -1291,6 +1298,130 @@ class DreamEngine:
                 state_lines.append(f"[{project}] {state}")
 
         return "\n\n".join(state_lines) if state_lines else "(no project state available)"
+
+    def _run_gap_analysis(self, all_chains: list[dict]) -> list[dict]:
+        """Find planned items with zero chain activity.
+
+        Scans CLAUDE.md Direction/Pending sections and plans/*.md for
+        named items (bullet points, headings). Checks each against
+        all chain content. Items with no matching chains become orphan
+        kernels — the absence of activity is the signal.
+
+        No LLM needed — pure text matching.
+        """
+        import glob
+        import re
+        projects_dir = Path.home() / "projects"
+
+        # Collect all chain content for matching
+        chain_text = " ".join(c.get("content", "") for c in all_chains).lower()
+
+        # Extract planned items from CLAUDE.md files and plans
+        planned_items: list[tuple[str, str, str]] = []  # (item, source, project)
+
+        for claude_md in sorted(glob.glob(str(projects_dir / "**/CLAUDE.md"), recursive=True)):
+            path = Path(claude_md)
+            try:
+                text = path.read_text()
+            except OSError:
+                continue
+
+            rel = path.parent.relative_to(projects_dir)
+            project = str(rel) if str(rel) != "." else "home"
+
+            # Extract items from Pending and Direction sections
+            for section in ["Pending", "Direction"]:
+                match = re.search(rf'^###?\s*{section}\s*\n(.*?)(?=^##|\Z)',
+                                  text, re.MULTILINE | re.DOTALL)
+                if match:
+                    for line in match.group(1).strip().split("\n"):
+                        line = line.strip().lstrip("- [x] ").lstrip("- [ ] ").lstrip("- ").strip()
+                        if len(line) > 15 and not line.startswith("#"):
+                            planned_items.append((line, f"{project}/CLAUDE.md#{section}", project))
+
+        # Extract from plans
+        for plan_file in sorted(glob.glob(str(projects_dir / "**/plans/*.md"), recursive=True)):
+            path = Path(plan_file)
+            try:
+                text = path.read_text()
+            except OSError:
+                continue
+
+            rel = path.relative_to(projects_dir)
+            project = str(rel).split("/")[0]
+
+            # Use the plan title (first heading) and key bullet points
+            lines = text.split("\n")
+            title = ""
+            for line in lines:
+                if line.startswith("# "):
+                    title = line.lstrip("# ").strip()
+                    break
+
+            if title:
+                planned_items.append((title, str(rel), project))
+
+            # Extract bullet points from the plan body
+            for line in lines:
+                line = line.strip().lstrip("- ").strip()
+                if len(line) > 20 and not line.startswith("#") and not line.startswith("```"):
+                    # Only keep substantive items (skip metadata lines)
+                    if any(kw in line.lower() for kw in [
+                        "implement", "build", "create", "add", "wire", "integrate",
+                        "prototype", "validate", "define", "schema", "deploy",
+                        "diariz", "emotion", "speaker", "biometric", "ablation",
+                    ]):
+                        planned_items.append((line[:150], str(rel), project))
+
+        if not planned_items:
+            return []
+
+        # Check each planned item against chain content
+        gaps = []
+        seen = set()
+        for item, source, project in planned_items:
+            # Extract key terms (3+ char words, skip common words)
+            words = set(re.findall(r'\b[a-z_]{4,}\b', item.lower()))
+            stop = {"this", "that", "with", "from", "have", "been", "will",
+                    "should", "could", "each", "into", "when", "what", "which",
+                    "their", "there", "than", "then", "also", "some", "more",
+                    "other", "about", "first", "next"}
+            key_terms = words - stop
+
+            if len(key_terms) < 2:
+                continue
+
+            # Check if any key terms appear in chain content
+            matches = sum(1 for t in key_terms if t in chain_text)
+            coverage = matches / len(key_terms) if key_terms else 0
+
+            # Gap: less than 30% of key terms found in any chain
+            if coverage < 0.3:
+                dedup_key = item[:50].lower()
+                if dedup_key in seen:
+                    continue
+                seen.add(dedup_key)
+
+                gaps.append({
+                    "type": "orphan",
+                    "content": f"[GAP] {item} — documented in {source} but has no corresponding session activity or chains.",
+                    "importance": 7,
+                    "chain_refs": [],
+                    "cross_project": False,
+                    "evidence_verdict": "gap_analysis",
+                    "evidence_reason": f"Planned in {source}, {matches}/{len(key_terms)} key terms found in chains (coverage: {coverage:.0%})",
+                    "evidence_confidence": 1.0 - coverage,
+                })
+
+        if gaps:
+            print(f"[dream] Gap analysis: {len(gaps)} planned items with no chain activity",
+                  file=sys.stderr)
+
+            # Write gap kernels to corpus
+            if not self.dry_run:
+                self._write_kernel_chunks(gaps)
+
+        return gaps
 
     def _load_focus_context(self) -> str:
         """Load CLAUDE.md files and plans for the focus project.
