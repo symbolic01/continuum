@@ -1468,9 +1468,9 @@ class DreamEngine:
                 })
 
         # Cap gaps: prioritize "discussed but no chains" (importance 8) over pure gaps (6)
-        # Then cap at 25 to keep synthesis/validation tractable
+        # Tiebreak by specificity: more key terms + lower coverage = more specific gap
         MAX_GAPS = 25
-        gaps.sort(key=lambda g: (-g["importance"], g["evidence_confidence"]))
+        gaps.sort(key=lambda g: (-g["importance"], -g["evidence_confidence"]))
         if len(gaps) > MAX_GAPS:
             gaps = gaps[:MAX_GAPS]
 
