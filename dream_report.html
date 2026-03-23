@@ -549,7 +549,7 @@ function render() {
         <div class="section-chevron">&#9660;</div>
         <div class="section-title" style="margin-bottom:0">Raw Chains (${totalChains})</div>
       </div>
-      <div class="section-body" id="raw-chains-body" style="${showRawByDefault ? '' : 'display:none'}">`;
+      <div class="section-body" id="raw-chains-body" style="${showRawByDefault ? '' : 'display:none'}">
   `;
   for (const ctype of typeOrder) {
     const items = chains[ctype] || [];
