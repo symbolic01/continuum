@@ -371,29 +371,39 @@ function render() {
     <div class="divider"></div>
   `;
 
-  // Data story (synthesis narrative)
+  // Data story (synthesis narrative) — collapsed by default
   if (data_story) {
     html += `
-      <section style="padding:40px 0;opacity:0;animation:fadeUp 0.8s ease 0.2s forwards">
-        <div class="section-title" style="color:var(--accent-gold)">The Arc</div>
-        <p style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;line-height:1.7;max-width:720px">${data_story}</p>
+      <section style="padding:24px 0">
+        <div class="section-header collapsed" onclick="toggleSection('sec-arc', this)">
+          <div class="section-chevron">&#9660;</div>
+          <div class="section-title" style="color:var(--accent-gold);margin-bottom:0">The Arc</div>
+        </div>
+        <div class="section-body" id="sec-arc" style="display:none">
+          <p style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;line-height:1.7;max-width:720px;padding:16px 0">${data_story}</p>
+        </div>
       </section>
       <div class="divider"></div>
     `;
   }
 
-  // Top insights (synthesis)
+  // Top insights (synthesis) — collapsed by default
   if (top_insights && top_insights.length > 0) {
     html += `
-      <section style="padding:24px 0 40px">
-        <div class="section-title">What Matters Most</div>
-        <div style="display:flex;flex-direction:column;gap:12px">
+      <section style="padding:24px 0">
+        <div class="section-header collapsed" onclick="toggleSection('sec-insights', this)">
+          <div class="section-chevron">&#9660;</div>
+          <div class="section-title" style="margin-bottom:0">What Matters Most (${top_insights.length})</div>
+        </div>
+        <div class="section-body" id="sec-insights" style="display:none">
+        <div style="display:flex;flex-direction:column;gap:12px;padding:16px 0">
           ${top_insights.map((insight, i) => `
             <div class="chain-item" style="cursor:default;border-left:3px solid ${['var(--accent-warm)','var(--accent-gold)','var(--accent-sage)'][i] || 'var(--border)'}">
               <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-bottom:8px">0${i+1}</div>
               <div class="chain-text">${insight}</div>
             </div>
           `).join('')}
+        </div>
         </div>
       </section>
       <div class="divider"></div>
@@ -617,7 +627,7 @@ function doSearch(query) {
   const countEl = document.getElementById('search-count');
   const app = document.getElementById('app');
 
-  // Clear previous highlights
+  // Clear previous state
   app.querySelectorAll('.search-hit').forEach(el => {
     el.outerHTML = el.textContent;
   });
@@ -638,48 +648,84 @@ function doSearch(query) {
     return;
   }
 
-  // Search against raw JSON for hit detection
-  const rawText = JSON.stringify(DATA);
-  const rawMatches = rawText.match(re);
-  if (!rawMatches) {
+  // Search raw JSON data to find which kernels/chains contain matches
+  // (DOM text misses collapsed/hidden content)
+  const matchingKernelIds = new Set();
+  const allKernels = DATA.kernels || [];
+  allKernels.forEach((k, i) => {
+    const blob = JSON.stringify(k);
+    if (re.test(blob)) matchingKernelIds.add(i);
+    re.lastIndex = 0;
+  });
+
+  // Also check chain data
+  const matchingChainTypes = new Set();
+  for (const [ctype, arr] of Object.entries(DATA.chains || {})) {
+    for (const chain of arr) {
+      const blob = JSON.stringify(chain);
+      if (re.test(blob)) { matchingChainTypes.add(ctype); break; }
+      re.lastIndex = 0;
+    }
+  }
+
+  const totalHits = matchingKernelIds.size + matchingChainTypes.size;
+  if (totalHits === 0) {
     countEl.textContent = `0 matches for "${query}"`;
-    // Hide all chain-type-blocks
     app.querySelectorAll('.chain-type-block').forEach(b => b.classList.add('search-hidden'));
     return;
   }
 
-  countEl.textContent = `${rawMatches.length} matches for "${query}"`;
+  countEl.textContent = `${matchingKernelIds.size} kernels, ${matchingChainTypes.size} chain groups match "${query}"`;
 
-  // For each kernel/chain item, check if its content matches
+  // Show/hide kernel groups and expand matching ones
   app.querySelectorAll('.chain-type-block').forEach(block => {
-    const blockText = block.textContent;
-    if (!re.test(blockText)) {
-      block.classList.add('search-hidden');
-    } else {
+    const hasMatch = block.querySelector('.chain-item[id]');
+    if (!hasMatch) { block.classList.add('search-hidden'); return; }
+
+    // Check if any kernel items in this block match
+    let blockHasMatch = false;
+    block.querySelectorAll('.chain-item[id^="kernel-"]').forEach(item => {
+      // Extract kernel index from id like "kernel-orphan-2"
+      const parts = item.id.split('-');
+      const ktype = parts[1];
+      const idx = parseInt(parts[2]);
+      // Find the kernel in data by type and sorted position
+      const byType = {};
+      allKernels.forEach((k, i) => {
+        const t = k.type || 'pattern';
+        (byType[t] = byType[t] || []).push(i);
+      });
+      const typeIndices = byType[ktype] || [];
+      // Sort by importance descending (matching render order)
+      typeIndices.sort((a, b) => (allKernels[b].importance || 5) - (allKernels[a].importance || 5));
+      const globalIdx = typeIndices[idx];
+
+      if (globalIdx !== undefined && matchingKernelIds.has(globalIdx)) {
+        item.classList.remove('search-hidden');
+        blockHasMatch = true;
+        // Force expand the kernel's drill-down
+        const drill = document.getElementById('drill-' + item.id);
+        if (drill) { drill.classList.add('open'); item.classList.add('expanded'); }
+        highlightMatches(item, re);
+      } else {
+        item.classList.add('search-hidden');
+      }
+    });
+
+    if (blockHasMatch) {
       block.classList.remove('search-hidden');
-      // Expand the section if collapsed
+      // Expand the section
       const header = block.querySelector('.section-header');
-      const secId = header?.onclick?.toString().match(/toggleSection\('([^']+)'/)?.[1];
-      if (secId) {
-        const body = document.getElementById(secId);
-        if (body && body.style.display === 'none') {
-          body.style.display = 'block';
+      if (header) {
+        const secId = block.querySelector('.section-body')?.id;
+        if (secId) {
+          document.getElementById(secId).style.display = 'block';
           header.classList.remove('collapsed');
         }
       }
+    } else {
+      block.classList.add('search-hidden');
     }
-
-    // Within visible blocks, hide non-matching items
-    block.querySelectorAll('.chain-item').forEach(item => {
-      const itemText = item.textContent;
-      if (!re.test(itemText)) {
-        item.classList.add('search-hidden');
-      } else {
-        item.classList.remove('search-hidden');
-        // Highlight matches in visible text nodes
-        highlightMatches(item, re);
-      }
-    });
   });
 }
 
