@@ -108,7 +108,18 @@ def _read_cc_conversation(session_file: Path) -> list[dict]:
                         turns.append({"role": "assistant", "content": text, "ts": ts})
     except Exception:
         pass
+
+    # Strip trailing skill-expanded turns (e.g. /spoof skill SKILL.md content)
+    while turns and turns[-1]["role"] == "user" and _is_skill_expansion(turns[-1]["content"]):
+        turns.pop()
+
     return turns
+
+
+def _is_skill_expansion(content: str) -> bool:
+    """Detect if a user turn is an expanded SKILL.md (not a real user message)."""
+    # Skill expansions contain YAML frontmatter with skill-specific fields
+    return ("user-invocable:" in content or "allowed-tools:" in content) and "---" in content[:50]
 
 
 def main():
