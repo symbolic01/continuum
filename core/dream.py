@@ -130,6 +130,11 @@ SYNTHESIS_USER_TEMPLATE = """Here are {count} chains found by analyzing {corpus_
 
 Synthesize these into human-meaningful kernels. Be specific and ruthless — only include insights that pass the "so what?" test.
 
+IMPORTANT: The chains span different time periods. Some items marked as "planned" or "unfinished" in older chains may have been completed since. Cross-reference with the CURRENT PROJECT STATE below before claiming something is unfinished.
+
+CURRENT PROJECT STATE:
+{project_state}
+
 CHAINS:
 {chains}
 
@@ -1034,10 +1039,13 @@ class DreamEngine:
                 f"[{member_count} members, projects: {', '.join(chain_projects)}]{xp}"
             )
 
+        project_state = self._gather_project_state()
+
         user_prompt = SYNTHESIS_USER_TEMPLATE.format(
             count=len(all_chains),
             corpus_size=len(self.all_metadata),
             project_count=len(projects),
+            project_state=project_state,
             chains="\n".join(chain_lines),
         )
 
@@ -1088,6 +1096,40 @@ class DreamEngine:
             print(f"[dream] Synthesis JSON parse failed: {e}", file=sys.stderr)
             print(f"[dream] Content: {content[:300]}", file=sys.stderr)
             return None
+
+    def _gather_project_state(self) -> str:
+        """Read current State sections from all project CLAUDE.md files.
+
+        Gives the synthesis model ground truth about what's implemented
+        vs planned, preventing stale claims about unfinished work.
+        """
+        import glob
+        projects_dir = Path.home() / "projects"
+        state_lines = []
+
+        for claude_md in sorted(glob.glob(str(projects_dir / "**/CLAUDE.md"), recursive=True)):
+            path = Path(claude_md)
+            # Derive project name from path
+            rel = path.parent.relative_to(projects_dir)
+            project = str(rel) if str(rel) != "." else "home"
+
+            try:
+                text = path.read_text()
+            except OSError:
+                continue
+
+            # Extract ## State section (up to next ## heading)
+            import re
+            match = re.search(r'^## State\s*\n(.*?)(?=^## |\Z)',
+                              text, re.MULTILINE | re.DOTALL)
+            if match:
+                state = match.group(1).strip()
+                # Limit per project to keep prompt manageable
+                if len(state) > 500:
+                    state = state[:500] + "..."
+                state_lines.append(f"[{project}] {state}")
+
+        return "\n\n".join(state_lines) if state_lines else "(no project state available)"
 
     def _write_kernel_chunks(self, kernels: list[dict]):
         """Write synthesized kernels as first-class corpus entries.

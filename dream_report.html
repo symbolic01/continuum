@@ -305,10 +305,15 @@ function render() {
   const hasKernels = kernels && kernels.length > 0;
 
   // Build chain lookup by UID for kernel drill-down
+  // Normalize: strip guillemets so both «abc» and abc resolve
   const chainLookup = {};
+  function stripG(s) { return s.replace(/[«»]/g, ''); }
   for (const arr of Object.values(chains)) {
     for (const c of arr) {
-      if (c.uid) chainLookup[c.uid] = c;
+      if (c.uid) {
+        chainLookup[c.uid] = c;
+        chainLookup[stripG(c.uid)] = c;
+      }
     }
   }
 
