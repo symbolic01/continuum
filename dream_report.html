@@ -23,6 +23,9 @@
   --accent-sky: #6a8fb5;
   --border: #252836;
   --border-subtle: #1e2130;
+  --role-user: #d4956a;
+  --role-assistant: #6a8fb5;
+  --role-mixed: #9f8f90;
   --radius: 12px;
   --radius-sm: 8px;
 }
@@ -398,8 +401,10 @@ function render() {
               const kid = `kernel-${ktype}-${i}`;
               const refs = k.chain_refs || [];
               const backingChains = refs.map(ref => chainLookup[ref]).filter(Boolean);
+              const allMembers = backingChains.flatMap(c => c.members || []);
+              const kernelBorder = blendRoleColor(allMembers);
               return `
-                <div class="chain-item" id="${kid}" onclick="toggleDrill('${kid}')" style="cursor:pointer">
+                <div class="chain-item" id="${kid}" onclick="toggleDrill('${kid}')" style="cursor:pointer;border-left:3px solid ${kernelBorder}">
                   <div class="chain-top">
                     <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:2px 7px;border-radius:4px;flex-shrink:0;margin-top:2px" class="${impClass}">${imp}</div>
                     <div class="chain-text">${k.content || ''}</div>
@@ -416,7 +421,7 @@ function render() {
                         const cid = `${kid}-chain-${ci}`;
                         const members = c.members || [];
                         return `
-                        <div class="member-item" id="${cid}" onclick="event.stopPropagation(); toggleDrill('${cid}')" style="cursor:pointer">
+                        <div class="member-item" id="${cid}" onclick="event.stopPropagation(); toggleDrill('${cid}')" style="cursor:pointer;border-left:3px solid ${blendRoleColor(members)}">
                           <div class="member-header">
                             <span class="member-uid">${c.uid || ''}</span>
                             <span class="badge badge-type">${c.type || ''}</span>
@@ -428,12 +433,12 @@ function render() {
                             <div class="drill-content">
                               <div class="drill-label">Member chunks (${members.length})</div>
                               ${members.map(m => `
-                                <div class="member-item" style="cursor:default;margin-left:12px;border-left:2px solid var(--border)">
+                                <div class="member-item" style="cursor:default;margin-left:12px;border-left:3px solid ${roleColor(m.role)}">
                                   <div class="member-header">
                                     <span class="member-uid">${m.uid || ''}</span>
                                     <span class="member-ts">${(m.ts || '').slice(0, 16)}</span>
                                     <span class="member-project">${m.thread || ''}</span>
-                                    <span class="member-role">${m.role || ''}</span>
+                                    <span class="member-role" style="color:${roleColor(m.role)}">${m.role || ''}</span>
                                   </div>
                                   <div class="member-content">${escapeHtml(m.content || '')}</div>
                                 </div>
@@ -512,6 +517,33 @@ function renderChainItem(chain, typeKey, idx) {
       </div>
     </div>
   `;
+}
+
+function roleColor(role) {
+  if (role === 'user') return 'var(--role-user)';
+  if (role === 'assistant') return 'var(--role-assistant)';
+  return 'var(--role-mixed)';
+}
+
+function blendRoleColor(members) {
+  // Compute user/assistant ratio from members, return CSS color
+  if (!members || members.length === 0) return 'var(--border)';
+  let user = 0, assistant = 0;
+  for (const m of members) {
+    if (m.role === 'user') user++;
+    else if (m.role === 'assistant') assistant++;
+  }
+  const total = user + assistant;
+  if (total === 0) return 'var(--border)';
+  if (user === total) return 'var(--role-user)';
+  if (assistant === total) return 'var(--role-assistant)';
+  // Blend: interpolate between user(warm) and assistant(sky)
+  const ratio = user / total; // 1 = all user, 0 = all assistant
+  // #d4956a (user) → #6a8fb5 (assistant)
+  const r = Math.round(0x6a + ratio * (0xd4 - 0x6a));
+  const g = Math.round(0x8f + ratio * (0x95 - 0x8f));
+  const b = Math.round(0xb5 + ratio * (0x6a - 0xb5));
+  return `rgb(${r},${g},${b})`;
 }
 
 function escapeHtml(text) {
