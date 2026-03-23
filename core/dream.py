@@ -1173,7 +1173,7 @@ class DreamEngine:
         # items that were planned but never generated session activity
         focus_context = ""
         if label == "focus" and self.focus_project:
-            focus_context = self._load_focus_claude_md()
+            focus_context = self._load_focus_context()
 
         user_prompt = SYNTHESIS_USER_TEMPLATE.format(
             count=len(chains),
@@ -1185,10 +1185,14 @@ class DreamEngine:
 
         if focus_context:
             user_prompt += (
-                f"\n\nFOCUS PROJECT CLAUDE.md ({self.focus_project}):\n"
-                f"Compare these chains against the project's documented plans below. "
-                f"Flag any planned work that has NO corresponding chains — "
-                f"these are orphans that never generated activity.\n\n"
+                f"\n\nFOCUS PROJECT CONTEXT ({self.focus_project}):\n"
+                f"Below are the project's CLAUDE.md files and saved plans. "
+                f"These represent documented intentions and detailed designs. "
+                f"Compare the chains above against this context:\n"
+                f"- Flag planned work with NO corresponding chains as orphans\n"
+                f"- Plans marked [PLAN] represent invested design effort — "
+                f"unstarted plans are higher-priority orphans than passing mentions\n"
+                f"- Check Direction/Pending sections for active priorities vs completed work\n\n"
                 f"{focus_context}"
             )
 
@@ -1288,34 +1292,43 @@ class DreamEngine:
 
         return "\n\n".join(state_lines) if state_lines else "(no project state available)"
 
-    def _load_focus_claude_md(self) -> str:
-        """Load the CLAUDE.md files for the focus project and its sub-projects."""
+    def _load_focus_context(self) -> str:
+        """Load CLAUDE.md files and plans for the focus project.
+
+        CLAUDE.md Direction/Pending = active priorities.
+        plans/*.md = detailed designs someone invested time writing.
+        Both are stronger orphan signals than passing session mentions.
+        """
         import glob
         projects_dir = Path.home() / "projects"
         focus_dir = projects_dir / self.focus_project
 
         parts = []
+
+        # CLAUDE.md files (project + sub-projects)
         for claude_md in sorted(glob.glob(str(focus_dir / "**/CLAUDE.md"), recursive=True)):
             path = Path(claude_md)
             try:
                 text = path.read_text()
                 rel = path.parent.relative_to(projects_dir)
-                parts.append(f"--- {rel} ---\n{text[:3000]}")
+                parts.append(f"--- {rel}/CLAUDE.md ---\n{text[:3000]}")
             except OSError:
                 continue
 
-        # Also check the focus project's own CLAUDE.md
-        own = focus_dir / "CLAUDE.md"
-        if own.exists() and str(own) not in [str(projects_dir / p) for p in glob.glob(str(focus_dir / "**/CLAUDE.md"), recursive=True)]:
+        # Plans (project + sub-projects)
+        for plan_file in sorted(glob.glob(str(focus_dir / "**/plans/*.md"), recursive=True)):
+            path = Path(plan_file)
             try:
-                parts.insert(0, f"--- {self.focus_project} ---\n{own.read_text()[:3000]}")
+                text = path.read_text()
+                rel = path.relative_to(projects_dir)
+                parts.append(f"--- {rel} [PLAN] ---\n{text[:2000]}")
             except OSError:
-                pass
+                continue
 
         result = "\n\n".join(parts)
         if result and self.verbose:
-            print(f"[dream] Loaded {len(parts)} CLAUDE.md files for focus project",
-                  file=sys.stderr)
+            print(f"[dream] Loaded {len(parts)} context files for focus project "
+                  f"({self.focus_project})", file=sys.stderr)
         return result
 
     def _write_kernel_chunks(self, kernels: list[dict]):
