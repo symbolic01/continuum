@@ -249,6 +249,7 @@ body::before {
 .search-count { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); margin-top: 4px; }
 .search-hit { background: rgba(201,168,76,0.2); border-radius: 2px; }
 .search-hidden { display: none !important; }
+.search-match { outline: 1px solid var(--accent-gold); outline-offset: -1px; }
 </style>
 </head>
 <body>
@@ -661,6 +662,9 @@ function doSearch(query) {
   app.querySelectorAll('.search-hidden').forEach(el => {
     el.classList.remove('search-hidden');
   });
+  app.querySelectorAll('.search-match').forEach(el => {
+    el.classList.remove('search-match');
+  });
 
   if (!query || query.length < 2) {
     countEl.textContent = '';
@@ -735,6 +739,7 @@ function doSearch(query) {
 
       if (globalIdx !== undefined && matchingKernelIds.has(globalIdx)) {
         item.classList.remove('search-hidden');
+        item.classList.add('search-match');
         blockHasMatch = true;
         // Force expand the kernel's drill-down
         const drill = document.getElementById('drill-' + item.id);
@@ -785,6 +790,7 @@ function doSearch(query) {
       group.querySelectorAll('.chain-item').forEach((item, i) => {
         if (matchIndices.has(i)) {
           item.classList.remove('search-hidden');
+          item.classList.add('search-match');
           // Expand drill-down to show matching content
           const drill = item.querySelector('.drill-down');
           if (drill) { drill.classList.add('open'); item.classList.add('expanded'); }
