@@ -187,6 +187,20 @@ body::before {
 .pipeline-arrow { color: var(--text-muted); font-size: 12px; }
 .pipeline-label { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 16px; }
 
+/* -- Collapsible sections -- */
+.section-header {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  user-select: none; margin-bottom: 24px;
+}
+.section-header:hover { opacity: 0.8; }
+.section-chevron {
+  font-size: 10px; color: var(--text-muted); transition: transform 0.2s;
+  width: 16px; text-align: center; flex-shrink: 0;
+}
+.section-header.collapsed .section-chevron { transform: rotate(-90deg); }
+.section-body { transition: max-height 0.3s ease; }
+.section-header.collapsed + .section-body { display: none; }
+
 .loading {
   display: flex; align-items: center; justify-content: center; min-height: 60vh;
   font-family: 'Cormorant Garamond', serif; font-size: 18px; color: var(--text-muted); font-style: italic;
@@ -230,16 +244,42 @@ let DATA = null;
 
 async function loadData() {
   try {
-    // Try query param, then default path
     const params = new URLSearchParams(window.location.search);
     const src = params.get('src') || 'dream_report.json';
     const res = await fetch(src + '?t=' + Date.now());
     DATA = await res.json();
     render();
+    loadReportHistory();
   } catch (err) {
     document.getElementById('app').innerHTML =
       `<div class="loading">Could not load dream_report.json. Run: cx dream --force</div>`;
   }
+}
+
+async function loadReportHistory() {
+  // Try to fetch the reports directory listing
+  try {
+    const res = await fetch('dream_reports/?t=' + Date.now());
+    if (!res.ok) return;
+    const html = await res.text();
+    // Parse directory listing for .json files
+    const files = [...html.matchAll(/href="(dream_report_[^"]+\.json)"/g)]
+      .map(m => m[1]).sort().reverse();
+    if (files.length < 2) return;
+
+    const nav = document.createElement('div');
+    nav.style.cssText = 'text-align:center;padding:8px 0;font-family:JetBrains Mono,monospace;font-size:11px';
+    nav.innerHTML = `<select onchange="if(this.value)location.search='?src=dream_reports/'+this.value" style="background:var(--bg-card);color:var(--text-secondary);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-family:inherit;font-size:inherit">
+      <option value="">Report history (${files.length})</option>
+      ${files.map(f => {
+        const ts = f.replace('dream_report_','').replace('.json','').replace('T',' ');
+        const sel = location.search.includes(f) ? ' selected' : '';
+        return `<option value="${f}"${sel}>${ts}</option>`;
+      }).join('')}
+    </select>`;
+    const header = document.querySelector('.header');
+    if (header) header.appendChild(nav);
+  } catch (e) { /* no directory listing available */ }
 }
 
 const KERNEL_TYPES = {
@@ -341,13 +381,16 @@ function render() {
       const items = byType[ktype] || [];
       if (items.length === 0) continue;
       const kt = KERNEL_TYPES[ktype] || KERNEL_TYPES.pattern;
+      const secId = `sec-${ktype}`;
       html += `
         <div class="chain-type-block">
-          <div class="chain-type-header">
+          <div class="section-header collapsed" onclick="toggleSection('${secId}', this)">
+            <div class="section-chevron">&#9660;</div>
             <div class="chain-type-icon" style="background:rgba(255,255,255,0.03);color:${kt.color}">${kt.icon}</div>
             <div class="chain-type-name">${kernelLabels[ktype] || ktype}</div>
             <div class="chain-type-count">${items.length}</div>
           </div>
+          <div class="section-body" id="${secId}" style="display:none">
           <div class="chain-list">
             ${items.sort((a,b) => (b.importance||5) - (a.importance||5)).map((k, i) => {
               const imp = k.importance || 5;
@@ -387,6 +430,7 @@ function render() {
               `;
             }).join('')}
           </div>
+          </div>
         </div>
       `;
     }
@@ -396,10 +440,11 @@ function render() {
   // Raw chains — drill-down backing data (collapsed by default)
   html += `
     <section class="chain-section">
-      <div class="section-title" style="cursor:pointer" onclick="document.getElementById('raw-chains').style.display=document.getElementById('raw-chains').style.display==='none'?'block':'none'">
-        Raw Chains (${totalChains}) &mdash; click to ${hasKernels ? 'expand' : 'view'}
+      <div class="section-header collapsed" onclick="toggleSection('raw-chains', this)">
+        <div class="section-chevron">&#9660;</div>
+        <div class="section-title" style="margin-bottom:0">Raw Chains (${totalChains})</div>
       </div>
-      <div id="raw-chains" style="${hasKernels ? 'display:none' : ''}">
+      <div class="section-body" id="raw-chains" style="display:none">
   `;
 
   const typeOrder = ['correction', 'orphan', 'causal', 'thematic', 'temporal_link'];
@@ -481,6 +526,13 @@ function escapeHtml(text) {
   const d = document.createElement('div');
   d.textContent = text;
   return d.innerHTML;
+}
+
+function toggleSection(sectionId, headerEl) {
+  const body = document.getElementById(sectionId);
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? 'block' : 'none';
+  headerEl.classList.toggle('collapsed', !isHidden);
 }
 
 function toggleDrill(chainId) {

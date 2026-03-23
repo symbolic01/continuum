@@ -138,12 +138,22 @@ def main():
         # Generate report (includes ALL chains + synthesis)
         report = engine.generate_report(stats, temporal_links, synthesis)
 
-        # Copy report JSON next to HTML for serving
+        # Copy report JSON next to HTML for serving (live + versioned)
         import shutil
         html_dir = _CONTINUUM_DIR
         report_copy = html_dir / "dream_report.json"
         from core.dream import DREAM_REPORT_PATH
         shutil.copy2(str(DREAM_REPORT_PATH), str(report_copy))
+
+        # Copy versioned reports for history browsing
+        reports_src = DREAM_REPORT_PATH.parent / "dream_reports"
+        reports_dst = html_dir / "dream_reports"
+        if reports_src.exists():
+            reports_dst.mkdir(exist_ok=True)
+            for f in reports_src.glob("dream_report_*.json"):
+                dst = reports_dst / f.name
+                if not dst.exists():
+                    shutil.copy2(str(f), str(dst))
 
         if args.report:
             engine.print_report_markdown(report)

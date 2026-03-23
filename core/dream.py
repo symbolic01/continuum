@@ -1262,10 +1262,21 @@ class DreamEngine:
         }
 
         DREAM_REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write current report (overwritten each cycle for the live viewer)
         with open(DREAM_REPORT_PATH, "w") as f:
             json.dump(report, f, indent=2)
 
-        print(f"[dream] Report saved to {DREAM_REPORT_PATH}", file=sys.stderr)
+        # Preserve versioned copy (never overwritten — builds a timeline)
+        reports_dir = DREAM_REPORT_PATH.parent / "dream_reports"
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().astimezone().strftime("%Y-%m-%dT%H%M%S")
+        versioned = reports_dir / f"dream_report_{ts}.json"
+        with open(versioned, "w") as f:
+            json.dump(report, f, indent=2)
+
+        print(f"[dream] Report saved to {DREAM_REPORT_PATH} "
+              f"(versioned: {versioned.name})", file=sys.stderr)
         return report
 
     def _chain_to_report(self, chain: dict) -> dict:
