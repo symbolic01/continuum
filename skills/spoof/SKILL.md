@@ -47,3 +47,20 @@ The tool prints the spoofed session ID to stdout and the resume command to stder
 - Session is getting long and messy with dead ends
 - Context is filling up and you need to start fresh without losing history
 - User says "let's clean this up" or "compress this session"
+
+## Compaction Prevention
+
+Claude Code auto-compacts at ~80% context by default, destroying history before spoof can compress it. To delay compaction to 99%:
+
+Add to `~/.claude/settings.json`:
+```json
+{
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "99"
+  }
+}
+```
+
+This gives spoof/handoff time to properly compress the session before CC throws away context. Without this, compaction silently discards the raw turns that spoof needs to produce a high-quality compressed narrative.
+
+Recommended for any setup using continuum tools.
