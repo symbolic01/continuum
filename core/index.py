@@ -60,7 +60,7 @@ def build_index(
                 meta = {
                     "uid": entry.get("uid", ""),
                     "role": entry.get("role", ""),
-                    "content": entry.get("content", "")[:500],  # truncate for metadata
+                    "content": entry.get("content", ""),
                     "turn": entry.get("turn", 0),
                     "ts": entry.get("ts", ""),
                     "thread": entry.get("thread", ""),

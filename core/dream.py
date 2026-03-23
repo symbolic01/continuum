@@ -1290,7 +1290,7 @@ class DreamEngine:
                 "uid": uid,
                 "thread": meta.get("thread", ""),
                 "ts": meta.get("ts", ""),
-                "content": meta.get("content", "")[:200],
+                "content": meta.get("content", ""),
                 "role": meta.get("role", ""),
             })
 
