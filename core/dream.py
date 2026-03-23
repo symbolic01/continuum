@@ -1320,8 +1320,27 @@ class DreamEngine:
         # Collect all chain content for matching
         chain_text = " ".join(c.get("content", "") for c in all_chains).lower()
 
-        # Extract planned items from CLAUDE.md files and plans
+        # Also collect all corpus content for broader matching
+        corpus_text = " ".join(
+            m.get("content", "") for m in self.all_metadata
+            if m.get("role") not in ("chain", "kernel")
+        ).lower()
+
+        # Extract items from ALL markdown: CLAUDE.md (all sections) + plans
         planned_items: list[tuple[str, str, str]] = []  # (item, source, project)
+
+        # Noise patterns to skip
+        noise_patterns = re.compile(
+            r'^\|.*\|$'           # table rows
+            r'|^```'              # code fences
+            r'|^---'              # horizontal rules
+            r'|^>\s'              # blockquotes (usually examples)
+            r'|^\*\*Date\*\*'     # metadata lines
+            r'|^\*\*Status\*\*'
+            r'|^\*\*Phase\*\*'
+            r'|^\*\*Horizon\*\*'
+            r'|^Co-Authored'      # commit signatures
+        )
 
         for claude_md in sorted(glob.glob(str(projects_dir / "**/CLAUDE.md"), recursive=True)):
             path = Path(claude_md)
@@ -1333,17 +1352,20 @@ class DreamEngine:
             rel = path.parent.relative_to(projects_dir)
             project = str(rel) if str(rel) != "." else "home"
 
-            # Extract items from Pending and Direction sections
-            for section in ["Pending", "Direction"]:
-                match = re.search(rf'^###?\s*{section}\s*\n(.*?)(?=^##|\Z)',
-                                  text, re.MULTILINE | re.DOTALL)
-                if match:
-                    for line in match.group(1).strip().split("\n"):
-                        line = line.strip().lstrip("- [x] ").lstrip("- [ ] ").lstrip("- ").strip()
-                        if len(line) > 15 and not line.startswith("#"):
-                            planned_items.append((line, f"{project}/CLAUDE.md#{section}", project))
+            # Extract bullet points from ALL sections
+            current_section = ""
+            for line in text.split("\n"):
+                if line.startswith("## "):
+                    current_section = line.lstrip("# ").strip()
+                    continue
+                line = line.strip().lstrip("- [x] ").lstrip("- [ ] ").lstrip("- ").strip()
+                if len(line) < 15 or line.startswith("#"):
+                    continue
+                if noise_patterns.search(line):
+                    continue
+                planned_items.append((line[:200], f"{project}/CLAUDE.md#{current_section}", project))
 
-        # Extract from plans
+        # Extract from plans — titles and all substantive lines
         for plan_file in sorted(glob.glob(str(projects_dir / "**/plans/*.md"), recursive=True)):
             path = Path(plan_file)
             try:
@@ -1354,28 +1376,32 @@ class DreamEngine:
             rel = path.relative_to(projects_dir)
             project = str(rel).split("/")[0]
 
-            # Use the plan title (first heading) and key bullet points
-            lines = text.split("\n")
-            title = ""
-            for line in lines:
+            for line in text.split("\n"):
                 if line.startswith("# "):
-                    title = line.lstrip("# ").strip()
-                    break
-
-            if title:
-                planned_items.append((title, str(rel), project))
-
-            # Extract bullet points from the plan body
-            for line in lines:
+                    planned_items.append((line.lstrip("# ").strip(), str(rel), project))
+                    continue
                 line = line.strip().lstrip("- ").strip()
-                if len(line) > 20 and not line.startswith("#") and not line.startswith("```"):
-                    # Only keep substantive items (skip metadata lines)
-                    if any(kw in line.lower() for kw in [
-                        "implement", "build", "create", "add", "wire", "integrate",
-                        "prototype", "validate", "define", "schema", "deploy",
-                        "diariz", "emotion", "speaker", "biometric", "ablation",
-                    ]):
-                        planned_items.append((line[:150], str(rel), project))
+                if len(line) < 20 or line.startswith("#") or line.startswith("```"):
+                    continue
+                if noise_patterns.search(line):
+                    continue
+                planned_items.append((line[:200], str(rel), project))
+
+        # Also scan auto-memory files
+        memory_dir = Path.home() / ".claude" / "projects" / "-home-symbolic-projects" / "memory"
+        if memory_dir.is_dir():
+            for mem_file in sorted(memory_dir.glob("*.md")):
+                try:
+                    text = mem_file.read_text()
+                except OSError:
+                    continue
+                for line in text.split("\n"):
+                    line = line.strip().lstrip("- ").strip()
+                    if len(line) < 20 or line.startswith("#") or line.startswith("---"):
+                        continue
+                    if noise_patterns.search(line):
+                        continue
+                    planned_items.append((line[:200], f"memory/{mem_file.name}", "memory"))
 
         if not planned_items:
             return []
@@ -1395,26 +1421,41 @@ class DreamEngine:
             if len(key_terms) < 2:
                 continue
 
-            # Check if any key terms appear in chain content
-            matches = sum(1 for t in key_terms if t in chain_text)
-            coverage = matches / len(key_terms) if key_terms else 0
+            # Check key terms against chain content AND corpus content
+            chain_matches = sum(1 for t in key_terms if t in chain_text)
+            corpus_matches = sum(1 for t in key_terms if t in corpus_text)
+            chain_coverage = chain_matches / len(key_terms) if key_terms else 0
+            corpus_coverage = corpus_matches / len(key_terms) if key_terms else 0
 
-            # Gap: less than 30% of key terms found in any chain
-            if coverage < 0.3:
+            # Gap: documented but low chain coverage
+            # - Pure gap: low chain AND low corpus coverage (never discussed)
+            # - Discussed gap: low chain but high corpus (discussed, never acted on)
+            if chain_coverage < 0.3:
                 dedup_key = item[:50].lower()
                 if dedup_key in seen:
                     continue
                 seen.add(dedup_key)
 
+                if corpus_coverage >= 0.5:
+                    gap_type = "discussed but no integration chains"
+                    importance = 8  # higher — was discussed, still no action
+                else:
+                    gap_type = "no corresponding session activity or chains"
+                    importance = 6
+
                 gaps.append({
                     "type": "orphan",
-                    "content": f"[GAP] {item} — documented in {source} but has no corresponding session activity or chains.",
-                    "importance": 7,
+                    "content": f"[GAP] {item} — documented in {source} but {gap_type}.",
+                    "importance": importance,
                     "chain_refs": [],
                     "cross_project": False,
                     "evidence_verdict": "gap_analysis",
-                    "evidence_reason": f"Planned in {source}, {matches}/{len(key_terms)} key terms found in chains (coverage: {coverage:.0%})",
-                    "evidence_confidence": 1.0 - coverage,
+                    "evidence_reason": (
+                        f"Source: {source}, "
+                        f"chain coverage: {chain_matches}/{len(key_terms)} ({chain_coverage:.0%}), "
+                        f"corpus coverage: {corpus_matches}/{len(key_terms)} ({corpus_coverage:.0%})"
+                    ),
+                    "evidence_confidence": 1.0 - chain_coverage,
                 })
 
         if gaps:
