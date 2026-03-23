@@ -527,21 +527,70 @@ class DreamEngine:
 
     # ── LLM integration call ───────────────────────────────────────────
 
-    def _format_chunks_for_prompt(self, cluster: list[dict]) -> str:
-        """Format cluster chunks for the integration prompt."""
+    def _format_chunks_for_prompt(self, cluster: list[dict],
+                                   budget_chars: int = 6000) -> str:
+        """Format cluster chunks for the integration prompt.
+
+        Allocates character budget evenly across chunks. Small chunks
+        use their full content. Large chunks get LLM-summarized via
+        Ollama (fast, local) to preserve meaning without blind truncation.
+        """
+        n = len(cluster)
+        per_chunk = budget_chars // max(n, 1)
+
         lines = []
         for meta in cluster:
             uid = meta.get("uid", "")
             thread = meta.get("thread", "?")
             ts = meta.get("ts", "")[:10]
             role = meta.get("role", "?")
-            content = meta.get("content", "")[:300]
+            content = meta.get("content", "")
             heading = meta.get("heading", "")
+
+            if len(content) <= per_chunk:
+                display = content
+            else:
+                display = self._summarize_chunk(content, heading, per_chunk)
+
             prefix = f"[{uid} {thread} {ts} {role}]"
             if heading:
                 prefix += f" {heading}"
-            lines.append(f"{prefix} {content}")
+            lines.append(f"{prefix} {display}")
         return "\n".join(lines)
+
+    def _summarize_chunk(self, content: str, heading: str, target_chars: int) -> str:
+        """Summarize a large chunk via Ollama for integration context.
+
+        Falls back to head+tail if the LLM call fails.
+        """
+        try:
+            payload = {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": "Summarize the following content concisely. "
+                     "Preserve key facts, decisions, errors, and outcomes. "
+                     f"Keep under {target_chars} characters."},
+                    {"role": "user", "content": content[:8000]},  # cap input to model context
+                ],
+                "stream": False,
+                "options": {"temperature": 0.1},
+            }
+            result = subprocess.run(
+                ["curl", "-s", "http://localhost:11434/api/chat",
+                 "-d", json.dumps(payload)],
+                capture_output=True, text=True, timeout=30,
+            )
+            response = json.loads(result.stdout)
+            summary = response.get("message", {}).get("content", "")
+            if summary:
+                self.tokens_used += count_tokens(content[:8000]) + count_tokens(summary)
+                return f"[summarized] {summary[:target_chars]}"
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError):
+            pass
+
+        # Fallback: head + tail
+        half = target_chars // 2
+        return content[:half] + "\n  [...]\n" + content[-half:]
 
     def _call_llm(self, cluster: list[dict]) -> list[dict]:
         """Send a cluster to the dream model and parse chain results."""
