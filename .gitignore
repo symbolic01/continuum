@@ -8,3 +8,4 @@ build/
 .venv/
 continuum.yaml
 dream_report.json
+dream_reports/
