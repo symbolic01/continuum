@@ -109,7 +109,8 @@ class ContextRetriever:
         return "\n".join(chunks), total_tokens
 
     def _retrieve_corpus(self, query: str, decomposition: dict, token_budget: int,
-                         role_filter: str = "", project_filter: str = "") -> str:
+                         role_filter: str = "", project_filter: str = "",
+                         exclude_roles: list[str] | None = None) -> str:
         """Retrieve from corpus using decomposed query axes."""
 
         axes = decomposition.get("axes", [])
@@ -209,12 +210,16 @@ class ContextRetriever:
                         all_candidates[uid] = (meta, score * 0.6)
 
         # Apply filters
-        if role_filter or project_filter:
-            role_f = role_filter.lower()
-            proj_f = project_filter.lower()
+        if role_filter or project_filter or exclude_roles:
+            role_f = role_filter.lower() if role_filter else ""
+            proj_f = project_filter.lower() if project_filter else ""
+            excl = {r.lower() for r in (exclude_roles or [])}
             filtered = {}
             for uid, (meta, score) in all_candidates.items():
-                if role_f and meta.get("role", "").lower() != role_f:
+                role = meta.get("role", "").lower()
+                if role_f and role != role_f:
+                    continue
+                if excl and role in excl:
                     continue
                 if proj_f and proj_f not in meta.get("thread", "").lower():
                     continue
@@ -627,7 +632,8 @@ Which of these retrieved context chunks are relevant? Return ONLY the numbers of
 
     def retrieve(self, query: str, token_budget: int, conversation_tail: str = "",
                  cull: bool = False, cull_factor: int = 5,
-                 role_filter: str = "", project_filter: str = "") -> str:
+                 role_filter: str = "", project_filter: str = "",
+                 exclude_roles: list[str] | None = None) -> str:
         """Retrieve context from index via LLM-routed query decomposition.
 
         Args:
@@ -654,13 +660,15 @@ Which of these retrieved context chunks are relevant? Return ONLY the numbers of
             if cull:
                 # Over-retrieve then LLM-cull for precision
                 raw = self._retrieve_corpus(enriched_query, decomposition, token_budget * cull_factor,
-                                            role_filter=role_filter, project_filter=project_filter)
+                                            role_filter=role_filter, project_filter=project_filter,
+                                            exclude_roles=exclude_roles)
                 chunks = [line for line in raw.split("\n") if line.strip()]
                 culled = self._cull_with_llm(query, chunks, token_budget)
                 return "\n".join(culled)
             else:
                 return self._retrieve_corpus(enriched_query, decomposition, token_budget,
-                                            role_filter=role_filter, project_filter=project_filter)
+                                            role_filter=role_filter, project_filter=project_filter,
+                                            exclude_roles=exclude_roles)
 
         # Fallback: static sources if no index at all
         static_text, _ = self._retrieve_static(token_budget)

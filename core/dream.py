@@ -619,7 +619,8 @@ class DreamEngine:
                 query=query,
                 token_budget=2000,
                 conversation_tail="",
-                cull=False,  # skip LLM cull — just embedding + keyword
+                cull=False,
+                exclude_roles=["chain", "kernel"],  # only real corpus evidence
             )
 
             if not result or not result.strip():
@@ -1363,20 +1364,22 @@ class DreamEngine:
             if not content:
                 continue
 
-            # 1. Retrieve evidence
+            # 1. Retrieve evidence (exclude dream-generated content to prevent
+            #    circular validation — dream output validating itself)
             try:
                 evidence = self._retriever.retrieve(
                     query=content,
                     token_budget=3000,
                     conversation_tail="",
                     cull=False,
+                    exclude_roles=["chain", "kernel"],
                 )
             except Exception:
                 evidence = ""
 
             if not evidence or not evidence.strip():
                 kernel["evidence_verdict"] = "insufficient"
-                kernel["evidence_reason"] = "no matching corpus evidence found"
+                kernel["evidence_reason"] = "no matching corpus evidence (excluding dream output)"
                 kernel["evidence_confidence"] = 0.0
                 kernel["evidence_uids"] = []
                 continue
