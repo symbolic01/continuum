@@ -1203,8 +1203,11 @@ class DreamEngine:
                 f"{focus_context}"
             )
 
+        synth_start = time.time()
+        prompt_chars = len("\n".join(chain_lines))
         print(f"[dream] Running synthesis ({label}) on {len(chains)} chains "
-              f"across {len(projects)} projects...", file=sys.stderr)
+              f"across {len(projects)} projects "
+              f"({prompt_chars:,} chars prompt)...", file=sys.stderr)
 
         # Use claude --print for synthesis (like hackathon)
         synthesis_model = get_model("compress", self.config)
@@ -1252,7 +1255,8 @@ class DreamEngine:
                               f"hallucinated refs from kernel", file=sys.stderr)
                 kernel["chain_refs"] = cleaned
 
-            print(f"[dream] Synthesized {len(kernels)} kernels "
+            synth_elapsed = time.time() - synth_start
+            print(f"[dream] Synthesized {len(kernels)} kernels in {synth_elapsed:.0f}s "
                   f"(model: {synthesis_model})", file=sys.stderr)
 
             # Write kernels as first-class corpus entries
@@ -1624,7 +1628,9 @@ class DreamEngine:
         if not kernels:
             return synthesis
 
-        print(f"[dream] Validating {len(kernels)} kernels...", file=sys.stderr)
+        validate_start = time.time()
+        print(f"[dream] Validating {len(kernels)} kernels "
+              f"(retrieve + Haiku judge each)...", file=sys.stderr)
 
         try:
             from .retrieval import ContextRetriever
@@ -1701,11 +1707,12 @@ class DreamEngine:
                 kernel["evidence_confidence"] = verdict.get("confidence", 0.5)
                 kernel["evidence_uids"] = evidence_uids
 
-                if self.verbose:
-                    v = kernel["evidence_verdict"]
-                    c = kernel["evidence_confidence"]
-                    print(f"[dream] Kernel {i+1}/{len(kernels)}: {v} ({c:.1f}) "
-                          f"-- {content[:60]}", file=sys.stderr)
+                v = kernel["evidence_verdict"]
+                c = kernel["evidence_confidence"]
+                elapsed = time.time() - validate_start
+                print(f"[dream] Validating {i+1}/{len(kernels)} "
+                      f"({elapsed:.0f}s) {v} ({c:.1f}) "
+                      f"-- {content[:50]}", file=sys.stderr)
 
             except (subprocess.TimeoutExpired, json.JSONDecodeError,
                     FileNotFoundError) as e:
@@ -1714,12 +1721,15 @@ class DreamEngine:
                 kernel["evidence_confidence"] = 0.0
                 kernel["evidence_uids"] = evidence_uids
 
+        validate_elapsed = time.time() - validate_start
         verdicts = [k.get("evidence_verdict", "?") for k in kernels]
         from collections import Counter
         vc = Counter(verdicts)
         print(f"[dream] Validation: {vc.get('supported', 0)} supported, "
               f"{vc.get('insufficient', 0)} insufficient, "
-              f"{vc.get('contradicted', 0)} contradicted", file=sys.stderr)
+              f"{vc.get('contradicted', 0)} contradicted "
+              f"({validate_elapsed:.0f}s, {validate_elapsed/max(len(kernels),1):.1f}s/kernel)",
+              file=sys.stderr)
 
         return synthesis
 
