@@ -544,12 +544,12 @@ function render() {
     html += `<div style="padding:24px 0;color:var(--text-muted);font-style:italic;font-size:14px">Synthesis pending — showing raw chains. Kernels will appear after next wakeup synthesis.</div>`;
   }
   html += `
-    <section class="chain-section" id="raw-chains-section" style="${showRawByDefault ? '' : 'display:none'}">`;
+    <section class="chain-section" id="raw-chains-section" style="${showRawByDefault ? '' : 'display:none'}">
       <div class="section-header${showRawByDefault ? '' : ' collapsed'}" onclick="toggleSection('raw-chains-body', this)">
         <div class="section-chevron">&#9660;</div>
         <div class="section-title" style="margin-bottom:0">Raw Chains (${totalChains})</div>
       </div>
-      <div class="section-body" id="raw-chains-body" style="${showRawByDefault ? '' : 'display:none'}"
+      <div class="section-body" id="raw-chains-body" style="${showRawByDefault ? '' : 'display:none'}">`;
   `;
   for (const ctype of typeOrder) {
     const items = chains[ctype] || [];
