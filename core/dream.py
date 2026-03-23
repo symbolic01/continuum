@@ -278,11 +278,12 @@ class DreamEngine:
                     parts = line.split(",")
                     if len(parts) >= 2:
                         proc_name = parts[1].strip().lower()
-                        # Ollama runs as python or ollama_llama_server
-                        if proc_name not in ("python", "python3",
-                                             "ollama_llama_server",
-                                             "ollama"):
-                            return f"GPU contention ({proc_name})"
+                        # Ollama shows as full path or just binary name
+                        basename = proc_name.rsplit("/", 1)[-1]
+                        known_procs = {"python", "python3",
+                                       "ollama_llama_server", "ollama"}
+                        if basename not in known_procs:
+                            return f"GPU contention ({basename})"
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pass  # no nvidia-smi = no GPU to contend
 
