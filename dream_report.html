@@ -555,15 +555,19 @@ function render() {
     const items = chains[ctype] || [];
     if (items.length === 0) continue;
     const tc = CHAIN_TYPES[ctype] || CHAIN_TYPES.thematic;
+    const rawSecId = `raw-${ctype}`;
     html += `
       <div class="chain-type-block raw-chain-group" data-chain-type="${ctype}">
-        <div class="chain-type-header">
+        <div class="section-header collapsed" onclick="toggleSection('${rawSecId}', this)">
+          <div class="section-chevron">&#9660;</div>
           <div class="chain-type-icon" style="background:${tc.bg};color:${tc.color}">${tc.icon}</div>
           <div class="chain-type-name">${tc.label}</div>
           <div class="chain-type-count">${items.length}</div>
         </div>
+        <div class="section-body" id="${rawSecId}" style="display:none">
         <div class="chain-list">
           ${items.map((chain, i) => renderChainItem(chain, ctype, i)).join('')}
+        </div>
         </div>
       </div>
     `;
