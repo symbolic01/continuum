@@ -45,6 +45,12 @@ case "${1:-resume}" in
     shift
     python3 "$CONTINUUM_DIR/dream_tool.py" "$@"
     ;;
+  daydream)
+    shift
+    SECS="${1:-120}"
+    shift 2>/dev/null
+    python3 "$CONTINUUM_DIR/dream_tool.py" --daydream "$SECS" --report "$@"
+    ;;
   dream-daemon|daemon)
     shift
     python3 "$CONTINUUM_DIR/dream_daemon.py" "$@"

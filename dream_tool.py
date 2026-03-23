@@ -55,11 +55,23 @@ def main():
                         help="Stop integration if claude process detected (used by daemon)")
     parser.add_argument("--focus-project", type=str, default="",
                         help="Bias seeding toward this project (auto-selects if empty)")
+    parser.add_argument("--daydream", type=int, metavar="SECONDS", default=0,
+                        help="Quick daydream: skip idle check, ignore wake-up, run for N seconds (e.g. --daydream 120)")
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Verbose output")
     args = parser.parse_args()
 
     config = load_config(_CONTINUUM_DIR / "continuum.yaml")
+
+    # Daydream mode: quick run with overrides
+    if args.daydream:
+        args.force = True
+        args.wake_on_activity = False
+        args.no_ingest = True
+        args.max_time = args.daydream
+        args.verbose = True
+        print(f"[dream] Daydream mode: {args.daydream}s, no idle check, no wake-up",
+              file=sys.stderr)
 
     # Apply config defaults for dream section
     dream_config = config.get("dream", {})
