@@ -1145,6 +1145,20 @@ class DreamEngine:
         try:
             synthesis = json.loads(content)
             kernels = synthesis.get("kernels", [])
+
+            # Clean hallucinated chain_refs — LLM invents plausible UIDs
+            known_uids = {m.get("uid", "") for m in self.all_metadata}
+            for kernel in kernels:
+                refs = kernel.get("chain_refs", [])
+                cleaned = [r for r in refs if r in known_uids
+                           or r.replace("«", "").replace("»", "") in
+                           {u.replace("«", "").replace("»", "") for u in known_uids}]
+                if len(refs) != len(cleaned):
+                    if self.verbose:
+                        print(f"[dream] Cleaned {len(refs) - len(cleaned)} "
+                              f"hallucinated refs from kernel", file=sys.stderr)
+                kernel["chain_refs"] = cleaned
+
             print(f"[dream] Synthesized {len(kernels)} kernels "
                   f"(model: {synthesis_model})", file=sys.stderr)
 

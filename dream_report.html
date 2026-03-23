@@ -232,6 +232,23 @@ body::before {
   .chain-item { padding: 12px 14px; }
   .member-item { padding: 10px 12px; }
 }
+
+/* -- Search -- */
+.search-bar {
+  position: sticky; top: 0; z-index: 100; padding: 8px 0;
+  background: var(--bg-deep); border-bottom: 1px solid var(--border-subtle);
+}
+.search-input {
+  width: 100%; padding: 10px 14px; font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; background: var(--bg-card); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  outline: none;
+}
+.search-input:focus { border-color: var(--accent-violet); }
+.search-input::placeholder { color: var(--text-muted); }
+.search-count { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+.search-hit { background: rgba(201,168,76,0.2); border-radius: 2px; }
+.search-hidden { display: none !important; }
 </style>
 </head>
 <body>
@@ -239,6 +256,12 @@ body::before {
 <div class="ambient-glow glow-1"></div>
 <div class="ambient-glow glow-2"></div>
 
+<div class="container">
+  <div class="search-bar">
+    <input class="search-input" id="search" type="text" placeholder="Search report (regex)..." oninput="doSearch(this.value)">
+    <div class="search-count" id="search-count"></div>
+  </div>
+</div>
 <div id="app" class="container">
   <div class="loading">Dreaming...</div>
 </div>
@@ -588,6 +611,111 @@ function toggleDrill(chainId) {
   const item = document.getElementById(chainId);
   el.classList.toggle('open');
   item.classList.toggle('expanded');
+}
+
+function doSearch(query) {
+  const countEl = document.getElementById('search-count');
+  const app = document.getElementById('app');
+
+  // Clear previous highlights
+  app.querySelectorAll('.search-hit').forEach(el => {
+    el.outerHTML = el.textContent;
+  });
+  app.querySelectorAll('.search-hidden').forEach(el => {
+    el.classList.remove('search-hidden');
+  });
+
+  if (!query || query.length < 2) {
+    countEl.textContent = '';
+    return;
+  }
+
+  let re;
+  try {
+    re = new RegExp(query, 'gi');
+  } catch (e) {
+    countEl.textContent = 'invalid regex';
+    return;
+  }
+
+  // Search against raw JSON for hit detection
+  const rawText = JSON.stringify(DATA);
+  const rawMatches = rawText.match(re);
+  if (!rawMatches) {
+    countEl.textContent = `0 matches for "${query}"`;
+    // Hide all chain-type-blocks
+    app.querySelectorAll('.chain-type-block').forEach(b => b.classList.add('search-hidden'));
+    return;
+  }
+
+  countEl.textContent = `${rawMatches.length} matches for "${query}"`;
+
+  // For each kernel/chain item, check if its content matches
+  app.querySelectorAll('.chain-type-block').forEach(block => {
+    const blockText = block.textContent;
+    if (!re.test(blockText)) {
+      block.classList.add('search-hidden');
+    } else {
+      block.classList.remove('search-hidden');
+      // Expand the section if collapsed
+      const header = block.querySelector('.section-header');
+      const secId = header?.onclick?.toString().match(/toggleSection\('([^']+)'/)?.[1];
+      if (secId) {
+        const body = document.getElementById(secId);
+        if (body && body.style.display === 'none') {
+          body.style.display = 'block';
+          header.classList.remove('collapsed');
+        }
+      }
+    }
+
+    // Within visible blocks, hide non-matching items
+    block.querySelectorAll('.chain-item').forEach(item => {
+      const itemText = item.textContent;
+      if (!re.test(itemText)) {
+        item.classList.add('search-hidden');
+      } else {
+        item.classList.remove('search-hidden');
+        // Highlight matches in visible text nodes
+        highlightMatches(item, re);
+      }
+    });
+  });
+}
+
+function highlightMatches(el, re) {
+  // Walk text nodes and wrap matches
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+
+  for (const node of nodes) {
+    if (node.parentElement?.classList?.contains('search-hit')) continue;
+    if (node.parentElement?.tagName === 'SCRIPT') continue;
+    const text = node.textContent;
+    if (!re.test(text)) continue;
+    re.lastIndex = 0;
+
+    const frag = document.createDocumentFragment();
+    let lastIdx = 0;
+    let match;
+    re.lastIndex = 0;
+    while ((match = re.exec(text)) !== null) {
+      if (match.index > lastIdx) {
+        frag.appendChild(document.createTextNode(text.slice(lastIdx, match.index)));
+      }
+      const span = document.createElement('span');
+      span.className = 'search-hit';
+      span.textContent = match[0];
+      frag.appendChild(span);
+      lastIdx = re.lastIndex;
+      if (match[0].length === 0) { re.lastIndex++; break; }
+    }
+    if (lastIdx < text.length) {
+      frag.appendChild(document.createTextNode(text.slice(lastIdx)));
+    }
+    node.parentNode.replaceChild(frag, node);
+  }
 }
 
 loadData();
