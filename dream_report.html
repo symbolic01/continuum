@@ -293,26 +293,43 @@ async function loadData() {
 }
 
 async function loadReportHistory() {
-  // Try to fetch the reports directory listing
   try {
     const res = await fetch('dream_reports/?t=' + Date.now());
     if (!res.ok) return;
     const html = await res.text();
-    // Parse directory listing for .json files
     const files = [...html.matchAll(/href="(dream_report_[^"]+\.json)"/g)]
       .map(m => m[1]).sort().reverse();
     if (files.length < 2) return;
 
+    // Find current position in history
+    const params = new URLSearchParams(location.search);
+    const currentSrc = params.get('src') || '';
+    const currentFile = currentSrc.replace('dream_reports/', '');
+    const currentIdx = currentFile ? files.indexOf(currentFile) : -1;
+    const isLatest = currentIdx <= 0;
+
     const nav = document.createElement('div');
-    nav.style.cssText = 'text-align:center;padding:8px 0;font-family:JetBrains Mono,monospace;font-size:11px';
-    nav.innerHTML = `<select onchange="if(this.value)location.search='?src=dream_reports/'+this.value" style="background:var(--bg-card);color:var(--text-secondary);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-family:inherit;font-size:inherit">
-      <option value="">Report history (${files.length})</option>
-      ${files.map(f => {
-        const ts = f.replace('dream_report_','').replace('.json','').replace('T',' ');
-        const sel = location.search.includes(f) ? ' selected' : '';
-        return `<option value="${f}"${sel}>${ts}</option>`;
-      }).join('')}
-    </select>`;
+    nav.style.cssText = 'text-align:center;padding:8px 0;font-family:JetBrains Mono,monospace;font-size:11px;display:flex;align-items:center;justify-content:center;gap:8px';
+
+    const btnStyle = 'background:var(--bg-card);color:var(--text-secondary);border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-family:inherit;font-size:inherit;cursor:pointer';
+    const disStyle = btnStyle + ';opacity:0.3;cursor:default';
+
+    const prevFile = currentIdx < files.length - 1 ? files[currentIdx + 1] || files[1] : null;
+    const nextFile = currentIdx > 0 ? files[currentIdx - 1] : null;
+
+    nav.innerHTML = `
+      <button style="${prevFile ? btnStyle : disStyle}" onclick="${prevFile ? `location.search='?src=dream_reports/${prevFile}'` : ''}">&larr;</button>
+      <select onchange="if(this.value==='latest')location.search='';else if(this.value)location.search='?src=dream_reports/'+this.value" style="${btnStyle}">
+        <option value="latest"${isLatest ? ' selected' : ''}>Latest</option>
+        ${files.map(f => {
+          const ts = f.replace('dream_report_','').replace('.json','').replace('T',' ');
+          const sel = f === currentFile ? ' selected' : '';
+          return `<option value="${f}"${sel}>${ts}</option>`;
+        }).join('')}
+      </select>
+      <button style="${nextFile ? btnStyle : disStyle}" onclick="${nextFile ? `location.search='?src=dream_reports/${nextFile}'` : ''}">&rarr;</button>
+      <span style="color:var(--text-muted)">${files.length} reports</span>
+    `;
     const header = document.querySelector('.header');
     if (header) header.appendChild(nav);
   } catch (e) { /* no directory listing available */ }
@@ -520,15 +537,19 @@ function render() {
     html += `</section><div class="divider"></div>`;
   }
 
-  // Raw chains — hidden by default, shown by search when matches exist only in chains
+  // Raw chains — shown when no kernels exist (integration-only cycle), hidden otherwise
   const typeOrder = ['correction', 'orphan', 'causal', 'thematic', 'temporal_link'];
+  const showRawByDefault = !hasKernels && totalChains > 0;
+  if (!hasKernels && totalChains > 0) {
+    html += `<div style="padding:24px 0;color:var(--text-muted);font-style:italic;font-size:14px">Synthesis pending — showing raw chains. Kernels will appear after next wakeup synthesis.</div>`;
+  }
   html += `
-    <section class="chain-section" id="raw-chains-section" style="display:none">
-      <div class="section-header collapsed" onclick="toggleSection('raw-chains-body', this)">
+    <section class="chain-section" id="raw-chains-section" style="${showRawByDefault ? '' : 'display:none'}">`;
+      <div class="section-header${showRawByDefault ? '' : ' collapsed'}" onclick="toggleSection('raw-chains-body', this)">
         <div class="section-chevron">&#9660;</div>
         <div class="section-title" style="margin-bottom:0">Raw Chains (${totalChains})</div>
       </div>
-      <div class="section-body" id="raw-chains-body" style="display:none">
+      <div class="section-body" id="raw-chains-body" style="${showRawByDefault ? '' : 'display:none'}"
   `;
   for (const ctype of typeOrder) {
     const items = chains[ctype] || [];
