@@ -134,6 +134,9 @@ def main():
         synthesis = None
         if not args.no_synthesis:
             synthesis = engine.run_synthesis()
+            # Validate kernels against corpus evidence
+            if synthesis:
+                synthesis = engine.validate_kernels(synthesis)
 
         # Generate report (includes ALL chains + synthesis)
         report = engine.generate_report(stats, temporal_links, synthesis)

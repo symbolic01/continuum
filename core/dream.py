@@ -597,13 +597,73 @@ class DreamEngine:
         half = target_chars // 2
         return content[:half] + "\n  [...]\n" + content[-half:]
 
+    def _retrieve_cluster_context(self, cluster: list[dict]) -> str:
+        """Retrieve additional corpus context for a cluster.
+
+        Finds related chunks beyond the semantic neighbors already in
+        the cluster, giving the integration LLM richer evidence.
+        """
+        try:
+            from .retrieval import ContextRetriever
+            from .index import load_index as _load_idx
+
+            # Build query from cluster content (first 500 chars of each)
+            query_parts = [m.get("content", "")[:200] for m in cluster[:4]]
+            query = " ".join(query_parts)
+
+            if not hasattr(self, '_retriever'):
+                idx = _load_idx()
+                self._retriever = ContextRetriever(sources=[], index=idx)
+
+            result = self._retriever.retrieve(
+                query=query,
+                token_budget=2000,
+                conversation_tail="",
+                cull=False,  # skip LLM cull — just embedding + keyword
+            )
+
+            if not result or not result.strip():
+                return ""
+
+            # Filter out chunks already in the cluster
+            cluster_uids = {m.get("uid", "") for m in cluster}
+            lines = []
+            for line in result.strip().split("\n"):
+                # Check if any cluster UID appears in this line
+                skip = False
+                for uid in cluster_uids:
+                    if uid and uid in line:
+                        skip = True
+                        break
+                if not skip:
+                    lines.append(line)
+
+            return "\n".join(lines[:15])  # cap at 15 lines
+        except Exception as e:
+            if self.verbose:
+                print(f"  [warn] Cluster context retrieval failed: {e}",
+                      file=sys.stderr)
+            return ""
+
     def _call_llm(self, cluster: list[dict]) -> list[dict]:
-        """Send a cluster to the dream model and parse chain results."""
+        """Send a cluster to the dream model with enriched context."""
         chunks_text = self._format_chunks_for_prompt(cluster)
-        user_prompt = INTEGRATION_USER_TEMPLATE.format(
-            count=len(cluster),
-            chunks=chunks_text,
-        )
+
+        # Enrich with retrieved context
+        extra_context = self._retrieve_cluster_context(cluster)
+
+        prompt_parts = [
+            INTEGRATION_USER_TEMPLATE.format(
+                count=len(cluster),
+                chunks=chunks_text,
+            )
+        ]
+        if extra_context:
+            prompt_parts.append(
+                f"\nRELATED CONTEXT (from elsewhere in the corpus):\n{extra_context}"
+            )
+
+        user_prompt = "\n".join(prompt_parts)
 
         # Estimate tokens for budget tracking
         prompt_tokens = count_tokens(INTEGRATION_SYSTEM_PROMPT + user_prompt)
@@ -1263,6 +1323,118 @@ class DreamEngine:
             return current_mtime > last_mtime
         except (json.JSONDecodeError, KeyError):
             return True
+
+    # ── Evidence validation ────────────────────────────────────────────
+
+    def validate_kernels(self, synthesis: dict) -> dict:
+        """Validate each kernel by retrieving evidence and LLM-judging it.
+
+        For each kernel:
+        1. Retrieve corpus evidence matching the claim
+        2. Ask Haiku: does the evidence support, contradict, or leave
+           the claim unresolved?
+        3. Annotate kernel with verdict + confidence + reason
+        """
+        kernels = synthesis.get("kernels", [])
+        if not kernels:
+            return synthesis
+
+        print(f"[dream] Validating {len(kernels)} kernels...", file=sys.stderr)
+
+        try:
+            from .retrieval import ContextRetriever
+            from .index import load_index as _load_idx
+
+            if not hasattr(self, '_retriever'):
+                idx = _load_idx()
+                self._retriever = ContextRetriever(sources=[], index=idx)
+        except Exception as e:
+            print(f"[dream] Could not load retriever for validation: {e}",
+                  file=sys.stderr)
+            return synthesis
+
+        judge_model = get_model("cull", self.config)  # Haiku
+        import os
+        import re
+        env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+
+        for i, kernel in enumerate(kernels):
+            content = kernel.get("content", "")
+            if not content:
+                continue
+
+            # 1. Retrieve evidence
+            try:
+                evidence = self._retriever.retrieve(
+                    query=content,
+                    token_budget=3000,
+                    conversation_tail="",
+                    cull=False,
+                )
+            except Exception:
+                evidence = ""
+
+            if not evidence or not evidence.strip():
+                kernel["evidence_verdict"] = "insufficient"
+                kernel["evidence_reason"] = "no matching corpus evidence found"
+                kernel["evidence_confidence"] = 0.0
+                kernel["evidence_uids"] = []
+                continue
+
+            evidence_uids = re.findall(r'[«]([a-f0-9]{6})[»]', evidence)
+
+            # 2. LLM judge
+            judge_prompt = (
+                "You are an evidence validator. Given a CLAIM and EVIDENCE from a corpus, "
+                "determine whether the evidence supports, contradicts, or is insufficient "
+                "to judge the claim.\n\n"
+                f"CLAIM: {content}\n\n"
+                f"EVIDENCE:\n{evidence[:4000]}\n\n"
+                "Respond with ONLY valid JSON:\n"
+                '{"verdict": "supported"|"contradicted"|"insufficient", '
+                '"reason": "one sentence explanation", '
+                '"confidence": 0.0-1.0}'
+            )
+
+            try:
+                result = subprocess.run(
+                    ["claude", "--print", "--model", judge_model],
+                    input=judge_prompt, env=env,
+                    capture_output=True, text=True, timeout=30,
+                )
+                judge_content = result.stdout.strip()
+                if "```json" in judge_content:
+                    judge_content = judge_content.split("```json")[1].split("```")[0]
+                elif "```" in judge_content:
+                    judge_content = judge_content.split("```")[1].split("```")[0]
+
+                verdict = json.loads(judge_content)
+                kernel["evidence_verdict"] = verdict.get("verdict", "insufficient")
+                kernel["evidence_reason"] = verdict.get("reason", "")
+                kernel["evidence_confidence"] = verdict.get("confidence", 0.5)
+                kernel["evidence_uids"] = evidence_uids
+
+                if self.verbose:
+                    v = kernel["evidence_verdict"]
+                    c = kernel["evidence_confidence"]
+                    print(f"[dream] Kernel {i+1}/{len(kernels)}: {v} ({c:.1f}) "
+                          f"-- {content[:60]}", file=sys.stderr)
+
+            except (subprocess.TimeoutExpired, json.JSONDecodeError,
+                    FileNotFoundError) as e:
+                kernel["evidence_verdict"] = "insufficient"
+                kernel["evidence_reason"] = f"judge failed: {e}"
+                kernel["evidence_confidence"] = 0.0
+                kernel["evidence_uids"] = evidence_uids
+
+        verdicts = [k.get("evidence_verdict", "?") for k in kernels]
+        from collections import Counter
+        vc = Counter(verdicts)
+        print(f"[dream] Validation: {vc.get('supported', 0)} supported, "
+              f"{vc.get('insufficient', 0)} insufficient, "
+              f"{vc.get('contradicted', 0)} contradicted", file=sys.stderr)
+
+        return synthesis
 
     # ── Report generation ──────────────────────────────────────────────
 

@@ -152,6 +152,12 @@ body::before {
 .importance-med { background: rgba(201,168,76,0.12); color: var(--accent-gold); }
 .importance-low { background: rgba(85,82,92,0.2); color: var(--text-muted); }
 
+.badge-supported { background: rgba(107,155,125,0.15); color: var(--accent-sage); }
+.badge-insufficient { background: rgba(212,149,106,0.12); color: var(--accent-warm); }
+.badge-contradicted { background: rgba(184,107,120,0.2); color: var(--accent-rose); text-decoration: line-through; }
+.evidence-dim { opacity: 0.5; }
+.evidence-reason { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); margin-top: 4px; font-style: italic; }
+
 /* -- Drill-down -- */
 .drill-down { max-height: 0; overflow: hidden; transition: max-height 0.4s ease, opacity 0.3s; opacity: 0; }
 .drill-down.open { max-height: none; opacity: 1; }
@@ -411,17 +417,27 @@ function render() {
               const backingChains = refs.map(ref => chainLookup[ref]).filter(Boolean);
               const allMembers = backingChains.flatMap(c => c.members || []);
               const kernelBorder = blendRoleColor(allMembers);
+              const verdict = k.evidence_verdict || '';
+              const evConf = k.evidence_confidence || 0;
+              const evReason = k.evidence_reason || '';
+              const evClass = verdict === 'contradicted' ? 'evidence-dim' : (verdict === 'insufficient' && evConf < 0.3 ? 'evidence-dim' : '');
+              const verdictBadge = verdict === 'supported' ? `<span class="badge badge-supported">${evConf >= 0.7 ? 'supported' : 'thin evidence'}</span>`
+                : verdict === 'contradicted' ? `<span class="badge badge-contradicted">contradicted</span>`
+                : verdict === 'insufficient' ? `<span class="badge badge-insufficient">unverified</span>`
+                : '';
               return `
-                <div class="chain-item" id="${kid}" onclick="toggleDrill('${kid}')" style="cursor:pointer;border-left:3px solid ${kernelBorder}">
+                <div class="chain-item ${evClass}" id="${kid}" onclick="toggleDrill('${kid}')" style="cursor:pointer;border-left:3px solid ${kernelBorder}">
                   <div class="chain-top">
                     <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:2px 7px;border-radius:4px;flex-shrink:0;margin-top:2px" class="${impClass}">${imp}</div>
                     <div class="chain-text">${k.content || ''}</div>
                   </div>
                   <div class="chain-badges">
+                    ${verdictBadge}
                     ${k.cross_project ? '<span class="badge badge-cross">cross-project</span>' : ''}
                     <span class="badge badge-type">${ktype}</span>
                     ${refs.length ? `<span class="badge badge-type">${refs.length} chains</span>` : ''}
                   </div>
+                  ${evReason ? `<div class="evidence-reason">${escapeHtml(evReason)}</div>` : ''}
                   <div class="drill-down" id="drill-${kid}">
                     <div class="drill-content">
                       <div class="drill-label">Backing chains (${backingChains.length})</div>
