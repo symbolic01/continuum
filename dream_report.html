@@ -739,7 +739,6 @@ function doSearch(query) {
 
       if (globalIdx !== undefined && matchingKernelIds.has(globalIdx)) {
         item.classList.remove('search-hidden');
-        item.classList.add('search-match');
         blockHasMatch = true;
         // Force expand the kernel's drill-down
         const drill = document.getElementById('drill-' + item.id);
@@ -790,7 +789,6 @@ function doSearch(query) {
       group.querySelectorAll('.chain-item').forEach((item, i) => {
         if (matchIndices.has(i)) {
           item.classList.remove('search-hidden');
-          item.classList.add('search-match');
           // Expand drill-down to show matching content
           const drill = item.querySelector('.drill-down');
           if (drill) { drill.classList.add('open'); item.classList.add('expanded'); }
@@ -806,7 +804,7 @@ function doSearch(query) {
 }
 
 function highlightMatches(el, re) {
-  // Walk text nodes and wrap matches
+  // Walk text nodes, wrap matches, and outline the nearest card ancestor
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   const nodes = [];
   while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -817,6 +815,13 @@ function highlightMatches(el, re) {
     const text = node.textContent;
     if (!re.test(text)) continue;
     re.lastIndex = 0;
+
+    // Outline the closest member-item or chain-item containing this match
+    let card = node.parentElement;
+    while (card && !card.classList?.contains('member-item') && !card.classList?.contains('chain-item')) {
+      card = card.parentElement;
+    }
+    if (card) card.classList.add('search-match');
 
     const frag = document.createDocumentFragment();
     let lastIdx = 0;
