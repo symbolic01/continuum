@@ -412,17 +412,37 @@ function render() {
                   <div class="drill-down" id="drill-${kid}">
                     <div class="drill-content">
                       <div class="drill-label">Backing chains (${backingChains.length})</div>
-                      ${backingChains.map(c => `
-                        <div class="member-item">
+                      ${backingChains.map((c, ci) => {
+                        const cid = `${kid}-chain-${ci}`;
+                        const members = c.members || [];
+                        return `
+                        <div class="member-item" id="${cid}" onclick="event.stopPropagation(); toggleDrill('${cid}')" style="cursor:pointer">
                           <div class="member-header">
                             <span class="member-uid">${c.uid || ''}</span>
                             <span class="badge badge-type">${c.type || ''}</span>
                             ${(c.projects||[]).map(p => `<span class="member-project">${p}</span>`).join('')}
-                            <span class="badge badge-type">${c.member_count || 0} chunks</span>
+                            <span class="badge badge-type">${members.length} chunks</span>
                           </div>
                           <div class="member-content">${escapeHtml(c.synthesis || '')}</div>
+                          <div class="drill-down" id="drill-${cid}">
+                            <div class="drill-content">
+                              <div class="drill-label">Member chunks (${members.length})</div>
+                              ${members.map(m => `
+                                <div class="member-item" style="cursor:default;margin-left:12px;border-left:2px solid var(--border)">
+                                  <div class="member-header">
+                                    <span class="member-uid">${m.uid || ''}</span>
+                                    <span class="member-ts">${(m.ts || '').slice(0, 16)}</span>
+                                    <span class="member-project">${m.thread || ''}</span>
+                                    <span class="member-role">${m.role || ''}</span>
+                                  </div>
+                                  <div class="member-content">${escapeHtml(m.content || '')}</div>
+                                </div>
+                              `).join('')}
+                            </div>
+                          </div>
                         </div>
-                      `).join('')}
+                        `;
+                      }).join('')}
                       ${backingChains.length === 0 ? '<div style="color:var(--text-muted);font-size:12px">Chain refs not resolved in current report data</div>' : ''}
                     </div>
                   </div>
@@ -437,35 +457,7 @@ function render() {
     html += `</section><div class="divider"></div>`;
   }
 
-  // Raw chains — drill-down backing data (collapsed by default)
-  html += `
-    <section class="chain-section">
-      <div class="section-header collapsed" onclick="toggleSection('raw-chains', this)">
-        <div class="section-chevron">&#9660;</div>
-        <div class="section-title" style="margin-bottom:0">Raw Chains (${totalChains})</div>
-      </div>
-      <div class="section-body" id="raw-chains" style="display:none">
-  `;
-
-  const typeOrder = ['correction', 'orphan', 'causal', 'thematic', 'temporal_link'];
-  for (const ctype of typeOrder) {
-    const items = chains[ctype] || [];
-    if (items.length === 0) continue;
-    const tc = CHAIN_TYPES[ctype] || CHAIN_TYPES.thematic;
-    html += `
-      <div class="chain-type-block" style="animation-delay:${0.3 + typeOrder.indexOf(ctype) * 0.1}s">
-        <div class="chain-type-header">
-          <div class="chain-type-icon" style="background:${tc.bg};color:${tc.color}">${tc.icon}</div>
-          <div class="chain-type-name">${tc.label}</div>
-          <div class="chain-type-count">${items.length}</div>
-        </div>
-        <div class="chain-list">
-          ${items.map((chain, i) => renderChainItem(chain, ctype, i)).join('')}
-        </div>
-      </div>
-    `;
-  }
-  html += `</div></section>`;
+  // Raw chains accessible only through kernel drill-down (group → kernel → chain → chunk)
 
   // Footer
   html += `
