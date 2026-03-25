@@ -1172,6 +1172,30 @@ class DreamEngine:
 
     def _run_synthesis_pass(self, chains: list[dict], label: str) -> dict | None:
         """Run a single synthesis pass on a set of chains."""
+        # Cap chains to fit in model context (~150K chars ≈ ~40K tokens)
+        MAX_SYNTHESIS_CHARS = 150_000
+        if chains:
+            total_chars = sum(len(c.get("content", "")) for c in chains)
+            if total_chars > MAX_SYNTHESIS_CHARS:
+                # Keep most recent + highest-signal chains
+                # Sort by chain_type priority, then recency
+                type_priority = {"correction": 0, "orphan": 1, "causal": 2,
+                                 "thematic": 3, "temporal_link": 4}
+                chains = sorted(chains,
+                                key=lambda c: (type_priority.get(c.get("chain_type"), 5),
+                                               c.get("ts", "")))
+                # Trim from the end (lowest priority, oldest)
+                trimmed = []
+                char_count = 0
+                for c in chains:
+                    char_count += len(c.get("content", "")) + 100  # overhead
+                    if char_count > MAX_SYNTHESIS_CHARS:
+                        break
+                    trimmed.append(c)
+                print(f"[dream] Capped synthesis input: {len(trimmed)}/{len(chains)} chains "
+                      f"({char_count:,} chars)", file=sys.stderr)
+                chains = trimmed
+
         # Format chains for the synthesis prompt
         chain_lines = []
         projects = set()
