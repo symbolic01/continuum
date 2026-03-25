@@ -147,6 +147,9 @@ def convert_claude_code_session(
                 # Empty tool results
                 if stripped.startswith("[{'tool_use_id':") and len(stripped) < 80:
                     continue
+                # Base64 encoded data (images, binary) — massive and unsearchable
+                if "'base64'" in stripped and len(stripped) > 5000:
+                    continue
 
             entry = {
                 "uid": mint_uid(),
