@@ -317,33 +317,37 @@ async function loadReportHistory() {
     const prevFile = currentIdx < files.length - 1 ? files[currentIdx + 1] || files[1] : null;
     const nextFile = currentIdx > 0 ? files[currentIdx - 1] : null;
 
-    // Peek at each report to check if it has synthesis
-    const fileInfo = await Promise.all(files.slice(0, 30).map(async f => {
-      try {
-        const r = await fetch('dream_reports/' + f);
-        const d = await r.json();
-        const k = (d.kernels || []).length;
-        return { file: f, kernels: k };
-      } catch { return { file: f, kernels: -1 }; }
-    }));
-    const infoMap = {};
-    fileInfo.forEach(i => infoMap[i.file] = i);
-
+    // Show nav immediately, then lazy-load synthesis info
+    const selectId = 'history-select';
     nav.innerHTML = `
       <button style="${prevFile ? btnStyle : disStyle}" onclick="${prevFile ? `location.search='?src=dream_reports/${prevFile}'` : ''}">&larr;</button>
-      <select onchange="if(this.value==='latest')location.search='';else if(this.value)location.search='?src=dream_reports/'+this.value" style="${btnStyle}">
+      <select id="${selectId}" onchange="if(this.value==='latest')location.search='';else if(this.value)location.search='?src=dream_reports/'+this.value" style="${btnStyle}">
         <option value="latest"${isLatest ? ' selected' : ''}>Latest</option>
         ${files.map(f => {
           const ts = f.replace('dream_report_','').replace('.json','').replace('T',' ');
           const sel = f === currentFile ? ' selected' : '';
-          const info = infoMap[f];
-          const tag = info ? (info.kernels > 0 ? ' ★' + info.kernels : ' ○') : '';
-          return `<option value="${f}"${sel}>${ts}${tag}</option>`;
+          return `<option value="${f}"${sel}>${ts}</option>`;
         }).join('')}
       </select>
       <button style="${nextFile ? btnStyle : disStyle}" onclick="${nextFile ? `location.search='?src=dream_reports/${nextFile}'` : ''}">&rarr;</button>
       <span style="color:var(--text-muted)">${files.length} reports</span>
     `;
+
+    // Lazy-load synthesis tags for visible options
+    const sel = document.getElementById(selectId);
+    setTimeout(async () => {
+      for (const f of files.slice(0, 20)) {
+        try {
+          const r = await fetch('dream_reports/' + f);
+          const d = await r.json();
+          const k = (d.kernels || []).length;
+          const tag = k > 0 ? ` ★${k}` : ' ○';
+          for (const opt of sel.options) {
+            if (opt.value === f) { opt.textContent += tag; break; }
+          }
+        } catch {}
+      }
+    }, 100);
     const header = document.querySelector('.header');
     if (header) header.appendChild(nav);
   } catch (e) { /* no directory listing available */ }
