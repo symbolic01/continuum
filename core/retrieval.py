@@ -287,7 +287,9 @@ class ContextRetriever:
             chunk_tokens = count_tokens(chunk)
 
             if tokens_used + chunk_tokens > token_budget:
-                break
+                # Skip oversized entries instead of stopping — don't let one
+                # giant tool result block all smaller relevant entries
+                continue
 
             chunks.append(chunk)
             tokens_used += chunk_tokens
@@ -764,16 +766,15 @@ Which of these retrieved context chunks are relevant? Return ONLY the numbers of
     def retrieve(self, query: str, token_budget: int, conversation_tail: str = "",
                  cull: bool = False, cull_factor: int = 5,
                  role_filter: str = "", project_filter: str = "",
-                 exclude_roles: list[str] | None = None) -> str:
+                 exclude_roles: list[str] | None = None,
+                 skip_decompose: bool = False) -> str:
         """Retrieve context from index via LLM-routed query decomposition.
 
         Args:
             query: the current user message
             token_budget: max tokens for assembled context
-            conversation_tail: recent conversation for context-enriched embedding.
-                When provided, the query is embedded WITH this trailing context
-                so that short follow-up questions ("what about the file viewer?")
-                carry the conversational context that triggered them.
+            conversation_tail: recent conversation for context-enriched embedding
+            skip_decompose: skip LLM decomposition (fast mode — keyword only, no expansion)
         """
         has_embeddings = self.index and len(self.index) > 0
         has_metadata = len(self._get_all_metadata()) > 0
@@ -782,11 +783,15 @@ Which of these retrieved context chunks are relevant? Return ONLY the numbers of
             # Enrich the query with conversation tail for better embeddings
             enriched_query = query
             if conversation_tail:
-                # Truncate tail to keep embedding input reasonable
                 tail_truncated = conversation_tail[-2000:]
                 enriched_query = f"{tail_truncated}\n\nCurrent question: {query}"
 
-            decomposition = decompose_query(enriched_query, model=self.decompose_model)
+            if skip_decompose:
+                # Fast mode: skip LLM decomposition, use fallback (pure semantic + keyword)
+                from .query import _fallback
+                decomposition = _fallback(enriched_query)
+            else:
+                decomposition = decompose_query(enriched_query, model=self.decompose_model)
 
             if cull:
                 # Over-retrieve then LLM-cull for precision

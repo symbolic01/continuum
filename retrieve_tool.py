@@ -30,6 +30,7 @@ def main():
     parser.add_argument("--cull-factor", type=int, default=5, help="Over-retrieval multiplier (default: 5)")
     parser.add_argument("--code", action="store_true", help="Only return code chunks (skip sessions/markdown)")
     parser.add_argument("--project", default="", help="Filter to a specific project/codebase")
+    parser.add_argument("--fast", action="store_true", help="Skip decomposition + cull (instant, keyword-only)")
     parser.add_argument("--no-ingest", action="store_true", help="Skip auto-ingest check")
     args = parser.parse_args()
 
@@ -52,10 +53,11 @@ def main():
         query=args.query,
         token_budget=args.budget,
         conversation_tail="",
-        cull=not args.no_cull,
+        cull=not args.no_cull and not args.fast,
         cull_factor=args.cull_factor,
         role_filter="code" if args.code else "",
         project_filter=args.project,
+        skip_decompose=args.fast,
     )
 
     if not result.strip():
