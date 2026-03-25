@@ -1086,15 +1086,18 @@ class DreamEngine:
     # ── Synthesis pass (human-meaningful kernels) ────────────────────────
 
     def run_synthesis(self, all_chains: list[dict] | None = None) -> dict | None:
-        """Synthesize chains into human-meaningful kernels via Claude.
+        """Synthesize chains into human-meaningful kernels.
 
-        This is the second stage — takes raw chain connections and compresses
-        them into insights that pass the "so what?" test.
+        Model cascade: Ollama compresses chains into proto-kernels (free,
+        many small batches), then Sonnet curates proto-kernels into final
+        kernels (paid, small input). 90%+ reduction in paid API tokens.
 
-        When focus_project is set, runs two synthesis passes:
-        1. Focus project chains only (small, targeted — catches niche topics)
-        2. All chains (broad view — catches cross-project patterns)
-        Kernels from both passes are merged.
+        Pipeline:
+        1. Local pre-synthesis (Ollama) — batch chains into groups of 15,
+           extract proto-kernels from each batch. Every chain gets processed.
+        2. Dedup proto-kernels
+        3. Final synthesis (Sonnet) — curate proto-kernels into polished kernels
+        4. Gap analysis — planned items with no chain activity
         """
         if all_chains is None:
             all_chains = self._load_all_chains()
@@ -1103,33 +1106,148 @@ class DreamEngine:
             print(f"[dream] No chains to synthesize", file=sys.stderr)
             return None
 
-        # Two-pass synthesis when focus project is set
+        # Step 1: Local pre-synthesis (free, unlimited)
+        proto_kernels = self._run_local_presynthesis(all_chains)
+
+        # Step 2: Final synthesis with Sonnet (paid, small input)
         if self.focus_project:
             focus = self.focus_project
-            focused = [c for c in all_chains
-                       if any(focus == p or p.startswith(focus + "/")
-                              for p in c.get("member_projects", []))]
+            focus_protos = [p for p in proto_kernels
+                           if any(focus == pr or pr.startswith(focus + "/")
+                                  for pr in p.get("projects", []))]
+            if focus_protos:
+                result_focus = self._run_synthesis_pass(focus_protos, "focus",
+                                                        from_protos=True)
+            else:
+                result_focus = None
+            result_all = self._run_synthesis_pass(proto_kernels, "global",
+                                                   from_protos=True)
+            gap_kernels = self._run_gap_analysis(all_chains)
 
-            if focused and len(focused) < len(all_chains):
-                print(f"[dream] Two-pass synthesis: {len(focused)} focus chains + "
-                      f"{len(all_chains)} total", file=sys.stderr)
+            merged = self._merge_synthesis(result_focus, result_all)
+            if gap_kernels and merged:
+                merged["kernels"] = merged.get("kernels", []) + gap_kernels
+            elif gap_kernels:
+                merged = {"kernels": gap_kernels, "top_insights": [], "data_story": ""}
+            return merged
 
-                # Pass 1: focus project
-                result_focus = self._run_synthesis_pass(focused, "focus")
-                # Pass 2: all chains
-                result_all = self._run_synthesis_pass(all_chains, "global")
-                # Pass 3: gap analysis — planned items with no chain activity
-                gap_kernels = self._run_gap_analysis(all_chains)
+        result = self._run_synthesis_pass(proto_kernels, "global", from_protos=True)
+        gap_kernels = self._run_gap_analysis(all_chains)
+        if gap_kernels and result:
+            result["kernels"] = result.get("kernels", []) + gap_kernels
+        return result
 
-                # Merge results
-                merged = self._merge_synthesis(result_focus, result_all)
-                if gap_kernels and merged:
-                    merged["kernels"] = merged.get("kernels", []) + gap_kernels
-                elif gap_kernels:
-                    merged = {"kernels": gap_kernels, "top_insights": [], "data_story": ""}
-                return merged
+    # ── Local pre-synthesis (Ollama, free) ─────────────────────────────
 
-        return self._run_synthesis_pass(all_chains, "global")
+    LOCAL_PRESYNTHESIS_PROMPT = """You are compressing chain connections into proto-kernels — rough insights for further curation.
+
+Given these chains, extract the most significant insights. For each:
+- type: correction | orphan | pattern | stress | growth | question
+- content: 1-2 sentences, specific
+- importance: 1-10
+- projects: which projects are involved
+
+Rules:
+- Extract 3-8 proto-kernels per batch
+- Skip trivial chains ("files were edited", "code was read")
+- Focus on corrections, unfinished work, recurring patterns, pain points
+- Be specific — names, projects, dates when available
+
+Output valid JSON: {"proto_kernels": [{"type": "...", "content": "...", "importance": N, "projects": [...]}]}"""
+
+    def _run_local_presynthesis(self, all_chains: list[dict]) -> list[dict]:
+        """Batch chains through Ollama to produce proto-kernels.
+
+        Processes every chain in small batches (free, local).
+        Returns deduplicated proto-kernels for Sonnet to curate.
+        """
+        import random
+
+        BATCH_SIZE = 15
+        random.shuffle(all_chains)
+
+        # Build batches
+        batches = []
+        for i in range(0, len(all_chains), BATCH_SIZE):
+            batch = all_chains[i:i + BATCH_SIZE]
+            batches.append(batch)
+
+        print(f"[dream] Local pre-synthesis: {len(all_chains)} chains → "
+              f"{len(batches)} batches of ~{BATCH_SIZE} (Ollama, free)",
+              file=sys.stderr)
+
+        all_protos = []
+        presynth_start = time.time()
+
+        for bi, batch in enumerate(batches):
+            # Check termination
+            stop, reason = self._should_stop()
+            if stop:
+                print(f"[dream] Pre-synthesis stopped: {reason}", file=sys.stderr)
+                break
+
+            # Format batch
+            lines = []
+            for chain in batch:
+                ctype = chain.get("chain_type", "?")
+                content = chain.get("content", "")[:200]
+                projects = ", ".join(chain.get("member_projects", []))
+                xp = " [cross-project]" if chain.get("cross_project") else ""
+                lines.append(f"({ctype}) {content} [projects: {projects}]{xp}")
+
+            user_prompt = f"Compress these {len(batch)} chains into proto-kernels:\n\n" + "\n".join(lines)
+
+            payload = {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": self.LOCAL_PRESYNTHESIS_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "stream": False,
+                "options": {"temperature": 0.3},
+                "format": "json",
+            }
+
+            try:
+                result = subprocess.run(
+                    ["curl", "-s", "http://localhost:11434/api/chat",
+                     "-d", json.dumps(payload)],
+                    capture_output=True, text=True, timeout=60,
+                )
+                response = json.loads(result.stdout)
+                content = response.get("message", {}).get("content", "")
+                parsed = json.loads(content)
+                protos = parsed.get("proto_kernels", [])
+                if isinstance(protos, list):
+                    all_protos.extend(protos)
+            except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError):
+                pass
+
+            # Progress every 10 batches
+            if (bi + 1) % 10 == 0 or bi == len(batches) - 1:
+                elapsed = time.time() - presynth_start
+                print(f"[dream] Pre-synthesis: {bi+1}/{len(batches)} batches, "
+                      f"{len(all_protos)} proto-kernels, {elapsed:.0f}s",
+                      file=sys.stderr)
+
+        # Dedup proto-kernels by content similarity
+        seen = set()
+        unique = []
+        for p in all_protos:
+            key = p.get("content", "").strip().lower()[:60]
+            if key not in seen and len(key) > 10:
+                seen.add(key)
+                unique.append(p)
+
+        # Sort by importance
+        unique.sort(key=lambda p: -(p.get("importance", 5)))
+
+        elapsed = time.time() - presynth_start
+        print(f"[dream] Pre-synthesis complete: {len(all_protos)} raw → "
+              f"{len(unique)} unique proto-kernels ({elapsed:.0f}s)",
+              file=sys.stderr)
+
+        return unique
 
     def _merge_synthesis(self, focus: dict | None, broad: dict | None) -> dict | None:
         """Merge focus and broad synthesis results, deduplicating kernels."""
@@ -1170,47 +1288,60 @@ class DreamEngine:
 
         return merged
 
-    def _run_synthesis_pass(self, chains: list[dict], label: str) -> dict | None:
-        """Run a single synthesis pass on a set of chains."""
-        # Cap chains to fit in model context (~150K chars ≈ ~40K tokens)
-        MAX_SYNTHESIS_CHARS = 150_000
-        if chains:
-            total_chars = sum(len(c.get("content", "")) for c in chains)
+    def _run_synthesis_pass(self, items: list[dict], label: str,
+                            from_protos: bool = False) -> dict | None:
+        """Run final synthesis via Sonnet on proto-kernels or raw chains."""
+        if not items:
+            return None
+
+        # Format items for prompt
+        item_lines = []
+        projects = set()
+
+        if from_protos:
+            # Proto-kernels — already compressed, much smaller
+            for p in items[:100]:  # cap at 100 proto-kernels
+                ptype = p.get("type", "?")
+                content = p.get("content", "")
+                importance = p.get("importance", 5)
+                pprojects = p.get("projects", [])
+                if isinstance(pprojects, list):
+                    projects.update(pprojects)
+                item_lines.append(
+                    f"({ptype}, importance={importance}) {content} "
+                    f"[projects: {', '.join(pprojects) if isinstance(pprojects, list) else str(pprojects)}]"
+                )
+        else:
+            # Raw chains (fallback)
+            MAX_SYNTHESIS_CHARS = 150_000
+            total_chars = sum(len(c.get("content", "")) for c in items)
             if total_chars > MAX_SYNTHESIS_CHARS:
-                # Keep most recent + highest-signal chains
-                # Sort by chain_type priority, then recency
                 type_priority = {"correction": 0, "orphan": 1, "causal": 2,
                                  "thematic": 3, "temporal_link": 4}
-                chains = sorted(chains,
-                                key=lambda c: (type_priority.get(c.get("chain_type"), 5),
-                                               c.get("ts", "")))
-                # Trim from the end (lowest priority, oldest)
+                items = sorted(items,
+                               key=lambda c: (type_priority.get(c.get("chain_type"), 5),
+                                              c.get("ts", "")))
                 trimmed = []
                 char_count = 0
-                for c in chains:
-                    char_count += len(c.get("content", "")) + 100  # overhead
+                for c in items:
+                    char_count += len(c.get("content", "")) + 100
                     if char_count > MAX_SYNTHESIS_CHARS:
                         break
                     trimmed.append(c)
-                print(f"[dream] Capped synthesis input: {len(trimmed)}/{len(chains)} chains "
-                      f"({char_count:,} chars)", file=sys.stderr)
-                chains = trimmed
+                items = trimmed
 
-        # Format chains for the synthesis prompt
-        chain_lines = []
-        projects = set()
-        for chain in chains:
-            uid = chain.get("uid", "?")
-            ctype = chain.get("chain_type", "?")
-            content = chain.get("content", "")
-            member_count = len(chain.get("member_uids", []))
-            chain_projects = chain.get("member_projects", [])
-            projects.update(chain_projects)
-            xp = " [cross-project]" if chain.get("cross_project") else ""
-            chain_lines.append(
-                f"[{uid}] ({ctype}) {content} "
-                f"[{member_count} members, projects: {', '.join(chain_projects)}]{xp}"
-            )
+            for chain in items:
+                uid = chain.get("uid", "?")
+                ctype = chain.get("chain_type", "?")
+                content = chain.get("content", "")
+                member_count = len(chain.get("member_uids", []))
+                chain_projects = chain.get("member_projects", [])
+                projects.update(chain_projects)
+                xp = " [cross-project]" if chain.get("cross_project") else ""
+                item_lines.append(
+                    f"[{uid}] ({ctype}) {content} "
+                    f"[{member_count} members, projects: {', '.join(chain_projects)}]{xp}"
+                )
 
         project_state = self._gather_project_state()
 
@@ -1221,12 +1352,13 @@ class DreamEngine:
         if label == "focus" and self.focus_project:
             focus_context = self._load_focus_context()
 
+        input_type = "proto-kernels" if from_protos else "chains"
         user_prompt = SYNTHESIS_USER_TEMPLATE.format(
-            count=len(chains),
+            count=len(items),
             corpus_size=len(self.all_metadata),
             project_count=len(projects),
             project_state=project_state,
-            chains="\n".join(chain_lines),
+            chains="\n".join(item_lines),
         )
 
         if focus_context:
@@ -1234,8 +1366,8 @@ class DreamEngine:
                 f"\n\nFOCUS PROJECT CONTEXT ({self.focus_project}):\n"
                 f"Below are the project's CLAUDE.md files and saved plans. "
                 f"These represent documented intentions and detailed designs. "
-                f"Compare the chains above against this context:\n"
-                f"- Flag planned work with NO corresponding chains as orphans\n"
+                f"Compare the {input_type} above against this context:\n"
+                f"- Flag planned work with NO corresponding {input_type} as orphans\n"
                 f"- Plans marked [PLAN] represent invested design effort — "
                 f"unstarted plans are higher-priority orphans than passing mentions\n"
                 f"- Check Direction/Pending sections for active priorities vs completed work\n\n"
@@ -1243,8 +1375,8 @@ class DreamEngine:
             )
 
         synth_start = time.time()
-        prompt_chars = len("\n".join(chain_lines))
-        print(f"[dream] Running synthesis ({label}) on {len(chains)} chains "
+        prompt_chars = len("\n".join(item_lines))
+        print(f"[dream] Running synthesis ({label}) on {len(items)} {input_type} "
               f"across {len(projects)} projects "
               f"({prompt_chars:,} chars prompt)...", file=sys.stderr)
 
