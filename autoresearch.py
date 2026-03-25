@@ -30,19 +30,38 @@ from eval import run_eval, load_ground_truth
 
 LOG_PATH = Path.home() / ".continuum" / "autoresearch_log.jsonl"
 
-PARAM_BOUNDS = {
-    "semantic_k": (10, 100, int),
-    "keyword_k": (10, 100, int),
-    "keyword_weight": (0.0, 1.0, float),
-    "hybrid_boost": (0.0, 1.0, float),
-    "identifier_weight": (0.0, 1.0, float),
-    "decay_half_life_days": (7, 120, float),
-    "decay_floor": (0.0, 0.8, float),
-    "correction_boost_max": (0.0, 2.0, float),
-    "context_boost": (0.5, 5.0, float),
-    "kernel_boost": (0.5, 5.0, float),
-    "chain_boost": (0.5, 3.0, float),
+# Hard bounds: physically meaningful limits that can never be crossed
+# Soft bounds: starting search range, auto-expanded when the LLM hits them
+PARAM_HARD_BOUNDS = {
+    "semantic_k": (1, None, int),        # at least 1, no upper limit
+    "keyword_k": (1, None, int),
+    "keyword_weight": (0.0, None, float),  # non-negative, no ceiling
+    "hybrid_boost": (0.0, None, float),
+    "identifier_weight": (0.0, None, float),
+    "decay_half_life_days": (1, None, float),  # at least 1 day
+    "decay_floor": (0.0, 1.0, float),    # 0 = fully decay, 1 = no decay
+    "correction_boost_max": (0.0, None, float),
+    "context_boost": (0.0, None, float),
+    "kernel_boost": (0.0, None, float),
+    "chain_boost": (0.0, None, float),
 }
+
+# Soft bounds — starting search range (auto-expand on wall hits)
+PARAM_SOFT_BOUNDS = {
+    "semantic_k": (10, 100),
+    "keyword_k": (10, 100),
+    "keyword_weight": (0.0, 1.0),
+    "hybrid_boost": (0.0, 1.0),
+    "identifier_weight": (0.0, 1.0),
+    "decay_half_life_days": (7, 120),
+    "decay_floor": (0.0, 0.8),
+    "correction_boost_max": (0.0, 2.0),
+    "context_boost": (0.5, 5.0),
+    "kernel_boost": (0.5, 5.0),
+    "chain_boost": (0.5, 3.0),
+}
+
+WALL_HIT_THRESHOLD = 3  # auto-expand after this many iterations at a bound
 
 RESEARCH_PROMPT = """\
 You are a retrieval systems researcher running parameter optimization experiments.
@@ -93,15 +112,68 @@ def append_log(entry: dict):
         f.write(json.dumps(entry) + "\n")
 
 
+def _get_effective_bounds() -> dict:
+    """Get current soft bounds, auto-expanded by wall hits in the log."""
+    bounds = {k: list(v) for k, v in PARAM_SOFT_BOUNDS.items()}
+    log = load_log()
+
+    # Count consecutive wall hits per param per bound direction
+    wall_hits: dict[str, dict[str, int]] = {}  # param → {"lo": n, "hi": n}
+    for entry in log[-50:]:  # look at recent history
+        changes = entry.get("changes", {})
+        params_after = entry.get("params_after", {})
+        for param, value in changes.items():
+            if param not in bounds:
+                continue
+            lo, hi = bounds[param]
+            if wall_hits.get(param) is None:
+                wall_hits[param] = {"lo": 0, "hi": 0}
+            if value <= lo * 1.01:  # within 1% of lower bound
+                wall_hits[param]["lo"] += 1
+            else:
+                wall_hits[param]["lo"] = 0
+            if hi is not None and value >= hi * 0.99:  # within 1% of upper bound
+                wall_hits[param]["hi"] += 1
+            else:
+                wall_hits[param]["hi"] = 0
+
+    # Auto-expand soft bounds that hit the wall
+    for param, hits in wall_hits.items():
+        hard = PARAM_HARD_BOUNDS.get(param, (None, None, float))
+        hard_lo, hard_hi, _ = hard
+        if hits["lo"] >= WALL_HIT_THRESHOLD:
+            new_lo = bounds[param][0] * 0.5  # halve the lower bound
+            if hard_lo is not None:
+                new_lo = max(hard_lo, new_lo)
+            if new_lo != bounds[param][0]:
+                bounds[param][0] = new_lo
+                print(f"  ⚡ auto-expanded {param} lower bound → {new_lo}", file=sys.stderr)
+        if hits["hi"] >= WALL_HIT_THRESHOLD:
+            new_hi = bounds[param][1] * 1.5  # 50% expansion
+            if hard_hi is not None:
+                new_hi = min(hard_hi, new_hi)
+            if new_hi != bounds[param][1]:
+                bounds[param][1] = new_hi
+                print(f"  ⚡ auto-expanded {param} upper bound → {new_hi}", file=sys.stderr)
+
+    return bounds
+
+
 def clamp_params(changes: dict) -> dict:
-    """Clamp proposed values to bounds and correct types."""
+    """Clamp proposed values to effective bounds and correct types."""
+    bounds = _get_effective_bounds()
     clamped = {}
     for param, value in changes.items():
-        if param not in PARAM_BOUNDS:
+        if param not in PARAM_HARD_BOUNDS:
             continue
-        lo, hi, typ = PARAM_BOUNDS[param]
+        _, _, typ = PARAM_HARD_BOUNDS[param]
         value = typ(value)
-        value = max(lo, min(hi, value))
+        # Clamp to hard bounds (soft bounds are just guidance for the LLM)
+        hard_lo, hard_hi, _ = PARAM_HARD_BOUNDS[param]
+        if hard_lo is not None:
+            value = max(hard_lo, value)
+        if hard_hi is not None:
+            value = min(hard_hi, value)
         clamped[param] = value
     return clamped
 
@@ -123,9 +195,10 @@ def propose_changes(current_params: dict, log: list[dict], model: str) -> dict |
     if not log_text:
         log_text = "(no previous experiments — this is the first run)"
 
+    effective_bounds = _get_effective_bounds()
     prompt = RESEARCH_PROMPT.format(
         params_json=json.dumps(current_params, indent=2),
-        bounds_json=json.dumps({k: (lo, hi) for k, (lo, hi, _) in PARAM_BOUNDS.items()}, indent=2),
+        bounds_json=json.dumps(effective_bounds, indent=2),
         n_history=len(recent),
         log_entries=log_text,
     )
