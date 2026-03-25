@@ -1,17 +1,428 @@
 [
   {
     "query": "timestamp format CC requires for session JSONL",
-    "expected_keywords": ["YYYY-MM-DD", "millisecond", ".mmmZ", "Z suffix", "isoformat"],
+    "expected_keywords": [
+      "YYYY-MM-DD",
+      "millisecond",
+      ".mmmZ",
+      "Z suffix",
+      "isoformat"
+    ],
     "description": "Z-suffix timestamp discovery from spoof debugging"
   },
   {
     "query": "webui_server PTY resize bug fix",
-    "expected_keywords": ["TIOCSWINSZ", "SIGWINCH", "os.kill", "SIGWINCH"],
-    "description": "PTY resize fix in bridge — TIOCSWINSZ alone won't deliver SIGWINCH"
+    "expected_keywords": [
+      "TIOCSWINSZ",
+      "SIGWINCH",
+      "os.kill",
+      "SIGWINCH"
+    ],
+    "description": "PTY resize fix in bridge \u2014 TIOCSWINSZ alone won't deliver SIGWINCH"
   },
   {
     "query": "session spoofing template entries silently dropped on resume",
-    "expected_keywords": ["deepcopy", "template", "silently dropped", "field set", "key order"],
+    "expected_keywords": [
+      "deepcopy",
+      "template",
+      "silently dropped",
+      "field set",
+      "key order"
+    ],
     "description": "CC drops synthetic entries, need deepcopy from real entries as templates"
+  },
+  {
+    "query": "terminal | cards tabs work great",
+    "expected_keywords": [
+      "terminal",
+      "actual",
+      "highlighted",
+      "expand",
+      "refine",
+      "dispatch"
+    ],
+    "description": "[emphasis] great! \u2014 bridge 2026-03-02",
+    "source_category": "emphasis",
+    "source_session": "0f7d7713-10b",
+    "source_project": "bridge"
+  },
+  {
+    "query": "the image shows the icons are cut off",
+    "expected_keywords": [],
+    "description": "[emotion:sadness] valence=-0.45 \u2014 bridge 2026-03-02",
+    "source_category": "emotion:sadness",
+    "source_session": "10e2b6e4-738",
+    "source_project": "bridge"
+  },
+  {
+    "query": "- The listen \u2192 orchestrator \u2192 think \u2192 candidate pipeline (needs server restart)\nworking",
+    "expected_keywords": [
+      "listen",
+      "orchestrator",
+      "candidate",
+      "pipeline",
+      "server",
+      "restart"
+    ],
+    "description": "[emphasis] working! \u2014 bridge 2026-02-26",
+    "source_category": "emphasis",
+    "source_session": "16c52b80-773",
+    "source_project": "bridge"
+  },
+  {
+    "query": "No, that didn't quite fix the bug, but I'm not on my phone anymore, let's move on to other things",
+    "expected_keywords": [
+      "anymore",
+      "things"
+    ],
+    "description": "[correction] No, that \u2014 bridge 2026-03-03",
+    "source_category": "correction",
+    "source_session": "36708796-5d9",
+    "source_project": "bridge"
+  },
+  {
+    "query": "stt isn't working",
+    "expected_keywords": [
+      "working"
+    ],
+    "description": "[emotion:sadness] valence=-0.47 \u2014 bridge 2026-03-07",
+    "source_category": "emotion:sadness",
+    "source_session": "3842b281-ce4",
+    "source_project": "bridge"
+  },
+  {
+    "query": "1. sweet! can it go faster? transition to whole word deletion (and reduce speed) at some threshold?",
+    "expected_keywords": [
+      "faster",
+      "transition",
+      "deletion",
+      "reduce",
+      "threshold",
+      "hackathon"
+    ],
+    "description": "[emphasis] sweet! \u2014 bridge 2026-03-07",
+    "source_category": "emphasis",
+    "source_session": "3842b281-ce4",
+    "source_project": "bridge"
+  },
+  {
+    "query": "sorry, we're getting a new icon for love notes",
+    "expected_keywords": [
+      "getting"
+    ],
+    "description": "[emotion:sadness] valence=-0.45 \u2014 bridge 2026-03-17",
+    "source_category": "emotion:sadness",
+    "source_session": "49814dbc-a98",
+    "source_project": "bridge"
+  },
+  {
+    "query": "sweet. now let's look at todos again",
+    "expected_keywords": [
+      "5c356f39",
+      "ee2e0482",
+      "210eb855",
+      "6569d08d",
+      "c17c97f1",
+      "ab571d56",
+      "fc2075a1",
+      "f00a6a1f"
+    ],
+    "description": "[frustration] again \u2014 bridge 2026-03-05",
+    "source_category": "frustration",
+    "source_session": "4c4e221a-2a8",
+    "source_project": "bridge"
+  },
+  {
+    "query": "grid looks messy",
+    "expected_keywords": [
+      "circles",
+      "rounded",
+      "corners",
+      "labels",
+      "bigger"
+    ],
+    "description": "[emphasis] bigger! \u2014 bridge 2026-03-05",
+    "source_category": "emphasis",
+    "source_session": "4c4e221a-2a8",
+    "source_project": "bridge"
+  },
+  {
+    "query": "it's way worse than it used to be",
+    "expected_keywords": [
+      "disable",
+      "finiky",
+      "scrolling",
+      "whatever",
+      "happens",
+      "default"
+    ],
+    "description": "[emotion:disgust] valence=-0.54 \u2014 bridge 2026-03-11",
+    "source_category": "emotion:disgust",
+    "source_session": "4ef1eaaf-38e",
+    "source_project": "bridge"
+  },
+  {
+    "query": "it doesn't work on the phone at least",
+    "expected_keywords": [],
+    "description": "[emotion:sadness] valence=-0.42 \u2014 bridge 2026-03-16",
+    "source_category": "emotion:sadness",
+    "source_session": "4ef1eaaf-38e",
+    "source_project": "bridge"
+  },
+  {
+    "query": "nope it's still bad/worse",
+    "expected_keywords": [
+      "mouseup",
+      "detail"
+    ],
+    "description": "[emotion:disgust] valence=-0.51 \u2014 bridge 2026-02-26",
+    "source_category": "emotion:disgust",
+    "source_session": "519761e8-6b3",
+    "source_project": "bridge"
+  },
+  {
+    "query": "beautiful! excited to try it.\ndo we have a \"/handoff\" skill... or hooks? when I'm ready say record i",
+    "expected_keywords": [
+      "~/+/bridge",
+      "~/projects/bridge"
+    ],
+    "description": "[emphasis] beautiful! \u2014 bridge 2026-02-26",
+    "source_category": "emphasis",
+    "source_session": "519761e8-6b3",
+    "source_project": "bridge"
+  },
+  {
+    "query": "My mistake",
+    "expected_keywords": [
+      "mistake"
+    ],
+    "description": "[emotion:sadness] valence=-0.55 \u2014 bridge 2026-03-10",
+    "source_category": "emotion:sadness",
+    "source_session": "51d8697c-826",
+    "source_project": "bridge"
+  },
+  {
+    "query": "your blowing my mind",
+    "expected_keywords": [
+      "blowing",
+      "flawlessly",
+      "sibling",
+      "buttons",
+      "easing",
+      "between"
+    ],
+    "description": "[emphasis] flawlessly!! \u2014 bridge 2026-03-04",
+    "source_category": "emphasis",
+    "source_session": "52a87169-772",
+    "source_project": "bridge"
+  },
+  {
+    "query": "yes!!!\n\nnow we're getting space\ncan you do this for EVERYTHING\nfull bleed, no margins, no rounded co",
+    "expected_keywords": [
+      "getting",
+      "EVERYTHING",
+      "margins",
+      "rounded",
+      "corners",
+      "layers"
+    ],
+    "description": "[emphasis] yes!!! \u2014 bridge 2026-03-04",
+    "source_category": "emphasis",
+    "source_session": "52a87169-772",
+    "source_project": "bridge"
+  },
+  {
+    "query": "great! it works. \n\n1. refresh should scroll to bottom\n2. \"columns\" not \"cols\" should be saved in loc",
+    "expected_keywords": [
+      "refresh",
+      "scroll",
+      "bottom",
+      "columns",
+      "localStorage",
+      "header"
+    ],
+    "description": "[emphasis] great! \u2014 bridge 2026-02-25",
+    "source_category": "emphasis",
+    "source_session": "66c9e4e9-019",
+    "source_project": "bridge"
+  },
+  {
+    "query": "awesome! the x for dismissing should be on the right. please don't truncate messages... use the same",
+    "expected_keywords": [
+      "makeExpandable()",
+      "card-dismiss",
+      "margin-left: auto",
+      ".slice(0, 120)"
+    ],
+    "description": "[emphasis] awesome! \u2014 bridge 2026-03-03",
+    "source_category": "emphasis",
+    "source_session": "66efb899-1b0",
+    "source_project": "bridge"
+  },
+  {
+    "query": "oops! rebooted server. please continue",
+    "expected_keywords": [
+      "buildSelectionActionBar()"
+    ],
+    "description": "[emphasis] oops! \u2014 bridge 2026-03-03",
+    "source_category": "emphasis",
+    "source_session": "66efb899-1b0",
+    "source_project": "bridge"
+  },
+  {
+    "query": "rad. okay where do we stand? what's next?\nRad symbolic. Okay, where do we stand? What's next?",
+    "expected_keywords": [
+      "c020cd22",
+      "88839eae"
+    ],
+    "description": "[emotion:anger] valence=-0.43 \u2014 bridge 2026-03-02",
+    "source_category": "emotion:anger",
+    "source_session": "7327c7ed-3d2",
+    "source_project": "bridge"
+  },
+  {
+    "query": "we need to choose a different icon for love notes project",
+    "expected_keywords": [
+      "choose",
+      "different",
+      "project",
+      "retrieve",
+      "context",
+      "stable"
+    ],
+    "description": "[correction] that's wrong \u2014 bridge 2026-03-19",
+    "source_category": "correction",
+    "source_session": "77ed9d80-53c",
+    "source_project": "bridge"
+  },
+  {
+    "query": "1. arrow keys:\n     let's use this style: \u25c0 ,\n     instead of this style: \u2190\n\n2. get rid of ^C\n\n3. Ge",
+    "expected_keywords": [
+      "instead",
+      "Gestures",
+      "prompt",
+      "history",
+      "saving",
+      "between"
+    ],
+    "description": "[emphasis] works! \u2014 bridge 2026-02-26",
+    "source_category": "emphasis",
+    "source_session": "83e99f83-bb7",
+    "source_project": "bridge"
+  },
+  {
+    "query": "perfect!\n\nback to read mode. \nnow you have the front end plugin.\nthe exit button and scrolling are g",
+    "expected_keywords": [
+      "perfect",
+      "plugin",
+      "button",
+      "scrolling",
+      "container",
+      "screen"
+    ],
+    "description": "[emphasis] perfect! \u2014 bridge 2026-02-26",
+    "source_category": "emphasis",
+    "source_session": "83e99f83-bb7",
+    "source_project": "bridge"
+  },
+  {
+    "query": "This session is being continued from a previous conversation that ran out of context",
+    "expected_keywords": [
+      "/home/symbolic/+/bridge/bridge/webui/index.html",
+      ".reading-mode",
+      "continued",
+      "previous",
+      "conversation",
+      "context"
+    ],
+    "description": "[emphasis] works! \u2014 bridge 2026-02-26",
+    "source_category": "emphasis",
+    "source_session": "83e99f83-bb7",
+    "source_project": "bridge"
+  },
+  {
+    "query": "awesome! we're back. unfortunately reading more is still half and no buttons",
+    "expected_keywords": [
+      "awesome",
+      "unfortunately",
+      "reading",
+      "buttons"
+    ],
+    "description": "[emphasis] awesome! \u2014 bridge 2026-02-26",
+    "source_category": "emphasis",
+    "source_session": "83e99f83-bb7",
+    "source_project": "bridge"
+  },
+  {
+    "query": "we're getting closer",
+    "expected_keywords": [
+      "getBoundingClientRect()",
+      "clientHeight",
+      "clientWidth"
+    ],
+    "description": "[emphasis] closer! \u2014 bridge 2026-02-26",
+    "source_category": "emphasis",
+    "source_session": "83e99f83-bb7",
+    "source_project": "bridge"
+  },
+  {
+    "query": "perfection! capture insights and Commit code and project context",
+    "expected_keywords": [
+      "perfection",
+      "capture",
+      "insights",
+      "Commit",
+      "project",
+      "context"
+    ],
+    "description": "[emphasis] perfection! \u2014 bridge 2026-02-26",
+    "source_category": "emphasis",
+    "source_session": "83e99f83-bb7",
+    "source_project": "bridge"
+  },
+  {
+    "query": "since I'm still in my phone, i can't validate STT yet",
+    "expected_keywords": [
+      "validate",
+      "please",
+      "implement",
+      "highlight",
+      "suggest",
+      "alternative"
+    ],
+    "description": "[emphasis] great! \u2014 bridge 2026-02-25",
+    "source_category": "emphasis",
+    "source_session": "90c09e90-e1c",
+    "source_project": "bridge"
+  },
+  {
+    "query": "now I'm on laptop, but I have a tab open in debug mobile view",
+    "expected_keywords": [
+      "laptop",
+      "mobile",
+      "textarea",
+      "prompt",
+      "candidate",
+      "taking"
+    ],
+    "description": "[emphasis] helps! \u2014 bridge 2026-02-25",
+    "source_category": "emphasis",
+    "source_session": "94799977-ef9",
+    "source_project": "bridge"
+  },
+  {
+    "query": "GREAT PROGRESS! you're amazing.\n\n1. just like with sidebar, it's easy to go past the hover zone... p",
+    "expected_keywords": [
+      "PROGRESS",
+      "amazing",
+      "sidebar",
+      "please",
+      "reaches",
+      "bottom"
+    ],
+    "description": "[emphasis] PROGRESS! \u2014 bridge 2026-02-25",
+    "source_category": "emphasis",
+    "source_session": "94799977-ef9",
+    "source_project": "bridge"
   }
 ]
