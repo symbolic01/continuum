@@ -424,5 +424,36 @@
     "source_category": "emphasis",
     "source_session": "94799977-ef9",
     "source_project": "bridge"
+  },
+  {
+    "query": "renderTimeline drops metadata fields speaker_id emotion speaker_score",
+    "expected_keywords": [
+      "renderTimeline",
+      "merged",
+      "speaker_id",
+      "emotion",
+      "speaker_score",
+      "pumpTranscript",
+      "ingestTranscriptChunk"
+    ],
+    "description": "[triple-correction] AI editing wrong code path for timeline rendering. User repeated correction 3x. Fields silently dropped during merged array copy.",
+    "source_category": "repeated_correction",
+    "source_session": "03504dc0-cdb",
+    "source_project": "superempathy"
+  },
+  {
+    "query": "bridge timeline card type pattern seq number _source fingerprint",
+    "expected_keywords": [
+      "_source",
+      "seq number range",
+      "fingerprint",
+      "refreshStatus",
+      "renderTimeline",
+      "card type"
+    ],
+    "description": "[cross_session] Architecture pattern needed to fix timeline bug \u2014 user had to invoke /retrieve manually to surface it.",
+    "source_category": "cross_session",
+    "source_session": "03504dc0-cdb",
+    "source_project": "superempathy"
   }
 ]
