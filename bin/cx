@@ -55,6 +55,14 @@ case "${1:-resume}" in
     shift
     python3 "$CONTINUUM_DIR/dream_daemon.py" "$@"
     ;;
+  autoresearch)
+    shift
+    python3 "$CONTINUUM_DIR/autoresearch.py" "$@"
+    ;;
+  eval)
+    shift
+    python3 "$CONTINUUM_DIR/eval.py" "$@"
+    ;;
   help|--help|-h)
     echo "cx — Continuum CLI"
     echo ""

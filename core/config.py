@@ -24,6 +24,19 @@ DEFAULT_CONFIG = {
     "session": {
         "log_dir": "~/.continuum/sessions",
     },
+    "retrieval": {
+        "semantic_k": 30,
+        "keyword_k": 30,
+        "keyword_weight": 0.3,
+        "hybrid_boost": 0.4,
+        "identifier_weight": 0.6,
+        "decay_half_life_days": 30,
+        "decay_floor": 0.3,
+        "correction_boost_max": 0.5,
+        "context_boost": 1.5,
+        "kernel_boost": 2.0,
+        "chain_boost": 1.3,
+    },
 }
 
 

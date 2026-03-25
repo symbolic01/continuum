@@ -32,11 +32,27 @@ class ContextRetriever:
     Corpus queries use LLM-decomposed retrieval across the embedding index.
     """
 
+    # Default retrieval params — overridden by config["retrieval"]
+    DEFAULT_PARAMS = {
+        "semantic_k": 30,
+        "keyword_k": 30,
+        "keyword_weight": 0.3,
+        "hybrid_boost": 0.4,
+        "identifier_weight": 0.6,
+        "decay_half_life_days": 30,
+        "decay_floor": 0.3,
+        "correction_boost_max": 0.5,
+        "context_boost": 1.5,
+        "kernel_boost": 2.0,
+        "chain_boost": 1.3,
+    }
+
     def __init__(
         self,
         sources: list[str],
         index: EmbeddingIndex | None = None,
         decompose_model: str = "",
+        config: dict | None = None,
     ):
         self.sources = sources
         self.index = index
@@ -46,6 +62,11 @@ class ContextRetriever:
         self.decompose_model = decompose_model
         self._known_identifiers: list[str] | None = None
         self._all_metadata: list[dict] | None = None
+
+        # Load retrieval params: config overrides defaults
+        self.params = dict(self.DEFAULT_PARAMS)
+        if config and "retrieval" in config:
+            self.params.update(config["retrieval"])
 
     def _get_known_identifiers(self) -> list[str]:
         if self._known_identifiers is None:
@@ -127,7 +148,7 @@ class ContextRetriever:
             filt = axis_spec.get("filter", "")
 
             if axis == "semantic":
-                results = self._search_semantic(rewritten, k=30)
+                results = self._search_semantic(rewritten, k=self.params["semantic_k"])
                 for meta, score in results:
                     uid = meta.get("uid", "")
                     if uid in all_candidates:
@@ -180,34 +201,43 @@ class ContextRetriever:
                     else:
                         all_candidates[uid] = (meta, score * weight)
 
-            # emotional, polarity, cycle_state — future axes
+            elif axis == "emotional":
+                results = self._search_emotion(filt, rewritten, k=20)
+                for meta, score in results:
+                    uid = meta.get("uid", "")
+                    if uid in all_candidates:
+                        all_candidates[uid] = (meta, all_candidates[uid][1] + score * weight)
+                    else:
+                        all_candidates[uid] = (meta, score * weight)
+
+            # polarity, cycle_state — future axes
 
         # Hybrid: add keyword search results (always runs alongside semantic)
         # Merge expanded keywords from decomposition with raw query terms
         keyword_query = rewritten
         if expanded_keywords:
             keyword_query = rewritten + " " + " ".join(expanded_keywords)
-        keyword_results = self._search_keyword(keyword_query, k=30)
+        keyword_results = self._search_keyword(keyword_query, k=self.params["keyword_k"])
         for meta, score in keyword_results:
             uid = meta.get("uid", "")
             if uid in all_candidates:
                 existing_meta, existing_score = all_candidates[uid]
-                all_candidates[uid] = (existing_meta, existing_score + score * 0.4)
+                all_candidates[uid] = (existing_meta, existing_score + score * self.params["hybrid_boost"])
             else:
-                all_candidates[uid] = (meta, score * 0.3)
+                all_candidates[uid] = (meta, score * self.params["keyword_weight"])
 
         # Identifier search: fuzzy-resolve then graduated exact match
         if raw_identifiers:
             resolved = self._resolve_identifiers(raw_identifiers)
             if resolved:
-                id_results = self._search_identifier(resolved, k=30)
+                id_results = self._search_identifier(resolved, k=self.params["keyword_k"])
                 for meta, score in id_results:
                     uid = meta.get("uid", "")
                     if uid in all_candidates:
                         existing_meta, existing_score = all_candidates[uid]
-                        all_candidates[uid] = (existing_meta, existing_score + score * 0.6)
+                        all_candidates[uid] = (existing_meta, existing_score + score * self.params["identifier_weight"])
                     else:
-                        all_candidates[uid] = (meta, score * 0.6)
+                        all_candidates[uid] = (meta, score * self.params["identifier_weight"])
 
         # Apply filters
         if role_filter or project_filter or exclude_roles:
@@ -383,15 +413,15 @@ class ContextRetriever:
 
         # Kernel entries (dream synthesis output) — highest value, no decay
         if role == "kernel":
-            return base_score * 2.0
+            return base_score * self.params["kernel_boost"]
 
         # Chain entries (dream integration output) — valuable, no decay
         if role == "chain":
-            return base_score * 1.3
+            return base_score * self.params["chain_boost"]
 
         # Context entries (CLAUDE.md, plans) — no decay, boosted
         if role == "context":
-            return base_score * 1.5
+            return base_score * self.params["context_boost"]
 
         # No timestamp → no decay
         if not ts:
@@ -404,31 +434,44 @@ class ContextRetriever:
         except (ValueError, TypeError):
             return base_score
 
-        # Check for anti-pattern / correction content
+        # Detect polarity — prefer emotion metadata, fall back to keywords
+        emotion_class = meta.get("emotion_class", "")
         content = meta.get("content", "").lower()
-        is_correction = any(w in content for w in (
-            "fixed", "the fix", "correct approach", "solved", "the solution",
-            "don't do", "instead use", "the right way", "confirmed working",
-        ))
-        is_failure = any(w in content for w in (
-            "failed", "error", "bug", "wrong", "broken", "doesn't work",
-        ))
+
+        if emotion_class and emotion_class != "neutral":
+            # Use model-derived emotion
+            is_failure = emotion_class in ("anger", "disgust", "fear", "sadness")
+            is_correction = any(w in content for w in (
+                "fixed", "the fix", "correct approach", "solved", "the solution",
+                "don't do", "instead use", "the right way", "confirmed working",
+            ))
+        else:
+            # Keyword fallback for entries without emotion metadata
+            is_correction = any(w in content for w in (
+                "fixed", "the fix", "correct approach", "solved", "the solution",
+                "don't do", "instead use", "the right way", "confirmed working",
+            ))
+            is_failure = any(w in content for w in (
+                "failed", "error", "bug", "wrong", "broken", "doesn't work",
+            ))
+
+        half_life = self.params["decay_half_life_days"]
+        floor = self.params["decay_floor"]
+        corr_max = self.params["correction_boost_max"]
 
         if is_correction:
             # Corrections get BOOSTED with age — they're established knowledge
-            return base_score * (1.0 + min(age_days / 30, 0.5))  # up to 1.5x boost
+            return base_score * (1.0 + min(age_days / half_life, corr_max))
         elif is_failure and is_correction:
             # Anti-pattern with correction — very valuable, boost
-            return base_score * 1.3
+            return base_score * self.params["chain_boost"]
         elif is_failure:
             # Pure failure without correction — mild decay
-            return base_score * max(0.7, 1.0 - age_days / 60)
+            return base_score * max(0.7, 1.0 - age_days / (half_life * 2))
         else:
             # Normal content — gentle decay
-            # Half-life of ~30 days: score * 0.5^(age/30)
-            decay = math.pow(0.5, age_days / 30)
-            # Floor at 0.3 — very old content can still be retrieved, just ranked lower
-            return base_score * max(0.3, decay)
+            decay = math.pow(0.5, age_days / half_life)
+            return base_score * max(floor, decay)
 
     def _search_entity(self, entity: str, k: int = 20) -> list[tuple[dict, float]]:
         """Entity search — find mentions of a specific name/term.
@@ -449,6 +492,52 @@ class ContextRetriever:
                 break
 
         return matches
+
+    def _search_emotion(self, filt: str, query: str, k: int = 20) -> list[tuple[dict, float]]:
+        """Search by emotion class or valence direction.
+
+        filt can be:
+        - An emotion class: "anger", "joy", "sadness", etc.
+        - A valence direction: "positive", "negative"
+        - Empty: infer from query via semantic heuristic
+        """
+        all_meta = self._get_all_metadata()
+        if not all_meta:
+            return []
+
+        # Known emotion classes
+        emotion_classes = {"anger", "disgust", "fear", "joy", "neutral", "sadness", "surprise"}
+
+        matches = []
+        filt_lower = filt.lower().strip() if filt else ""
+
+        for m in all_meta:
+            emo_class = m.get("emotion_class", "neutral")
+            valence = m.get("emotion_valence", 0.0)
+            arousal = m.get("emotion_arousal", 0.0)
+
+            # Skip neutral entries — not interesting for emotion search
+            if emo_class == "neutral" and abs(valence) < 0.1:
+                continue
+
+            matched = False
+            if filt_lower in emotion_classes:
+                matched = (emo_class == filt_lower)
+            elif filt_lower == "positive":
+                matched = (valence > 0.2)
+            elif filt_lower == "negative":
+                matched = (valence < -0.2)
+            else:
+                # No filter — return all non-neutral, ranked by arousal
+                matched = True
+
+            if matched:
+                # Score by arousal (intensity) — more intense = more interesting
+                score = 0.5 + arousal * 0.5
+                matches.append((m, score))
+
+        matches.sort(key=lambda x: -x[1])
+        return matches[:k]
 
     def _resolve_identifiers(self, raw_identifiers: list[str]) -> list[str]:
         """Fuzzy-match approximate identifiers against the known identifiers index.

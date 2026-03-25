@@ -1,0 +1,17 @@
+[
+  {
+    "query": "timestamp format CC requires for session JSONL",
+    "expected_keywords": ["YYYY-MM-DD", "millisecond", ".mmmZ", "Z suffix", "isoformat"],
+    "description": "Z-suffix timestamp discovery from spoof debugging"
+  },
+  {
+    "query": "webui_server PTY resize bug fix",
+    "expected_keywords": ["TIOCSWINSZ", "SIGWINCH", "os.kill", "SIGWINCH"],
+    "description": "PTY resize fix in bridge — TIOCSWINSZ alone won't deliver SIGWINCH"
+  },
+  {
+    "query": "session spoofing template entries silently dropped on resume",
+    "expected_keywords": ["deepcopy", "template", "silently dropped", "field set", "key order"],
+    "description": "CC drops synthetic entries, need deepcopy from real entries as templates"
+  }
+]

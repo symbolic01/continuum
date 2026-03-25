@@ -47,7 +47,7 @@ def main():
             sys.exit(0)
 
     sources = config.get("context_sources", [])
-    retriever = ContextRetriever(sources=sources, index=idx)
+    retriever = ContextRetriever(sources=sources, index=idx, config=config)
     result = retriever.retrieve(
         query=args.query,
         token_budget=args.budget,
