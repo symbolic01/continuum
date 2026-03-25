@@ -22,7 +22,8 @@ Axes:
   - filter: the entity name
 - causal: find decision chains, reasoning, "why" something happened
 - anti_pattern: find failures, errors, and their corrections
-- emotional: find content with similar emotional tone
+- emotional: find content with a specific emotional tone
+  - filter: emotion class ("anger", "joy", "sadness", "fear", "surprise", "disgust") or valence direction ("positive", "negative")
 - polarity: filter by success or failure
   - filter: "success" or "failure"
 
@@ -39,7 +40,8 @@ Examples:
 - "what's the first thing we ever talked about?" → {"axes": [{"axis": "temporal", "weight": 0.7, "filter": "oldest"}, {"axis": "semantic", "weight": 0.3}], "rewritten_query": "initial conversation first discussion", "keywords": ["first", "beginning", "earliest", "introduction", "started"], "identifiers": []}
 - "that PTY resize bug in bridge" → {"axes": [{"axis": "semantic", "weight": 0.5}, {"axis": "project", "weight": 0.3, "filter": "bridge"}, {"axis": "entity", "weight": 0.2, "filter": "PTY resize"}], "rewritten_query": "PTY resize TIOCSWINSZ SIGWINCH bug fix", "keywords": ["PTY", "TIOCSWINSZ", "SIGWINCH", "terminal", "resize", "winsz", "ioctl"], "identifiers": ["webui_server.py", "_start_proc"]}
 - "what went wrong last time we tried compression?" → {"axes": [{"axis": "anti_pattern", "weight": 0.4}, {"axis": "semantic", "weight": 0.3}, {"axis": "temporal", "weight": 0.3, "filter": "newest"}], "rewritten_query": "compression policy failure error", "keywords": ["compress", "compression", "summary", "truncate", "token_budget", "failure", "error"], "identifiers": ["compression.py", "session_compress.py"]}
-- "check the webserverui file" → {"axes": [{"axis": "semantic", "weight": 0.5}, {"axis": "entity", "weight": 0.5, "filter": "webserverui"}], "rewritten_query": "web server UI file", "keywords": ["webui", "server", "HTTP", "handler", "endpoint"], "identifiers": ["webserverui"]}"""
+- "check the webserverui file" → {"axes": [{"axis": "semantic", "weight": 0.5}, {"axis": "entity", "weight": 0.5, "filter": "webserverui"}], "rewritten_query": "web server UI file", "keywords": ["webui", "server", "HTTP", "handler", "endpoint"], "identifiers": ["webserverui"]}
+- "what was frustrating about the bridge work?" → {"axes": [{"axis": "emotional", "weight": 0.4, "filter": "anger"}, {"axis": "semantic", "weight": 0.3}, {"axis": "project", "weight": 0.3, "filter": "bridge"}], "rewritten_query": "frustrating difficult problems bridge", "keywords": ["frustrating", "stuck", "broken", "difficult", "pain", "struggle"], "identifiers": []}"""
 
 
 def decompose_query(query: str, model: str = "") -> dict:

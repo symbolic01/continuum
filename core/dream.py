@@ -378,6 +378,16 @@ class DreamEngine:
                 if union > 0:
                     score += 0.15 * (overlap / union)  # Jaccard
 
+            # Emotion affinity: similar emotional tone clusters together
+            seed_emo = seed_meta.get("emotion_class", "neutral")
+            meta_emo = meta.get("emotion_class", "neutral")
+            if seed_emo == meta_emo and seed_emo != "neutral":
+                score += 0.1
+            seed_v = seed_meta.get("emotion_valence", 0.0)
+            meta_v = meta.get("emotion_valence", 0.0)
+            if abs(seed_v - meta_v) < 0.3:
+                score += 0.05
+
             scored.append((meta, score))
 
         # Sort by combined score, take top cluster_size_max
@@ -561,6 +571,10 @@ class DreamEngine:
             prefix = f"[{uid} {thread} {ts} {role}]"
             if heading:
                 prefix += f" {heading}"
+            emo_class = meta.get("emotion_class", "")
+            if emo_class and emo_class != "neutral":
+                emo_v = meta.get("emotion_valence", 0.0)
+                prefix += f" (emotion:{emo_class} v:{emo_v:+.1f})"
             lines.append(f"{prefix} {display}")
         return "\n".join(lines)
 

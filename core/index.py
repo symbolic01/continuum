@@ -68,6 +68,9 @@ def build_index(
                     "source_file": str(cf),
                     "heading": entry.get("heading", ""),
                     "chunk_type": entry.get("chunk_type", ""),
+                    "emotion_valence": entry.get("emotion_valence", 0.0),
+                    "emotion_arousal": entry.get("emotion_arousal", 0.0),
+                    "emotion_class": entry.get("emotion_class", "neutral"),
                 }
 
                 # ALL entries go into the metadata index (keyword/identifier search)

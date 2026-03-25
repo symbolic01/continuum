@@ -161,6 +161,19 @@ def convert_claude_code_session(
 
             entries.append(entry)
 
+    # Batch emotion classification
+    if entries:
+        try:
+            from .emotion import classify_batch
+            texts = [e["content"] for e in entries]
+            emotions = classify_batch(texts)
+            for entry, emo in zip(entries, emotions):
+                entry["emotion_valence"] = emo["valence"]
+                entry["emotion_arousal"] = emo["arousal"]
+                entry["emotion_class"] = emo["emotion"]
+        except Exception:
+            pass  # emotion is enrichment, not critical
+
     # Batch embed all entries at once
     if embed and entries:
         try:
@@ -318,6 +331,19 @@ def convert_markdown_file(source_path: Path, project: str, embed: bool = False) 
         }
 
         entries.append(entry)
+
+    # Batch emotion classification
+    if entries:
+        try:
+            from .emotion import classify_batch
+            texts = [e["content"] for e in entries]
+            emotions = classify_batch(texts)
+            for entry, emo in zip(entries, emotions):
+                entry["emotion_valence"] = emo["valence"]
+                entry["emotion_arousal"] = emo["arousal"]
+                entry["emotion_class"] = emo["emotion"]
+        except Exception:
+            pass
 
     # Batch embed all entries at once
     if embed and entries:
@@ -811,6 +837,19 @@ def convert_codebase(
                     "chunk_type": chunk["chunk_type"],
                 })
 
+    # Batch emotion classification
+    if entries:
+        try:
+            from .emotion import classify_batch
+            texts = [e["content"] for e in entries]
+            emotions = classify_batch(texts)
+            for entry, emo in zip(entries, emotions):
+                entry["emotion_valence"] = emo["valence"]
+                entry["emotion_arousal"] = emo["arousal"]
+                entry["emotion_class"] = emo["emotion"]
+        except Exception:
+            pass
+
     # Batch embed
     if embed and entries:
         try:
@@ -911,6 +950,91 @@ def ingest_codebase(args):
     print(f"\nIngested: {total_codebases} codebases, {total_entries} chunks")
 
 
+# ── Enrichment (add fields to existing corpus without re-converting) ───
+
+def enrich_emotion(args):
+    """Add emotion metadata to existing corpus entries that lack it.
+
+    Reads each corpus JSONL, batch-classifies entries without emotion_class,
+    writes back in-place. Preserves embeddings and all other fields.
+    """
+    corpus_dir = Path.home() / ".continuum" / "corpus"
+    if not corpus_dir.exists():
+        print("No corpus found. Run ingest first.")
+        return
+
+    corpus_files = sorted(corpus_dir.rglob("*.jsonl"))
+    print(f"Scanning {len(corpus_files)} corpus files...")
+
+    total_enriched = 0
+    total_skipped = 0
+    files_modified = 0
+
+    for cf in corpus_files:
+        entries = []
+        needs_emotion = []
+        indices = []
+
+        with open(cf) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    entries.append(None)
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    entries.append(line)  # preserve unparseable lines as-is
+                    continue
+
+                entries.append(entry)
+                if "emotion_class" not in entry:
+                    needs_emotion.append(entry.get("content", ""))
+                    indices.append(len(entries) - 1)
+                else:
+                    total_skipped += 1
+
+        if not needs_emotion:
+            continue
+
+        if args.dry_run:
+            print(f"  {cf.name}: {len(needs_emotion)} entries need emotion")
+            total_enriched += len(needs_emotion)
+            continue
+
+        # Batch classify
+        try:
+            from .emotion import classify_batch
+            emotions = classify_batch(needs_emotion)
+        except Exception as e:
+            print(f"  {cf.name}: emotion error: {e}", file=sys.stderr)
+            continue
+
+        for idx, emo in zip(indices, emotions):
+            entry = entries[idx]
+            entry["emotion_valence"] = emo["valence"]
+            entry["emotion_arousal"] = emo["arousal"]
+            entry["emotion_class"] = emo["emotion"]
+
+        # Write back
+        with open(cf, "w") as f:
+            for entry in entries:
+                if entry is None:
+                    f.write("\n")
+                elif isinstance(entry, str):
+                    f.write(entry + "\n")
+                else:
+                    f.write(json.dumps(entry) + "\n")
+
+        total_enriched += len(needs_emotion)
+        files_modified += 1
+        print(f"  {cf.name}: enriched {len(needs_emotion)} entries")
+
+    print(f"\nEnriched: {total_enriched} entries across {files_modified} files")
+    if total_skipped:
+        print(f"Skipped: {total_skipped} (already have emotion)")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Continuum Ingest — convert session logs to corpus")
 
@@ -939,6 +1063,9 @@ def main():
     code_parser.add_argument("--dry-run", action="store_true", help="Show what would be ingested")
     code_parser.add_argument("--force", action="store_true", help="Re-ingest already-ingested files")
 
+    enrich_parser = sub.add_parser("enrich", help="Add emotion metadata to existing corpus entries")
+    enrich_parser.add_argument("--dry-run", action="store_true", help="Show what would be enriched")
+
     args = parser.parse_args()
 
     if args.command == "claude-code":
@@ -949,6 +1076,8 @@ def main():
         ingest_markdown(args)
     elif args.command == "codebase":
         ingest_codebase(args)
+    elif args.command == "enrich":
+        enrich_emotion(args)
     else:
         parser.print_help()
 
