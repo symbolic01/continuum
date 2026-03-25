@@ -657,12 +657,42 @@ class ContextRetriever:
         ranked = sorted(matches.values(), key=lambda x: -x[1])
         return ranked[:k]
 
+    def _cull_with_ollama(self, query: str, numbered_prompt: str) -> list[int] | None:
+        """Try culling via local Ollama (fast, free). Returns indices or None."""
+        import urllib.request
+        import urllib.error
+
+        payload = json.dumps({
+            "model": self.decompose_model,  # reuse the decompose model (qwen)
+            "messages": [
+                {"role": "user", "content": numbered_prompt},
+            ],
+            "stream": False,
+            "format": "json",
+            "options": {"temperature": 0.1},
+        })
+
+        try:
+            req = urllib.request.Request(
+                "http://localhost:11434/api/chat",
+                data=payload.encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read())
+            content = data.get("message", {}).get("content", "")
+            match = re.search(r'\[[\d,\s]+\]', content)
+            if match:
+                return json.loads(match.group())
+        except Exception:
+            pass
+        return None
+
     def _cull_with_llm(self, query: str, chunks: list[str], budget_tokens: int,
                        model: str = "") -> list[str]:
         """Over-retrieve then LLM-cull: keep only chunks relevant to the query.
 
-        Takes a list of retrieved chunks (already ranked), asks a fast LLM
-        which ones are actually relevant, drops the noise.
+        Tries local Ollama first (fast, free). Falls back to claude --print.
         """
         if not model:
             from .config import get_model
@@ -671,11 +701,16 @@ class ContextRetriever:
         if not chunks or len(chunks) <= 5:
             return chunks  # too few to bother culling
 
+        # Limit chunks sent to culler — top 50 is enough to find signal
+        cull_limit = min(50, len(chunks))
+        cull_candidates = chunks[:cull_limit]
+        remainder = chunks[cull_limit:]
+
         # Number each chunk for reference
         numbered = []
-        for i, chunk in enumerate(chunks):
+        for i, chunk in enumerate(cull_candidates):
             # Truncate individual chunks for the cull prompt (save tokens)
-            preview = chunk[:300] + "..." if len(chunk) > 300 else chunk
+            preview = chunk[:200] + "..." if len(chunk) > 200 else chunk
             numbered.append(f"[{i}] {preview}")
 
         prompt = f"""Given this query: "{query}"
@@ -684,38 +719,45 @@ Which of these retrieved context chunks are relevant? Return ONLY the numbers of
 
 {chr(10).join(numbered)}"""
 
-        try:
-            result = subprocess.run(
-                ["claude", "--print", "--model", model],
-                input=prompt,
-                capture_output=True, text=True, timeout=30,
-            )
-            if result.returncode != 0:
-                return chunks  # fallback: return all
+        # Try local Ollama first (fast)
+        indices = self._cull_with_ollama(query, prompt)
+        if indices is not None:
+            print(f"  culled via local model", file=sys.stderr)
+        else:
+            # Fall back to claude --print (slower, API)
+            try:
+                result = subprocess.run(
+                    ["claude", "--print", "--model", model],
+                    input=prompt,
+                    capture_output=True, text=True, timeout=30,
+                )
+                if result.returncode != 0:
+                    return chunks
 
-            # Parse the JSON array from output
-            output = result.stdout.strip()
-            match = re.search(r'\[[\d,\s]+\]', output)
-            if match:
-                indices = json.loads(match.group())
-                kept = [chunks[i] for i in indices if 0 <= i < len(chunks)]
-                if kept:
-                    # Fit to budget
-                    final = []
-                    tokens_used = 0
-                    for chunk in kept:
-                        t = count_tokens(chunk)
-                        if tokens_used + t > budget_tokens:
-                            break
-                        final.append(chunk)
-                        tokens_used += t
-                    culled = len(chunks) - len(final)
-                    if culled > 0:
-                        print(f"  culled {culled}/{len(chunks)} chunks", file=sys.stderr)
-                    return final
+                output = result.stdout.strip()
+                match = re.search(r'\[[\d,\s]+\]', output)
+                if match:
+                    indices = json.loads(match.group())
+                else:
+                    return chunks
+            except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
+                return chunks
 
-        except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
-            pass
+        if indices:
+            kept = [cull_candidates[i] for i in indices if 0 <= i < len(cull_candidates)]
+            if kept:
+                final = []
+                tokens_used = 0
+                for chunk in kept:
+                    t = count_tokens(chunk)
+                    if tokens_used + t > budget_tokens:
+                        break
+                    final.append(chunk)
+                    tokens_used += t
+                culled = len(cull_candidates) - len(final)
+                if culled > 0:
+                    print(f"  culled {culled}/{len(cull_candidates)} chunks", file=sys.stderr)
+                return final
 
         return chunks  # fallback: return all
 
