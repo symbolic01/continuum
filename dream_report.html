@@ -333,21 +333,41 @@ async function loadReportHistory() {
       <span style="color:var(--text-muted)">${files.length} reports</span>
     `;
 
-    // Lazy-load synthesis tags for visible options
+    // Tag all options using file sizes from directory listing as proxy
+    // Synthesized reports are typically 2-3MB+, raw are ~50-500KB
     const sel = document.getElementById(selectId);
+    const sizeMatches = [...html.matchAll(/>(\d+\.?\d*[KMG]?)\s*<\/td>/g)];
+    // Parse sizes from directory listing (python http.server shows them)
+    const fileSizes = {};
+    files.forEach((f, i) => {
+      const sizeMatch = html.match(new RegExp(f + '.*?>(\\d+\\.?\\d*[KMG]?)'));
+      if (sizeMatch) fileSizes[f] = sizeMatch[1];
+    });
+
+    // Also check current report for kernel count to tag accurately
+    const currentKernels = DATA?.kernels?.length || 0;
+    for (const opt of sel.options) {
+      if (opt.value === 'latest') {
+        opt.textContent += currentKernels > 0 ? ` ★${currentKernels}` : ' ○';
+      }
+    }
+
+    // Lazy-check a few recent reports for accurate kernel counts
     setTimeout(async () => {
-      for (const f of files.slice(0, 20)) {
+      for (const f of files.slice(0, 10)) {
         try {
           const r = await fetch('dream_reports/' + f);
           const d = await r.json();
           const k = (d.kernels || []).length;
           const tag = k > 0 ? ` ★${k}` : ' ○';
           for (const opt of sel.options) {
-            if (opt.value === f) { opt.textContent += tag; break; }
+            if (opt.value === f && !opt.textContent.includes('★') && !opt.textContent.includes('○')) {
+              opt.textContent += tag; break;
+            }
           }
         } catch {}
       }
-    }, 100);
+    }, 500);
     const header = document.querySelector('.header');
     if (header) header.appendChild(nav);
   } catch (e) { /* no directory listing available */ }
