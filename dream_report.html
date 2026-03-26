@@ -284,6 +284,15 @@ async function loadData() {
     const src = params.get('src') || 'dream_report.json';
     const res = await fetch(src + '?t=' + Date.now());
     DATA = await res.json();
+    // Normalize slim reports (chain_counts instead of chains)
+    if (!DATA.chains && DATA.chain_counts) {
+      DATA.chains = {};
+      for (const [k, v] of Object.entries(DATA.chain_counts)) {
+        DATA.chains[k] = []; // empty arrays — no drill-down for slim reports
+      }
+    }
+    if (!DATA.chains) DATA.chains = {};
+    if (!DATA.kernels) DATA.kernels = [];
     render();
     await loadReportHistory();
   } catch (err) {

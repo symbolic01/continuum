@@ -190,7 +190,7 @@ def run_synthesis(verbose: bool = False):
     try:
         result = subprocess.run(
             cmd, capture_output=True, text=True,
-            timeout=600,  # 10 min for synthesis + validation
+            timeout=900,  # 15 min for pre-synthesis + synthesis + validation
         )
         for line in result.stderr.strip().split("\n"):
             if line.strip():
@@ -223,9 +223,29 @@ def run_synthesis(verbose: bool = False):
         state["integration_cycle_count"] = 0
         save_dream_state(state)
 
+        # Copy report to served directory
+        import shutil
+        src_report = Path.home() / ".continuum" / "dream_report.json"
+        dst_report = CONTINUUM_DIR / "dream_report.json"
+        if src_report.exists():
+            shutil.copy2(str(src_report), str(dst_report))
+        # Copy manifest
+        src_manifest = Path.home() / ".continuum" / "dream_reports" / "manifest.json"
+        dst_manifest = CONTINUUM_DIR / "dream_reports" / "manifest.json"
+        if src_manifest.exists():
+            dst_manifest.parent.mkdir(exist_ok=True)
+            shutil.copy2(str(src_manifest), str(dst_manifest))
+        # Copy new versioned reports
+        src_dir = Path.home() / ".continuum" / "dream_reports"
+        dst_dir = CONTINUUM_DIR / "dream_reports"
+        for f in src_dir.glob("dream_report_*.json"):
+            dst = dst_dir / f.name
+            if not dst.exists():
+                shutil.copy2(str(f), str(dst))
+
         log("Synthesis complete")
     except subprocess.TimeoutExpired:
-        log("Synthesis timed out (10m)")
+        log("Synthesis timed out (15m)")
 
 
 def main():
