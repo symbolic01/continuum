@@ -7,6 +7,8 @@ a clean turn-based story: what was attempted, what failed, what worked.
 import json
 import subprocess
 import sys
+import urllib.request
+import urllib.error
 
 
 _SYSTEM_PROMPT = """\
@@ -23,6 +25,17 @@ Rules:
 - Preserve file paths, function names, key code patterns — enough to continue working
 - Assistant turns should be concise but not telegraphic — natural conversation tone
 - Do NOT merge everything into one big block. Keep turns short and focused
+- Output ONLY the JSON array, no markdown fencing or commentary"""
+
+
+_CHUNK_PROMPT = """\
+Compress this CHUNK of a Claude Code session into a brief turn-based narrative.
+This is chunk {chunk_num} of {total_chunks} — there may be context before/after.
+
+Rules:
+- Output JSON: [{{"role": "user", "content": "..."}}, {{"role": "assistant", "content": "..."}}, ...]
+- 3-10 turns for this chunk. Keep it proportional to the work done
+- Preserve file paths, function names, key decisions
 - Output ONLY the JSON array, no markdown fencing or commentary"""
 
 
@@ -60,40 +73,32 @@ def _truncate_middle(turns: list[dict], max_chars: int = 120_000) -> list[dict]:
     return turns[:head_end] + [marker] + turns[tail_start:]
 
 
-def compress_session(
-    turns: list[dict],
-    user_prompt: str = "",
-    model: str = "",
-    timeout: int = 120,
-) -> list[dict]:
-    """Compress raw session turns into a clean narrative via LLM.
+def _compress_via_ollama(prompt: str, model: str = "qwen2.5:7b", timeout: int = 180) -> str | None:
+    """Compress via local Ollama HTTP API. Returns response text or None on failure."""
+    payload = json.dumps({
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {"temperature": 0.3, "num_predict": 8192},
+    }).encode()
 
-    Args:
-        turns: list of {role, content} dicts from the raw session
-        user_prompt: optional steering text appended to the compression prompt
-        model: model to use for compression
-        timeout: subprocess timeout in seconds
+    req = urllib.request.Request(
+        "http://localhost:11434/api/generate",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read())
+            return data.get("response", "").strip()
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+        print(f"[continuum:compress] ollama error: {e}", file=sys.stderr)
+        return None
 
-    Returns:
-        Compressed list of {role, content} dicts (5-20 turns)
-    """
-    if not model:
-        from .config import get_model
-        model = get_model("compress")
 
-    if len(turns) <= 20:
-        return turns  # already short enough
-
-    # Truncate if too large
-    truncated = _truncate_middle(turns)
-
-    # Build prompt
-    session_json = json.dumps(truncated, indent=None)
-    prompt = _SYSTEM_PROMPT
-    if user_prompt:
-        prompt += f"\n\nAdditional guidance: {user_prompt}"
-    prompt += f"\n\n<session>\n{session_json}\n</session>"
-
+def _compress_via_claude(prompt: str, model: str, timeout: int = 120) -> str | None:
+    """Compress via claude --print subprocess. Returns response text or None on failure."""
     try:
         result = subprocess.run(
             ["claude", "--print", "--model", model],
@@ -104,22 +109,155 @@ def compress_session(
         )
         if result.returncode != 0:
             print(f"[continuum:compress] LLM error: {(result.stderr or '').strip()[:200]}", file=sys.stderr)
-            return turns
+            return None
+        return result.stdout.strip()
+    except subprocess.TimeoutExpired:
+        print("[continuum:compress] timeout", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"[continuum:compress] error: {e}", file=sys.stderr)
+        return None
 
-        output = result.stdout.strip()
+
+def _abbreviate_code_blocks(turns: list[dict], max_code_lines: int = 8) -> list[dict]:
+    """Abbreviate long code/diff blocks in turn content to reduce token count before compression.
+
+    Keeps the first few lines as a hint, replaces the rest with a summary line.
+    """
+    import re
+    abbreviated = []
+    for turn in turns:
+        content = turn.get("content", "")
+        # Match fenced code blocks: ```lang\n...\n```
+        def _shorten_block(m):
+            fence_open = m.group(1)  # ```lang
+            body = m.group(2)
+            lines = body.split("\n")
+            if len(lines) <= max_code_lines + 2:
+                return m.group(0)  # short enough, keep as-is
+            kept = "\n".join(lines[:max_code_lines])
+            omitted = len(lines) - max_code_lines
+            return f"{fence_open}\n{kept}\n[... {omitted} more lines ...]\n```"
+
+        new_content = re.sub(r"(```\w*)\n([\s\S]*?)\n```", _shorten_block, content)
+        abbreviated.append({**turn, "content": new_content})
+    return abbreviated
+
+
+def _chunk_turns(turns: list[dict], chunk_size: int = 30) -> list[list[dict]]:
+    """Split turns into chunks for batched compression.
+
+    Splits at user-turn boundaries so each chunk starts with a user message.
+    """
+    chunks = []
+    current = []
+    for turn in turns:
+        current.append(turn)
+        if len(current) >= chunk_size and turn["role"] == "assistant":
+            chunks.append(current)
+            current = []
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def compress_session(
+    turns: list[dict],
+    user_prompt: str = "",
+    model: str = "",
+    timeout: int = 120,
+    use_local: bool = False,
+    local_model: str = "qwen2.5:7b",
+) -> list[dict]:
+    """Compress raw session turns into a clean narrative via LLM.
+
+    Args:
+        turns: list of {role, content} dicts from the raw session
+        user_prompt: optional steering text appended to the compression prompt
+        model: model to use for compression (claude models)
+        timeout: subprocess timeout in seconds
+        use_local: if True, use Ollama instead of claude --print
+        local_model: Ollama model name (default: qwen2.5:7b)
+
+    Returns:
+        Compressed list of {role, content} dicts (5-20 turns)
+    """
+    if not model and not use_local:
+        from .config import get_model
+        model = get_model("compress")
+
+    if len(turns) <= 20:
+        return turns  # already short enough
+
+    # Abbreviate code blocks before compression to reduce input tokens
+    abbreviated = _abbreviate_code_blocks(turns)
+
+    # Chunk large sessions instead of truncating
+    chunks = _chunk_turns(abbreviated, chunk_size=30)
+
+    if len(chunks) == 1:
+        # Single chunk — use the full prompt
+        return _compress_single(chunks[0], user_prompt, model, timeout, use_local, local_model)
+
+    # Multi-chunk: compress each independently, then concatenate
+    all_compressed = []
+    for i, chunk in enumerate(chunks):
+        print(f"  compressing chunk {i+1}/{len(chunks)} ({len(chunk)} turns)...", file=sys.stderr)
+        chunk_prompt = _CHUNK_PROMPT.format(chunk_num=i + 1, total_chunks=len(chunks))
+        if user_prompt:
+            chunk_prompt += f"\n\nAdditional guidance: {user_prompt}"
+        session_json = json.dumps(chunk, indent=None)
+        chunk_prompt += f"\n\n<session>\n{session_json}\n</session>"
+
+        if use_local:
+            output = _compress_via_ollama(chunk_prompt, model=local_model, timeout=timeout)
+        else:
+            output = _compress_via_claude(chunk_prompt, model=model, timeout=timeout)
+
+        if output:
+            parsed = _parse_json_turns(output)
+            if parsed:
+                all_compressed.extend(parsed)
+                continue
+
+        # Fallback: keep first and last turn of this chunk as-is
+        print(f"  chunk {i+1} compression failed, keeping summary", file=sys.stderr)
+        all_compressed.append({
+            "role": "assistant",
+            "content": f"[chunk {i+1}: {len(chunk)} turns of work, compression failed]",
+        })
+
+    return all_compressed if all_compressed else turns
+
+
+def _compress_single(
+    turns: list[dict],
+    user_prompt: str,
+    model: str,
+    timeout: int,
+    use_local: bool,
+    local_model: str,
+) -> list[dict]:
+    """Compress a single batch of turns."""
+    truncated = _truncate_middle(turns)
+    session_json = json.dumps(truncated, indent=None)
+    prompt = _SYSTEM_PROMPT
+    if user_prompt:
+        prompt += f"\n\nAdditional guidance: {user_prompt}"
+    prompt += f"\n\n<session>\n{session_json}\n</session>"
+
+    if use_local:
+        output = _compress_via_ollama(prompt, model=local_model, timeout=timeout)
+    else:
+        output = _compress_via_claude(prompt, model=model, timeout=timeout)
+
+    if output:
         compressed = _parse_json_turns(output)
         if compressed:
             return compressed
 
-        print("[continuum:compress] failed to parse LLM output, using raw turns", file=sys.stderr)
-        return turns
-
-    except subprocess.TimeoutExpired:
-        print("[continuum:compress] timeout, using raw turns", file=sys.stderr)
-        return turns
-    except Exception as e:
-        print(f"[continuum:compress] error: {e}", file=sys.stderr)
-        return turns
+    print("[continuum:compress] failed to parse LLM output, using raw turns", file=sys.stderr)
+    return turns
 
 
 def _parse_json_turns(text: str) -> list[dict] | None:

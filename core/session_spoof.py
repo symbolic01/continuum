@@ -88,6 +88,21 @@ def _load_templates(cwd: str = "/home/symbolic/projects") -> None:
             return
 
 
+def _abbreviate_code_blocks(content: str, max_lines: int = 6) -> str:
+    """Abbreviate long code/diff blocks in content to first few lines as a hint."""
+    import re
+    def _shorten(m):
+        fence_open = m.group(1)
+        body = m.group(2)
+        lines = body.split("\n")
+        if len(lines) <= max_lines + 2:
+            return m.group(0)
+        kept = "\n".join(lines[:max_lines])
+        omitted = len(lines) - max_lines
+        return f"{fence_open}\n{kept}\n[... {omitted} more lines ...]\n```"
+    return re.sub(r"(```\w*)\n([\s\S]*?)\n```", _shorten, content)
+
+
 def _normalize_timestamp(ts: str | None = None) -> str:
     """Convert a timestamp to CC's expected format: YYYY-MM-DDTHH:MM:SS.mmmZ"""
     if not ts:
@@ -369,6 +384,9 @@ def build_spoofed_session(
         role = entry.get("role", "user")
         content = entry.get("content", "")
         ts = entry.get("ts", "")
+
+        # Abbreviate long code blocks in tail content
+        content = _abbreviate_code_blocks(content)
 
         # Use original timestamp if available and valid, otherwise fallback
         entry_ts = _normalize_timestamp(ts) if ts else _fallback_ts()

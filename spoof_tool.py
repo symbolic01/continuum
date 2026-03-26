@@ -6,12 +6,14 @@ Usage:
     python ~/+/continuum/spoof_tool.py --session abc123          # specific session
     python ~/+/continuum/spoof_tool.py --context "retrieved text" # inject context
     python ~/+/continuum/spoof_tool.py --identity path/to/id.md  # inject identity
+    python ~/+/continuum/spoof_tool.py --compress --local        # compress via local Ollama
 """
 
 import argparse
 import glob
 import json
 import os
+import re
 import sys
 import tempfile
 import uuid
@@ -71,11 +73,50 @@ def _find_source_session(cwd: str, session_id: str | None = None) -> Path | None
     return Path(candidates[0]) if candidates else None
 
 
-def _read_cc_conversation(session_file: Path) -> list[dict]:
+def _is_spoof_invocation(content: str) -> bool:
+    """Detect if a user turn is the /spoof skill invocation or its expansion."""
+    if "/spoof" in content[:100]:
+        return True
+    # Skill expansions contain YAML frontmatter with skill-specific fields
+    if ("user-invocable:" in content or "allowed-tools:" in content) and "---" in content[:50]:
+        return True
+    return False
+
+
+def _has_identity_exchange(turns: list[dict]) -> bool:
+    """Detect if turns already contain a spoofed identity exchange.
+
+    Looks for the "Who are you?" / identity pattern from a previous spoof.
+    """
+    for i, turn in enumerate(turns[:6]):  # only check first few turns
+        content = turn.get("content", "")
+        if turn.get("role") == "user" and "Who are you?" in content:
+            return True
+        if turn.get("role") == "user" and "What do you recall" in content:
+            return True
+    return False
+
+
+def _abbreviate_code_in_content(content: str, max_lines: int = 6) -> str:
+    """Abbreviate long code/diff blocks in content to first few lines."""
+    def _shorten_block(m):
+        fence_open = m.group(1)
+        body = m.group(2)
+        lines = body.split("\n")
+        if len(lines) <= max_lines + 2:
+            return m.group(0)
+        kept = "\n".join(lines[:max_lines])
+        omitted = len(lines) - max_lines
+        return f"{fence_open}\n{kept}\n[... {omitted} more lines ...]\n```"
+
+    return re.sub(r"(```\w*)\n([\s\S]*?)\n```", _shorten_block, content)
+
+
+def _read_cc_conversation(session_file: Path, preserve_tail_tools: bool = False) -> list[dict]:
     """Read user/assistant turns from a CC session JSONL.
 
-    Returns a list of {role, content, ts} dicts — clean text only, no tool use.
-    Consecutive same-role entries are preserved (CC renders each as a separate bullet).
+    Returns a list of {role, content, ts} dicts.
+    Cuts off at the /spoof invocation — nothing after it is included.
     """
     turns = []
     try:
@@ -94,6 +135,9 @@ def _read_cc_conversation(session_file: Path) -> list[dict]:
                 if role == "user":
                     content = msg.get("content", "")
                     if isinstance(content, str) and content.strip():
+                        # Cut at spoof invocation
+                        if _is_spoof_invocation(content):
+                            break
                         turns.append({"role": "user", "content": content, "ts": ts})
                     elif isinstance(content, list):
                         # Extract text blocks from list content
@@ -101,25 +145,53 @@ def _read_cc_conversation(session_file: Path) -> list[dict]:
                                  if isinstance(b, dict) and b.get("type") == "text"]
                         text = "\n".join(t for t in texts if t.strip())
                         if text.strip():
+                            if _is_spoof_invocation(text):
+                                break
                             turns.append({"role": "user", "content": text, "ts": ts})
                 elif role == "assistant":
                     text = extract_text_from_cc_entry(entry)
-                    if text.strip() and not text.startswith("["):
+                    if text.strip():
                         turns.append({"role": "assistant", "content": text, "ts": ts})
     except Exception:
         pass
 
-    # Strip trailing skill-expanded turns (e.g. /spoof skill SKILL.md content)
-    while turns and turns[-1]["role"] == "user" and _is_skill_expansion(turns[-1]["content"]):
-        turns.pop()
-
     return turns
 
 
-def _is_skill_expansion(content: str) -> bool:
-    """Detect if a user turn is an expanded SKILL.md (not a real user message)."""
-    # Skill expansions contain YAML frontmatter with skill-specific fields
-    return ("user-invocable:" in content or "allowed-tools:" in content) and "---" in content[:50]
+def _read_cc_raw_tail(session_file: Path, tail_count: int) -> list[dict]:
+    """Read the last N user/assistant raw CC entries from a session, preserving tool calls.
+
+    Returns raw CC JSONL entries (not simplified turns) for full-fidelity tail.
+    Stops at /spoof invocation from the end.
+    """
+    all_entries = []
+    try:
+        with open(session_file) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                entry = json.loads(line)
+                entry_type = entry.get("type", "")
+                if entry_type not in ("user", "assistant"):
+                    continue
+
+                # Check for spoof invocation
+                msg = entry.get("message", {})
+                content = msg.get("content", "")
+                if isinstance(content, str) and _is_spoof_invocation(content):
+                    break
+                if isinstance(content, list):
+                    texts = [b.get("text", "") for b in content
+                             if isinstance(b, dict) and b.get("type") == "text"]
+                    if any(_is_spoof_invocation(t) for t in texts):
+                        break
+
+                all_entries.append(entry)
+    except Exception:
+        return []
+
+    return all_entries[-tail_count:] if tail_count < len(all_entries) else all_entries
 
 
 def main():
@@ -129,8 +201,11 @@ def main():
     parser.add_argument("--identity", default=None, help="Path to identity markdown file")
     parser.add_argument("--cwd", default=None, help="Working directory (default: current)")
     parser.add_argument("--compress", action="store_true", help="LLM-compress session into clean narrative")
+    parser.add_argument("--local", action="store_true", help="Use local Ollama model for compression instead of Claude")
+    parser.add_argument("--local-model", default="qwen2.5:7b", help="Ollama model for --local (default: qwen2.5:7b)")
     parser.add_argument("--prompt", default="", help="Steering prompt for compression (used with --compress)")
     parser.add_argument("--no-ingest", action="store_true", help="Skip auto-ingest check")
+    parser.add_argument("--tail-entries", type=int, default=20, help="Number of raw tail entries to preserve (default: 20)")
     args = parser.parse_args()
 
     cwd = args.cwd or os.getcwd()
@@ -147,7 +222,7 @@ def main():
     source_id = source_file.stem
     print(f"[continuum:spoof] source={source_id[:10]}", file=sys.stderr, end="")
 
-    # Read conversation turns
+    # Read conversation turns (cuts at /spoof invocation)
     cc_turns = _read_cc_conversation(source_file)
 
     # Count raw entries for reporting
@@ -159,6 +234,9 @@ def main():
         pass
 
     print(f" ({len(cc_turns)} turns from {raw_count} entries)", file=sys.stderr)
+
+    # Detect if identity is already present (from a previous spoof)
+    already_has_identity = _has_identity_exchange(cc_turns)
 
     # Capture source time range from all turns
     source_timestamps = [t.get("ts", "") for t in cc_turns if t.get("ts")]
@@ -172,12 +250,11 @@ def main():
         from core.session_compress import compress_session
 
         # Split: compress the bulk, keep the recent tail verbatim
-        # ~50 lines of screen content ≈ last few turns
         tail_chars = 0
         tail_start = len(cc_turns)
         for i in range(len(cc_turns) - 1, -1, -1):
-            tail_chars += len(cc_turns[i].get("content", "")) + 20  # +20 for role overhead
-            if tail_chars >= 3000:  # ~50 lines × 60 chars
+            tail_chars += len(cc_turns[i].get("content", "")) + 20
+            if tail_chars >= 3000:
                 tail_start = i
                 break
 
@@ -191,7 +268,12 @@ def main():
             head_time_range = (head_ts[0], head_ts[-1])
 
         if len(head) > 20:
-            head = compress_session(head, user_prompt=args.prompt)
+            head = compress_session(
+                head,
+                user_prompt=args.prompt,
+                use_local=args.local,
+                local_model=args.local_model,
+            )
 
         cc_turns = head + tail
         print(f"  compressed {raw_count_turns}→{len(cc_turns)} turns ({len(tail)} raw tail)", file=sys.stderr)
@@ -204,17 +286,23 @@ def main():
         for turn in cc_turns:
             log.append(turn["role"], turn["content"], ts=turn.get("ts", ""))
 
-        # Load identity
+        # Load identity — skip if source already has it
         identity_text = ""
-        if args.identity:
-            identity_path = Path(args.identity).expanduser()
-            if identity_path.is_file():
-                identity_text = identity_path.read_text(encoding="utf-8").strip()
+        if not already_has_identity:
+            if args.identity:
+                identity_path = Path(args.identity).expanduser()
+                if identity_path.is_file():
+                    identity_text = identity_path.read_text(encoding="utf-8").strip()
+            else:
+                # Default identity
+                default_identity = _CONTINUUM_DIR / "identity.md"
+                if default_identity.is_file():
+                    identity_text = default_identity.read_text(encoding="utf-8").strip()
+
+            if identity_text:
+                print(f"  injecting identity ({len(identity_text)} chars)", file=sys.stderr)
         else:
-            # Default identity
-            default_identity = _CONTINUUM_DIR / "identity.md"
-            if default_identity.is_file():
-                identity_text = default_identity.read_text(encoding="utf-8").strip()
+            print(f"  identity already present, skipping injection", file=sys.stderr)
 
         # Retrieved context
         retrieved_context = args.context or ""
