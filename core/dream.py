@@ -2167,6 +2167,25 @@ Output valid JSON: {"proto_kernels": [{"type": "...", "content": "...", "importa
 
         slim_size = versioned.stat().st_size / 1024
         full_size = DREAM_REPORT_PATH.stat().st_size / 1024 / 1024
+
+        # Update manifest — lightweight index of all versioned reports
+        manifest_path = reports_dir / "manifest.json"
+        manifest = []
+        if manifest_path.exists():
+            try:
+                manifest = json.loads(manifest_path.read_text())
+            except json.JSONDecodeError:
+                manifest = []
+        manifest.append({
+            "file": versioned.name,
+            "ts": report.get("profile", {}).get("generated", ts),
+            "kernels": len(report.get("kernels", [])),
+            "chains": sum(len(v) for v in report.get("chains", {}).items()),
+            "synthesized": len(report.get("kernels", [])) > 0,
+        })
+        with open(manifest_path, "w") as f:
+            json.dump(manifest, f)
+
         print(f"[dream] Report saved: {full_size:.1f}MB live, "
               f"{slim_size:.0f}KB versioned ({versioned.name})", file=sys.stderr)
         return report

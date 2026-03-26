@@ -294,18 +294,18 @@ async function loadData() {
 
 async function loadReportHistory() {
   try {
-    const res = await fetch('dream_reports/?t=' + Date.now());
+    const res = await fetch('dream_reports/manifest.json?t=' + Date.now());
     if (!res.ok) return;
-    const html = await res.text();
-    const files = [...html.matchAll(/href="(dream_report_[^"]+\.json)"/g)]
-      .map(m => m[1]).sort().reverse();
-    if (files.length < 2) return;
+    const manifest = await res.json();
+    if (manifest.length < 2) return;
 
-    // Find current position in history
+    // Reverse chronological
+    manifest.sort((a, b) => b.file.localeCompare(a.file));
+
     const params = new URLSearchParams(location.search);
     const currentSrc = params.get('src') || '';
     const currentFile = currentSrc.replace('dream_reports/', '');
-    const currentIdx = currentFile ? files.indexOf(currentFile) : -1;
+    const currentIdx = currentFile ? manifest.findIndex(m => m.file === currentFile) : -1;
     const isLatest = currentIdx <= 0;
 
     const nav = document.createElement('div');
@@ -314,46 +314,26 @@ async function loadReportHistory() {
     const btnStyle = 'background:var(--bg-card);color:var(--text-secondary);border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-family:inherit;font-size:inherit;cursor:pointer';
     const disStyle = btnStyle + ';opacity:0.3;cursor:default';
 
-    const prevFile = currentIdx < files.length - 1 ? files[currentIdx + 1] || files[1] : null;
-    const nextFile = currentIdx > 0 ? files[currentIdx - 1] : null;
+    const prevFile = currentIdx < manifest.length - 1 ? manifest[currentIdx + 1]?.file || manifest[1]?.file : null;
+    const nextFile = currentIdx > 0 ? manifest[currentIdx - 1]?.file : null;
 
-    // Show nav immediately, then lazy-load synthesis info
-    const selectId = 'history-select';
+    const currentKernels = DATA?.kernels?.length || 0;
+    const latestTag = currentKernels > 0 ? ` ★${currentKernels}` : ' ○';
+
     nav.innerHTML = `
       <button style="${prevFile ? btnStyle : disStyle}" onclick="${prevFile ? `location.search='?src=dream_reports/${prevFile}'` : ''}">&larr;</button>
-      <select id="${selectId}" onchange="if(this.value==='latest')location.search='';else if(this.value)location.search='?src=dream_reports/'+this.value" style="${btnStyle}">
-        <option value="latest"${isLatest ? ' selected' : ''}>Latest</option>
-        ${files.map(f => {
-          const ts = f.replace('dream_report_','').replace('.json','').replace('T',' ');
-          const sel = f === currentFile ? ' selected' : '';
-          return `<option value="${f}"${sel}>${ts}</option>`;
+      <select onchange="if(this.value==='latest')location.search='';else if(this.value)location.search='?src=dream_reports/'+this.value" style="${btnStyle}">
+        <option value="latest"${isLatest ? ' selected' : ''}>Latest${latestTag}</option>
+        ${manifest.map(m => {
+          const ts = (m.ts || m.file.replace('dream_report_','').replace('.json','')).slice(0,16).replace('T',' ');
+          const sel = m.file === currentFile ? ' selected' : '';
+          const tag = m.synthesized ? ` ★${m.kernels}` : ' ○';
+          return `<option value="${m.file}"${sel}>${ts}${tag}</option>`;
         }).join('')}
       </select>
       <button style="${nextFile ? btnStyle : disStyle}" onclick="${nextFile ? `location.search='?src=dream_reports/${nextFile}'` : ''}">&rarr;</button>
-      <span style="color:var(--text-muted)">${files.length} reports</span>
+      <span style="color:var(--text-muted)">${manifest.length}</span>
     `;
-
-    // Tag all options using file sizes from directory listing as proxy
-    // Synthesized reports are typically 2-3MB+, raw are ~50-500KB
-    const sel = document.getElementById(selectId);
-    const sizeMatches = [...html.matchAll(/>(\d+\.?\d*[KMG]?)\s*<\/td>/g)];
-    // Parse sizes from directory listing (python http.server shows them)
-    const fileSizes = {};
-    files.forEach((f, i) => {
-      const sizeMatch = html.match(new RegExp(f + '.*?>(\\d+\\.?\\d*[KMG]?)'));
-      if (sizeMatch) fileSizes[f] = sizeMatch[1];
-    });
-
-    // Also check current report for kernel count to tag accurately
-    const currentKernels = DATA?.kernels?.length || 0;
-    for (const opt of sel.options) {
-      if (opt.value === 'latest') {
-        opt.textContent += currentKernels > 0 ? ` ★${currentKernels}` : ' ○';
-      }
-    }
-
-    // Skip lazy-loading individual reports — they're 18MB+ each.
-    // The ★/○ on "Latest" is enough. History reports show date only.
     const header = document.querySelector('.header');
     if (header) header.appendChild(nav);
   } catch (e) { console.error('loadReportHistory failed:', e); }

@@ -160,11 +160,16 @@ def main():
         from core.dream import DREAM_REPORT_PATH
         shutil.copy2(str(DREAM_REPORT_PATH), str(report_copy))
 
-        # Copy versioned reports for history browsing
+        # Copy versioned reports + manifest for history browsing
         reports_src = DREAM_REPORT_PATH.parent / "dream_reports"
         reports_dst = html_dir / "dream_reports"
         if reports_src.exists():
             reports_dst.mkdir(exist_ok=True)
+            # Always copy manifest
+            manifest_src = reports_src / "manifest.json"
+            if manifest_src.exists():
+                shutil.copy2(str(manifest_src), str(reports_dst / "manifest.json"))
+            # Copy new versioned reports
             for f in reports_src.glob("dream_report_*.json"):
                 dst = reports_dst / f.name
                 if not dst.exists():
