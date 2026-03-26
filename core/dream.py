@@ -1133,8 +1133,11 @@ class DreamEngine:
 
         result = self._run_synthesis_pass(proto_kernels, "global", from_protos=True)
         gap_kernels = self._run_gap_analysis(all_chains)
-        if gap_kernels and result:
-            result["kernels"] = result.get("kernels", []) + gap_kernels
+        if gap_kernels:
+            if result:
+                result["kernels"] = result.get("kernels", []) + gap_kernels
+            else:
+                result = {"kernels": gap_kernels, "top_insights": [], "data_story": ""}
         return result
 
     # ── Local pre-synthesis (Ollama, free) ─────────────────────────────
@@ -1178,12 +1181,14 @@ Output valid JSON: {"proto_kernels": [{"type": "...", "content": "...", "importa
 
         all_protos = []
         presynth_start = time.time()
+        presynth_budget = 300  # 5 min budget for pre-synthesis (separate from integration)
 
         for bi, batch in enumerate(batches):
-            # Check termination
-            stop, reason = self._should_stop()
-            if stop:
-                print(f"[dream] Pre-synthesis stopped: {reason}", file=sys.stderr)
+            # Own time budget (not tied to integration wall time)
+            elapsed = time.time() - presynth_start
+            if elapsed >= presynth_budget:
+                print(f"[dream] Pre-synthesis time budget reached ({elapsed:.0f}s)",
+                      file=sys.stderr)
                 break
 
             # Format batch

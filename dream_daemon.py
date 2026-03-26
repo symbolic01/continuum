@@ -181,7 +181,7 @@ def run_synthesis(verbose: bool = False):
         sys.executable, str(CONTINUUM_DIR / "dream_tool.py"),
         "--force",
         "--no-ingest",
-        "--max-time", "10",  # minimal integration — just synthesize what's there
+        "--max-time", "300",  # 5 min for integration + pre-synthesis batching
         "--report-file", str(Path.home() / ".continuum" / "last_dream_report.md"),
     ]
     if verbose:
