@@ -2053,20 +2053,49 @@ Output valid JSON: {"proto_kernels": [{"type": "...", "content": "...", "importa
 
         DREAM_REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write current report (overwritten each cycle for the live viewer)
+        # Write current report (full content for live drill-down)
         with open(DREAM_REPORT_PATH, "w") as f:
             json.dump(report, f, indent=2)
 
-        # Preserve versioned copy (never overwritten — builds a timeline)
+        # Preserve versioned copy — slim (no member content, just metadata)
+        # Full content is in the corpus; versioned reports are for history/diffs
         reports_dir = DREAM_REPORT_PATH.parent / "dream_reports"
         reports_dir.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().astimezone().strftime("%Y-%m-%dT%H%M%S")
         versioned = reports_dir / f"dream_report_{ts}.json"
-        with open(versioned, "w") as f:
-            json.dump(report, f, indent=2)
 
-        print(f"[dream] Report saved to {DREAM_REPORT_PATH} "
-              f"(versioned: {versioned.name})", file=sys.stderr)
+        slim = dict(report)
+        slim_chains = {}
+        for ctype, arr in report.get("chains", {}).items():
+            slim_chains[ctype] = []
+            for chain in arr:
+                slim_chain = dict(chain)
+                # Keep member UIDs and metadata, drop full content
+                slim_chain["members"] = [
+                    {"uid": m.get("uid"), "thread": m.get("thread"),
+                     "ts": m.get("ts"), "role": m.get("role")}
+                    for m in chain.get("members", [])
+                ]
+                slim_chains[ctype].append(slim_chain)
+        slim["chains"] = slim_chains
+        # Also slim cross_project and unfinished
+        for key in ("cross_project", "unfinished"):
+            if key in slim:
+                slim[key] = [
+                    {**c, "members": [
+                        {"uid": m.get("uid"), "thread": m.get("thread"),
+                         "ts": m.get("ts"), "role": m.get("role")}
+                        for m in c.get("members", [])
+                    ]} for c in slim[key]
+                ]
+
+        with open(versioned, "w") as f:
+            json.dump(slim, f)
+
+        slim_size = versioned.stat().st_size / 1024
+        full_size = DREAM_REPORT_PATH.stat().st_size / 1024 / 1024
+        print(f"[dream] Report saved: {full_size:.1f}MB live, "
+              f"{slim_size:.0f}KB versioned ({versioned.name})", file=sys.stderr)
         return report
 
     def _chain_to_report(self, chain: dict) -> dict:
