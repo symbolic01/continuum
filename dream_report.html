@@ -352,25 +352,11 @@ async function loadReportHistory() {
       }
     }
 
-    // Lazy-check a few recent reports for accurate kernel counts
-    setTimeout(async () => {
-      for (const f of files.slice(0, 10)) {
-        try {
-          const r = await fetch('dream_reports/' + f);
-          const d = await r.json();
-          const k = (d.kernels || []).length;
-          const tag = k > 0 ? ` ★${k}` : ' ○';
-          for (const opt of sel.options) {
-            if (opt.value === f && !opt.textContent.includes('★') && !opt.textContent.includes('○')) {
-              opt.textContent += tag; break;
-            }
-          }
-        } catch {}
-      }
-    }, 500);
+    // Skip lazy-loading individual reports — they're 18MB+ each.
+    // The ★/○ on "Latest" is enough. History reports show date only.
     const header = document.querySelector('.header');
     if (header) header.appendChild(nav);
-  } catch (e) { /* no directory listing available */ }
+  } catch (e) { console.error('loadReportHistory failed:', e); }
 }
 
 const KERNEL_TYPES = {
