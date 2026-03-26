@@ -2064,30 +2064,14 @@ Output valid JSON: {"proto_kernels": [{"type": "...", "content": "...", "importa
         ts = datetime.now().astimezone().strftime("%Y-%m-%dT%H%M%S")
         versioned = reports_dir / f"dream_report_{ts}.json"
 
-        slim = dict(report)
-        slim_chains = {}
-        for ctype, arr in report.get("chains", {}).items():
-            slim_chains[ctype] = []
-            for chain in arr:
-                slim_chain = dict(chain)
-                # Keep member UIDs and metadata, drop full content
-                slim_chain["members"] = [
-                    {"uid": m.get("uid"), "thread": m.get("thread"),
-                     "ts": m.get("ts"), "role": m.get("role")}
-                    for m in chain.get("members", [])
-                ]
-                slim_chains[ctype].append(slim_chain)
-        slim["chains"] = slim_chains
-        # Also slim cross_project and unfinished
-        for key in ("cross_project", "unfinished"):
-            if key in slim:
-                slim[key] = [
-                    {**c, "members": [
-                        {"uid": m.get("uid"), "thread": m.get("thread"),
-                         "ts": m.get("ts"), "role": m.get("role")}
-                        for m in c.get("members", [])
-                    ]} for c in slim[key]
-                ]
+        # Versioned report: kernels + stats only. Chains are in the corpus.
+        slim = {
+            "profile": report.get("profile", {}),
+            "kernels": report.get("kernels", []),
+            "data_story": report.get("data_story", ""),
+            "top_insights": report.get("top_insights", []),
+            "chain_counts": {k: len(v) for k, v in report.get("chains", {}).items()},
+        }
 
         with open(versioned, "w") as f:
             json.dump(slim, f)
