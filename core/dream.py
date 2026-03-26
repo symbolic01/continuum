@@ -2006,6 +2006,95 @@ Output valid JSON: {"proto_kernels": [{"type": "...", "content": "...", "importa
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pass
 
+    def archive_chains(self):
+        """Archive unpromoted chains — move to _chains_archive/.
+
+        Chains referenced by kernels (promoted) stay in active corpus.
+        Everything else moves to archive. Kernels always stay.
+        Like dreams fading on waking — the insights persist, the
+        dream content dissolves.
+        """
+        import shutil
+
+        archive_dir = DEFAULT_CORPUS_DIR / "_chains_archive"
+        archive_dir.mkdir(parents=True, exist_ok=True)
+
+        # Collect all promoted chain UIDs (referenced by any kernel)
+        promoted_uids = set()
+        for f in CHAINS_DIR.glob("*.jsonl"):
+            for line in open(f):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if entry.get("role") == "kernel":
+                    for ref in entry.get("chain_refs", []):
+                        # Normalize guillemets
+                        promoted_uids.add(ref)
+                        promoted_uids.add(ref.replace("«", "").replace("»", ""))
+
+        # Process each chain file
+        total_archived = 0
+        total_kept = 0
+
+        for f in sorted(CHAINS_DIR.glob("*.jsonl")):
+            kept = []
+            archived = []
+
+            for line in open(f):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    kept.append(line)
+                    continue
+
+                role = entry.get("role", "")
+                uid = entry.get("uid", "")
+                uid_bare = uid.replace("«", "").replace("»", "")
+
+                # Kernels always stay
+                if role == "kernel":
+                    kept.append(json.dumps(entry))
+                # Promoted chains stay
+                elif uid in promoted_uids or uid_bare in promoted_uids:
+                    kept.append(json.dumps(entry))
+                # Everything else gets archived
+                else:
+                    archived.append(json.dumps(entry))
+
+            if archived:
+                # Write archived entries to archive dir
+                archive_path = archive_dir / f.name
+                mode = "a" if archive_path.exists() else "w"
+                with open(archive_path, mode) as af:
+                    for line in archived:
+                        af.write(line + "\n")
+                total_archived += len(archived)
+
+            # Rewrite active file with only kept entries
+            if archived:
+                if kept:
+                    with open(f, "w") as kf:
+                        for line in kept:
+                            kf.write(line + "\n")
+                else:
+                    f.unlink()  # empty file, remove it
+
+            total_kept += len(kept)
+
+        print(f"[dream] Chain archival: {total_archived} archived, "
+              f"{total_kept} kept ({len(promoted_uids)} promoted UIDs)",
+              file=sys.stderr)
+
+        # Git commit the archival
+        self.git_commit()
+
     def generate_report(self, stats: dict, temporal_links: list[dict],
                         synthesis: dict | None = None) -> dict:
         """Generate report data JSON from ALL chains + synthesis."""

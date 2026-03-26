@@ -41,7 +41,8 @@ def build_index(
     # Scan corpus — fresh index (don't load existing when forcing rebuild)
     idx = EmbeddingIndex(None)
     idx.path = index_path
-    corpus_files = sorted(corpus_dir.rglob("*.jsonl"))
+    corpus_files = sorted(f for f in corpus_dir.rglob("*.jsonl")
+                          if "_archive" not in str(f))
 
     embedded = 0
     all_metadata = []
@@ -167,7 +168,8 @@ def build_identifiers(
     Writes to identifiers.json. No embeddings needed — pure text extraction.
     """
     all_ids: set[str] = set()
-    corpus_files = sorted(corpus_dir.rglob("*.jsonl"))
+    corpus_files = sorted(f for f in corpus_dir.rglob("*.jsonl")
+                          if "_archive" not in str(f))
 
     for cf in corpus_files:
         with open(cf) as f:

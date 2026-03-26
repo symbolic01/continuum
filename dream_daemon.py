@@ -161,13 +161,14 @@ def run_integration(dream_minutes: int, verbose: bool = False):
             if line.strip():
                 log(f"  {line.strip()}")
 
-        # Mark pending synthesis
+        # Mark pending synthesis + increment cycle count
         state = load_dream_state()
         if not state.get("pending_synthesis_since"):
             state["pending_synthesis_since"] = datetime.now().astimezone().isoformat()
-            save_dream_state(state)
+        state["integration_cycle_count"] = state.get("integration_cycle_count", 0) + 1
+        save_dream_state(state)
 
-        log("Integration cycle complete")
+        log(f"Integration cycle complete (cycle {state['integration_cycle_count']})")
     except subprocess.TimeoutExpired:
         log(f"Integration timed out")
 
@@ -195,9 +196,31 @@ def run_synthesis(verbose: bool = False):
             if line.strip():
                 log(f"  {line.strip()}")
 
-        # Clear pending synthesis flag
+        # Archive chains if 3+ cycles accumulated
         state = load_dream_state()
+        cycle_count = state.get("integration_cycle_count", 0)
+        if cycle_count >= 3:
+            log(f"Archiving chains ({cycle_count} cycles accumulated)")
+            try:
+                archive_cmd = [
+                    sys.executable, "-c",
+                    "import sys; sys.path.insert(0, '" + str(CONTINUUM_DIR) + "'); "
+                    "from core.dream import DreamEngine; "
+                    "e = DreamEngine(verbose=True); "
+                    "e.load_corpus(); "
+                    "e.archive_chains()"
+                ]
+                archive_result = subprocess.run(
+                    archive_cmd, capture_output=True, text=True, timeout=120)
+                for line in archive_result.stderr.strip().split("\n"):
+                    if line.strip():
+                        log(f"  {line.strip()}")
+            except (subprocess.TimeoutExpired, Exception) as e:
+                log(f"  Archive failed: {e}")
+
+        # Clear pending synthesis flag + reset cycle count
         state.pop("pending_synthesis_since", None)
+        state["integration_cycle_count"] = 0
         save_dream_state(state)
 
         log("Synthesis complete")
