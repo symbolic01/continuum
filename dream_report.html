@@ -285,7 +285,7 @@ async function loadData() {
     const res = await fetch(src + '?t=' + Date.now());
     DATA = await res.json();
     render();
-    loadReportHistory();
+    await loadReportHistory();
   } catch (err) {
     document.getElementById('app').innerHTML =
       `<div class="loading">Could not load dream_report.json. Run: cx dream --force</div>`;
@@ -580,6 +580,9 @@ function render() {
     if (items.length === 0) continue;
     const tc = CHAIN_TYPES[ctype] || CHAIN_TYPES.thematic;
     const rawSecId = `raw-${ctype}`;
+    const MAX_RAW = 20;
+    const capped = items.slice(0, MAX_RAW);
+    const overflow = items.length - capped.length;
     html += `
       <div class="chain-type-block raw-chain-group" data-chain-type="${ctype}">
         <div class="section-header collapsed" onclick="toggleSection('${rawSecId}', this)">
@@ -590,7 +593,8 @@ function render() {
         </div>
         <div class="section-body" id="${rawSecId}" style="display:none">
         <div class="chain-list">
-          ${items.map((chain, i) => renderChainItem(chain, ctype, i)).join('')}
+          ${capped.map((chain, i) => renderChainItem(chain, ctype, i)).join('')}
+          ${overflow > 0 ? `<div style="padding:12px;color:var(--text-muted);font-size:12px;font-style:italic">${overflow} more chains not shown</div>` : ''}
         </div>
         </div>
       </div>
