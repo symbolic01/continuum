@@ -361,7 +361,11 @@ function render() {
   const { profile, chains, kernels, data_story, top_insights, cross_project } = DATA;
   const stats = profile.stats || {};
   const generated = profile.generated ? profile.generated.slice(0, 16).replace('T', ' ') : '';
-  const totalChains = Object.values(chains).reduce((a, arr) => a + arr.length, 0);
+  // Chain count: use arrays if available, fall back to chain_counts from slim reports
+  let totalChains = Object.values(chains).reduce((a, arr) => a + arr.length, 0);
+  if (totalChains === 0 && DATA.chain_counts) {
+    totalChains = Object.values(DATA.chain_counts).reduce((a, n) => a + n, 0);
+  }
   const hasKernels = kernels && kernels.length > 0;
 
   // Build chain lookup by UID for kernel drill-down
