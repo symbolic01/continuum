@@ -455,5 +455,325 @@
     "source_category": "cross_session",
     "source_session": "03504dc0-cdb",
     "source_project": "superempathy"
+  },
+  {
+    "query": "how are project icons generated gen-icon render script",
+    "expected_keywords": [
+      "gen-icon",
+      "gen-icon-render.py",
+      "Lucide",
+      "Phosphor",
+      "SVG",
+      "512x512",
+      "PNG",
+      "icons.conf"
+    ],
+    "description": "[cross_session] User told bridge session 3x to use retrieve for icon gen context. Session tried stable diffusion first (wrong). Icons use Lucide+Phosphor SVG rendered to PNG, not SD/ComfyUI.",
+    "source_category": "repeated_correction",
+    "source_session": "77ed9d80-53c",
+    "source_project": "bridge"
+  },
+  {
+    "query": "don't use stable diffusion for icons, that's wrong",
+    "expected_keywords": [
+      "gen-icon",
+      "Lucide",
+      "Phosphor",
+      "SVG",
+      "gen-icon-render.py",
+      "bin/gen-icon"
+    ],
+    "description": "[correction] User corrected: 'don't use stable diffusion, that's wrong'. Icons are SVG from Lucide/Phosphor, not AI-generated.",
+    "source_category": "correction",
+    "source_session": "77ed9d80-53c",
+    "source_project": "bridge"
+  },
+  {
+    "query": "how to set Claude Code compaction to 99 percent",
+    "expected_keywords": [
+      "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE",
+      "settings.json",
+      "env",
+      "99",
+      "compaction"
+    ],
+    "description": "[cross_session] User asked bridge session how compaction was set to 99%. Answer: CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=99 in ~/.claude/settings.json env block.",
+    "source_category": "cross_session",
+    "source_session": "77ed9d80-53c",
+    "source_project": "bridge"
+  },
+  {
+    "query": "gen-icon-render.py keeps getting lost on reboot",
+    "expected_keywords": [
+      "gen-icon-render.py",
+      "/tmp",
+      "bin/gen-icon-render.py",
+      "permanent",
+      "reboot"
+    ],
+    "description": "[cross_session] Render script lived in /tmp, lost on every reboot. Moved to ~/projects/bin/gen-icon-render.py. Recreated from scratch multiple sessions.",
+    "source_category": "cross_session",
+    "source_session": "77ed9d80-53c",
+    "source_project": "bridge"
+  },
+  {
+    "query": "Phosphor icons fill variant vs stroke for project icons",
+    "expected_keywords": [
+      "fill",
+      "stroke",
+      "currentColor",
+      "Phosphor",
+      "gen-icon-render.py",
+      "fill=none"
+    ],
+    "description": "[correction] Render script was adding stroke and forcing fill=none on filled icons. Phosphor fill variants need fill=currentColor mapped to the color, not stroke.",
+    "source_category": "correction",
+    "source_session": "77ed9d80-53c",
+    "source_project": "bridge"
+  },
+  {
+    "query": "abbreviated icon tray shows parent folders instead of openable sessions",
+    "expected_keywords": [
+      "grid",
+      "collapsed",
+      "switchProject",
+      "toggleFolder",
+      "parent",
+      "folder"
+    ],
+    "description": "[correction] Grid mode showed parent folders (useless) instead of openable session icons. Should SHOW session icons, HIDE parent folders. User had to correct twice.",
+    "source_category": "repeated_correction",
+    "source_session": "77ed9d80-53c",
+    "source_project": "bridge"
+  },
+  {
+    "query": "AudioHub unload GPU models when mic disconnects free VRAM for Ollama",
+    "expected_keywords": [
+      "AudioHub",
+      "deactivate",
+      "client_disconnected",
+      "VRAM",
+      "activate",
+      "lazy",
+      "Ollama"
+    ],
+    "description": "[architecture] AudioHub should unload GPU models (~3.4GB VRAM) when mic disconnects, freeing for Ollama (dream/retrieve/spoof/refine). Reload on reconnect.",
+    "source_category": "architecture",
+    "source_session": "77ed9d80-53c",
+    "source_project": "bridge"
+  },
+  {
+    "query": "dream daemon idle trigger timing and token cost management",
+    "expected_keywords": [
+      "dream_daemon.py",
+      "idle",
+      "15min",
+      "90min",
+      "2hr",
+      "wakeup",
+      "synthesis",
+      "round-robin",
+      "token"
+    ],
+    "description": "[architecture] Dream daemon: 15min idle trigger, 90min dream, 2hr gap. Dreams burned through 90% token limit overnight. Need calibration. Streaming approach for auto-triggered, batch synthesis on wakeup.",
+    "source_category": "architecture",
+    "source_session": "fcafef00-12a",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "dream report shows no synthesized kernels only raw chains",
+    "expected_keywords": [
+      "synthesis",
+      "kernels",
+      "raw chains",
+      "wakeup",
+      "dream_report",
+      "pending"
+    ],
+    "description": "[repeated_bug] Multiple reports showed 'Synthesis pending \u2014 showing raw chains. Kernels will appear after next wakeup synthesis.' Historical reports said 'Could not load dream_report.json'. Recurring issue across session.",
+    "source_category": "repeated_correction",
+    "source_session": "fcafef00-12a",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "corpus contains garbage assistant tool_result chunks under 30 chars",
+    "expected_keywords": [
+      "clean_corpus.py",
+      "tool_result",
+      "tool_use",
+      "garbage",
+      "ingest",
+      "filter"
+    ],
+    "description": "[correction] Corpus had short tool_result chunks (<30 chars). User: 'ingest should not have included these in the first place'. Led to clean_corpus.py script.",
+    "source_category": "correction",
+    "source_session": "fcafef00-12a",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "dream chain evidence validation spirit sub-project false positive",
+    "expected_keywords": [
+      "spirit",
+      "evidence",
+      "validator",
+      "one time",
+      "old",
+      "5 sessions",
+      "false"
+    ],
+    "description": "[correction] Dream claimed 'spirit sub-project surfaced across 5 sessions'. User called it out: 'this looks like one thing, said one time, in an old session'. Evidence validation needed post-synthesis.",
+    "source_category": "correction",
+    "source_session": "fcafef00-12a",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "dream re-integration step use retrieve to validate insights",
+    "expected_keywords": [
+      "re-integration",
+      "retrieve",
+      "validate",
+      "post-synthesis",
+      "wakeup"
+    ],
+    "description": "[architecture] User proposed post-synthesis re-integration step that uses retrieve tool to validate dream insights against corpus. Prevents false claims like the spirit sub-project inflation.",
+    "source_category": "architecture",
+    "source_session": "fcafef00-12a",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "retrieve skill not found by dream session",
+    "expected_keywords": [
+      "skill",
+      "retrieve",
+      "SKILL.md",
+      "continuum",
+      ".claude/skills"
+    ],
+    "description": "[cross_session] User told dreams session 4x to 'use the continuum Retrieve skill'. Session couldn't find it. Had to spawn agent to explore codebase manually.",
+    "source_category": "repeated_correction",
+    "source_session": "fcafef00-12a",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "AI Dreams hackathon report reusable for dream reports",
+    "expected_keywords": [
+      "report.html",
+      "p05_report_data.json",
+      "hackathon",
+      "AI Dreams",
+      "dreamai.solutions",
+      "drill down"
+    ],
+    "description": "[cross_session] User asked if AI Dreams hackathon UI report was reusable for dream reports. Report at dreamai.solutions/ had expandable drill-down HTML.",
+    "source_category": "cross_session",
+    "source_session": "fcafef00-12a",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "dream corpus growth rate and chain cleanup strategy",
+    "expected_keywords": [
+      "corpus",
+      "growing",
+      "chains",
+      "cleanup",
+      "3 cycles",
+      "wakeup",
+      "logarithmic",
+      "compaction"
+    ],
+    "description": "[architecture] Corpus growth concern: if old dream chains stay active, corpus doubles. Solution: cleanup after 3 dream cycles or wakeup (whichever longer). Single daydreams don't cleanup. Inspired by logarithmic compaction plan.",
+    "source_category": "architecture",
+    "source_session": "fcafef00-12a",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "MockUdxClient work session retrieve test",
+    "expected_keywords": [
+      "MockUdxClient",
+      "work",
+      "FIS",
+      "cx retrieve",
+      "PATH"
+    ],
+    "description": "[cross_session] User tested cx retrieve at work with 'MockUdxClient' query. Retrieve returned CLAUDE.md instead of relevant code. Work CC context is separate from home.",
+    "source_category": "cross_session",
+    "source_session": "f540086c-d6e",
+    "source_project": "home"
+  },
+  {
+    "query": "previous session deleted the npz embeddings file",
+    "expected_keywords": [
+      "npz",
+      "embeddings",
+      "deleted",
+      "range",
+      "endings"
+    ],
+    "description": "[cross_session] Previous session deleted the .npz embeddings file. User frustrated: 'this is lame that i have to tell the whole thing'. Embeddings save range needs to be explicit.",
+    "source_category": "cross_session",
+    "source_session": "f540086c-d6e",
+    "source_project": "home"
+  },
+  {
+    "query": "spoof tool compression silently fails falls back to raw copy",
+    "expected_keywords": [
+      "spoof_tool.py",
+      "compress",
+      "raw copy",
+      "claude --print",
+      "CONTINUUM_COMPRESS_MODEL",
+      "bedrock"
+    ],
+    "description": "[cross_session] Work CC reported: spoof --compress produces 90\u219290 turns (no compression). LLM compression errored silently, fell back to raw copy. Root cause: CONTINUUM_COMPRESS_MODEL set to bedrock model that claude --print can't use.",
+    "source_category": "cross_session",
+    "source_session": "f540086c-d6e",
+    "source_project": "home"
+  },
+  {
+    "query": "project icons are SVG downloads not emoji not AI generated",
+    "expected_keywords": [
+      "SVG",
+      "icon",
+      "download",
+      "Lucide",
+      "Phosphor",
+      "gen-icon",
+      "icons.conf"
+    ],
+    "description": "[correction] User corrected: 'current icons are svg from internet. you forgot'. Session confused icons with emoji/AI-generated. Icons are downloaded SVGs from Lucide/Phosphor sets.",
+    "source_category": "correction",
+    "source_session": "55efcea8-0c8",
+    "source_project": "home"
+  },
+  {
+    "query": "bridge server HTTPS flags missing after reboot",
+    "expected_keywords": [
+      "HTTPS",
+      "reboot",
+      "bridge",
+      "server",
+      "systemd",
+      "flags",
+      "borked"
+    ],
+    "description": "[correction] After reboot bridge server started but was 'borked' \u2014 user asked 'did you forget to add https flags?' Server auto-start missing HTTPS config.",
+    "source_category": "correction",
+    "source_session": "55efcea8-0c8",
+    "source_project": "home"
+  },
+  {
+    "query": "knowledge learned in one session gets forgotten or distorted in the next",
+    "expected_keywords": [
+      "forgotten",
+      "distorted",
+      "multi-step",
+      "isolation",
+      "knowledge",
+      "session"
+    ],
+    "description": "[motivation] User's core pain point articulated: 'at work, knowledge learned in one session gets forgotten or distorted. I've completed each step in isolation but when time comes to apply, context is lost.' This IS the continuum problem statement.",
+    "source_category": "motivation",
+    "source_session": "55efcea8-0c8",
+    "source_project": "home"
   }
 ]
