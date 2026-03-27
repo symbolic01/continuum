@@ -108,7 +108,7 @@ def _compress_via_claude(prompt: str, model: str, timeout: int = 120) -> str | N
             timeout=timeout,
         )
         if result.returncode != 0:
-            print(f"[continuum:compress] LLM error: {(result.stderr or '').strip()[:200]}", file=sys.stderr)
+            print(f"[continuum:compress] LLM error (rc={result.returncode}): {(result.stderr or '').strip()[:300]}", file=sys.stderr)
             return None
         return result.stdout.strip()
     except subprocess.TimeoutExpired:
@@ -246,17 +246,27 @@ def _compress_single(
         prompt += f"\n\nAdditional guidance: {user_prompt}"
     prompt += f"\n\n<session>\n{session_json}\n</session>"
 
+    prompt_chars = len(prompt)
+    prompt_tokens_est = prompt_chars // 4
+    backend = f"ollama/{local_model}" if use_local else model
+    print(f"[continuum:compress] input: {prompt_chars:,} chars (~{prompt_tokens_est:,} tokens), model={backend}", file=sys.stderr)
+
     if use_local:
         output = _compress_via_ollama(prompt, model=local_model, timeout=timeout)
     else:
         output = _compress_via_claude(prompt, model=model, timeout=timeout)
 
     if output:
+        print(f"[continuum:compress] output: {len(output):,} chars", file=sys.stderr)
         compressed = _parse_json_turns(output)
         if compressed:
             return compressed
 
-    print("[continuum:compress] failed to parse LLM output, using raw turns", file=sys.stderr)
+        preview = output[:500] if len(output) > 500 else output
+        print(f"[continuum:compress] failed to parse LLM output, preview:\n{preview}", file=sys.stderr)
+    else:
+        print("[continuum:compress] no output from LLM", file=sys.stderr)
+
     return turns
 
 
