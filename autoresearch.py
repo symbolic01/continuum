@@ -305,12 +305,16 @@ def run_autoresearch(args):
     model = args.model or get_model("compress")
     log = load_log()
 
-    # Resume from last accepted params if log exists, otherwise use config defaults
+    # Resume from best known params if log exists
     from core.retrieval import ContextRetriever
     accepted_log = [e for e in log if e.get("accepted")]
-    if accepted_log:
-        current_params = dict(accepted_log[-1]["params_after"])
-        print(f"── Resuming from iteration {len(log)} (best composite={composite_score(accepted_log[-1]['scores']):.3f}) ──", file=sys.stderr)
+    # Also consider best phase 1 result (phase 1 doesn't "accept")
+    all_entries = log
+    best_entry = max(all_entries, key=lambda e: e.get("composite", 0)) if all_entries else None
+    resume_entry = accepted_log[-1] if accepted_log else best_entry
+    if resume_entry and resume_entry.get("composite", 0) > 0:
+        current_params = dict(resume_entry["params_after"])
+        print(f"── Resuming from iteration {len(log)} (best composite={resume_entry['composite']:.3f}) ──", file=sys.stderr)
     else:
         current_params = dict(config.get("retrieval", {}))
         print("── Baseline ──", file=sys.stderr)
@@ -341,6 +345,17 @@ def run_autoresearch(args):
         phase = get_phase(iteration_in_run, getattr(args, 'phase', None))
         print(f"\n── Iteration {iteration} (phase {phase}) ──", file=sys.stderr)
 
+        # Phase transition: when entering phase 2, pick best from phase 1
+        prev_phase = get_phase(i, getattr(args, 'phase', None)) if i > 0 else 0
+        if phase == 2 and prev_phase == 1:
+            phase1_entries = [e for e in log if e.get("phase") == 1]
+            if phase1_entries:
+                best = max(phase1_entries, key=lambda e: e.get("composite", 0))
+                current_params = dict(best["params_after"])
+                config["retrieval"] = current_params
+                baseline_agg = best["scores"]
+                print(f"  ── Phase 1 → 2 transition: best composite={best['composite']:.3f} from iter {best['iteration']} ──", file=sys.stderr)
+
         # Phase 1: random exploration. Phase 2-3: LLM-guided.
         if phase == 1:
             proposal = random_proposal(current_params)
@@ -364,10 +379,17 @@ def run_autoresearch(args):
 
         # Evaluate
         new_agg, _ = run_eval(test_config, ground_truth)
-        accepted = is_improvement(new_agg, baseline_agg)
         cs_new = composite_score(new_agg)
         cs_base = composite_score(baseline_agg)
-        verdict = "ACCEPTED" if accepted else "REJECTED"
+
+        if phase == 1:
+            # Phase 1: log everything, no accept/reject. Best picked at end.
+            accepted = False  # doesn't update baseline during exploration
+            verdict = f"LOGGED (best so far: {max(cs_new, cs_base):.3f})"
+        else:
+            accepted = is_improvement(new_agg, baseline_agg)
+            verdict = "ACCEPTED" if accepted else "REJECTED"
+
         print(f"  Result:   composite={cs_new:.3f} (baseline={cs_base:.3f})  kw={new_agg['keyword_recall']:.3f}  "
               f"mrr={new_agg['mrr']:.3f}  p@k={new_agg['precision_at_k']:.3f}  [{verdict}]", file=sys.stderr)
 
@@ -378,8 +400,7 @@ def run_autoresearch(args):
             "reasoning": reasoning,
             "scores": new_agg,
             "composite": cs_new,
-            "baseline": baseline_agg,
-            "params_after": test_params if accepted else current_params,
+            "params_after": test_params,
             "accepted": accepted,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
