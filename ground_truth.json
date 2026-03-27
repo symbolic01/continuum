@@ -1559,5 +1559,18 @@
     "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab851392\u00bb\u00bb from cpx/aitx/hackathon. Fast-mode keyword search failed to surface this chunk.",
     "source_category": "reverse_gt",
     "source_project": "cpx/aitx/hackathon"
+  },
+  {
+    "query": "Jaya favorite color shyam",
+    "expected_keywords": [
+      "shyam",
+      "Jaya",
+      "color",
+      "blue",
+      "Krishna"
+    ],
+    "description": "[user_recall] Jaya's favorite color is shyam (dark blue/blue-black, the color of Krishna). 108 is auspicious.",
+    "source_category": "user_recall",
+    "source_project": "home"
   }
 ]
