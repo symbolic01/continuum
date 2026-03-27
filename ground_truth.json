@@ -695,5 +695,869 @@
     "source_category": "user_recall",
     "source_session": "4cd7dcae-f3b",
     "source_project": "cpx/aitx-hackathon"
+  },
+  {
+    "query": "Bridge _slack_generate_reply thread context fix version history",
+    "expected_keywords": [
+      "_slack_generate_reply",
+      "solution",
+      "showing",
+      "context",
+      "failing",
+      "recurred"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab5e8772\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "search for: \"bridge 'was interrupted' state bug resolve_project_session race condition fixes",
+    "expected_keywords": [
+      "content",
+      "addressed",
+      "correction",
+      "patched",
+      "detection",
+      "kernels",
+      "interrupted"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abd7bc8a\u00bb\u00bb from unknown. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "unknown"
+  },
+  {
+    "query": "Fix repeated `renderTimeline()` and `transcriptOffset`/`ingestTranscriptChunk` bugs in Bridge project",
+    "expected_keywords": [
+      "sharing",
+      "desynchronization",
+      "independently",
+      "despite",
+      "ingestTranscriptChunk",
+      "renderTimeline",
+      "transcriptOffset",
+      "multiple"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab5f38a4\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "voxel-diffusion cluster_by_similarity function parameters",
+    "expected_keywords": [
+      "ndarray",
+      "threshold",
+      "cluster_by_similarity",
+      "min_cluster_size",
+      "vectors"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab9b70da\u00bb\u00bb from voxel-diffusion. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "voxel-diffusion"
+  },
+  {
+    "query": "bridge installSwipeActions function details",
+    "expected_keywords": [
+      "function",
+      "selection",
+      "handlers",
+      "transcript",
+      "missing",
+      "addressing",
+      "installSwipeActions",
+      "specific"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abd0b459\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "bridge fix response preview tail Bug 1 Claude PTY stream",
+    "expected_keywords": [
+      "instead",
+      "preview",
+      "response"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab39aef0\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "project Continuum tab xterm pane claude --resume implementation status",
+    "expected_keywords": [
+      "running",
+      "architecturally",
+      "designed",
+      "planned",
+      "Continuum",
+      "context",
+      "visibility",
+      "implemented"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab4f2b4a\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "bridge line 3080 translateToString true issues with ANSI escape handling",
+    "expected_keywords": [
+      "ANSI",
+      "indexOf",
+      "problem",
+      "translateToString",
+      "trimmed"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab811f26\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "Check PTY allocation and xterm resize handling in bridge project",
+    "expected_keywords": [
+      "actually",
+      "creates",
+      "correct",
+      "picture",
+      "loadSavedCols",
+      "ensureTerminal",
+      "connects"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abf0b382\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "Python function for mapping probability to ANSI color in bridge project",
+    "expected_keywords": [
+      "ANSI",
+      "_word_conf_color",
+      "confidence",
+      "probability"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abec4fe2\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "_project_home_spoofing_issue_read_cc_conversation_filter_27_entries_3_to_18",
+    "expected_keywords": [
+      "actually",
+      "correct",
+      "written",
+      "conversation",
+      "entries",
+      "spoofing"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab83ded5\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "dream function make_cc_entry request_id timestamp validation template-based approach",
+    "expected_keywords": [
+      "rewritten",
+      "approach",
+      "timestamp",
+      "make_cc_entry",
+      "timestamps",
+      "template",
+      "multiple",
+      "requestId"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab3700b6\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "app export function composeNudgeMessage missing parameter",
+    "expected_keywords": [
+      "function",
+      "formatName",
+      "undefined",
+      "fallback"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab3ede18\u00bb\u00bb from app. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "app"
+  },
+  {
+    "query": "Slack bot project dream unresolved generate reply thread context bug",
+    "expected_keywords": [
+      "resolution",
+      "_slack_generate_reply",
+      "partially",
+      "resolved",
+      "handling",
+      "separate",
+      "context",
+      "mentioned"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abd15259\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "fix project bridge bugs PTY tail refine prompt execution",
+    "expected_keywords": [
+      "separate",
+      "preview",
+      "response",
+      "executin",
+      "Response",
+      "instead"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab7f2df7\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "home: verify renaming Canopy, update problem mapping(steps/stages)",
+    "expected_keywords": [
+      "difficult",
+      "started",
+      "carries",
+      "baggage",
+      "company"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab50adf5\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "dream transcriptOffset ingestTranscriptChunk bridge state management bug fix confirmation",
+    "expected_keywords": [
+      "desynchronization",
+      "transcriptOffset",
+      "management",
+      "identified",
+      "ingestTranscriptChunk",
+      "context",
+      "timeline"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab44d9b1\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "project slack_generate_reply recurring thread context fix system prompt code changes",
+    "expected_keywords": [
+      "_slack_generate_reply",
+      "handling",
+      "eventually",
+      "context",
+      "recurring",
+      "changes",
+      "comprehensive",
+      "leading"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abf7d5cc\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "search for \"File has not been read yet\" error in stress kernels across bridge home cpx/aitx/hackathon",
+    "expected_keywords": [
+      "repeatedly",
+      "content",
+      "kernels",
+      "hackathon",
+      "appears"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab403149\u00bb\u00bb from unknown. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "unknown"
+  },
+  {
+    "query": "GitHub Project Bridge Synthetic Session Launch Fix",
+    "expected_keywords": [
+      "synthetic",
+      "sessions",
+      "intended",
+      "intention",
+      "subsequent",
+      "GitHub",
+      "completed",
+      "session"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab3cf74c\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "CSS width constraint for .terminal-wrap overflow issue in project bridge",
+    "expected_keywords": [
+      "terminal",
+      "resolved",
+      "constraints",
+      "children",
+      "viewport",
+      "overflow",
+      "explicit"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abdbec07\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "CLAUDE.md update frequency project:dream",
+    "expected_keywords": [
+      "bearing",
+      "CLAUDE",
+      "ongoing",
+      "updated",
+      "discipline",
+      "practice",
+      "maintaining",
+      "actively"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab037daa\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "test function for non-resume state reset in voxel-diffusion project",
+    "expected_keywords": [
+      "test_non_resume_resets_stale_state_rows",
+      "tmp_path",
+      "_make_image",
+      "input_dir",
+      "output_dir"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab7ab84a\u00bb\u00bb from voxel-diffusion. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "voxel-diffusion"
+  },
+  {
+    "query": "continuum project evidence validation subprocess CLAUDECODE=1 impact",
+    "expected_keywords": [
+      "insufficient",
+      "whether",
+      "validator",
+      "supports",
+      "contradicts",
+      "subprocess",
+      "spawned",
+      "CLAIM"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab9ed1a9\u00bb\u00bb from continuum. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "continuum"
+  },
+  {
+    "query": "voxel-diffusion cluster_centroids implementation details",
+    "expected_keywords": [
+      "ndarray",
+      "enumerate",
+      "clusters",
+      "vectors",
+      "centroids",
+      "_cluster_centroids",
+      "members"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abd88318\u00bb\u00bb from voxel-diffusion. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "voxel-diffusion"
+  },
+  {
+    "query": "superempathy/dreams project provenance chain update just refs CLAUDE.md",
+    "expected_keywords": [
+      "updates",
+      "broader",
+      "CLAUDE",
+      "project",
+      "superempathy",
+      "context",
+      "correction",
+      "provenance"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abf72033\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "claude project home resume c2bfda83-4afd-9201-ea5cd692f0d2 Claude Code v2.1.78 Op",
+    "expected_keywords": [
+      "context",
+      "projects"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abec05e2\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "cd to repo and start Python web server for home project sessions",
+    "expected_keywords": [
+      "terminal",
+      "continuum",
+      "session",
+      "localhost"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab033ac5\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "project FileHasNotBeenReadYet error Claude editing pattern",
+    "expected_keywords": [
+      "without",
+      "attempts",
+      "project",
+      "workflow",
+      "pattern",
+      "appears",
+      "indicating",
+      "persistent"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abc90ade\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "home February 17, 2026 first conversation .claude folders",
+    "expected_keywords": [
+      "operating",
+      "collection",
+      "personal",
+      "February",
+      "dynamic",
+      "context",
+      "folders",
+      "windows"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab208552\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "cpx mission-match project status SSE-on-connect",
+    "expected_keywords": [
+      "created",
+      "abandoned",
+      "connect",
+      "project",
+      "leaving",
+      "question",
+      "mission",
+      "unanswered"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab82d610\u00bb\u00bb from cpx. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "cpx"
+  },
+  {
+    "query": "continuum project provenance chain correction history",
+    "expected_keywords": [
+      "content",
+      "corrected",
+      "correction",
+      "provenance",
+      "kernels"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab4ab570\u00bb\u00bb from continuum. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "continuum"
+  },
+  {
+    "query": "superempathy VRAM budget model requirements overflow",
+    "expected_keywords": [
+      "everything",
+      "Currently",
+      "Whisper",
+      "earlier",
+      "VRAM"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab6a6565\u00bb\u00bb from superempathy. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "superempathy"
+  },
+  {
+    "query": "Django Bridge WebUI recurring bugs fix history and root cause analysis",
+    "expected_keywords": [
+      "terminal",
+      "recurring",
+      "WebUI",
+      "renderTimeline",
+      "showing",
+      "corruption",
+      "preview",
+      "handlers"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abf8ea76\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "claude resume project home v2.1.78 context length",
+    "expected_keywords": [
+      "context",
+      "requestId",
+      "projects",
+      "everythi"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab91f870\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "Canopy Project: Bridge CLAUDE.md Validated Section Memory Optimization Crash Location",
+    "expected_keywords": [
+      "CLAUDE",
+      "exactly",
+      "section",
+      "strings",
+      "shouldn",
+      "serialize",
+      "content",
+      "Validated"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab1cc16a\u00bb\u00bb from canopy. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "canopy"
+  },
+  {
+    "query": "implement Claude Code v2.1.78 features in Opus 4.6 project",
+    "expected_keywords": [
+      "context",
+      "projects"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab4f9b28\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "cpx project cpx-6-summary commits Slack CLI hackathon configuration",
+    "expected_keywords": [
+      "Summary",
+      "hackathon",
+      "context",
+      "dispatch",
+      "Commits"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abc9f76d\u00bb\u00bb from cpx. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "cpx"
+  },
+  {
+    "query": "CLAUDE.md edit re-read cycle 14-21 days project chunks",
+    "expected_keywords": [
+      "CLAUDE",
+      "discuss",
+      "implicit",
+      "emphasizing",
+      "various",
+      "context",
+      "maintenance",
+      "projects"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab76927e\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "cpx/aitx/hackathon CLAUDE.md deadline tasks critical path",
+    "expected_keywords": [
+      "CLAUDE",
+      "ANTHROPIC_API_KEY",
+      "deadline",
+      "Looking",
+      "synthesis",
+      "deposit",
+      "credits",
+      "checklist"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab363073\u00bb\u00bb from cpx/aitx/hackathon. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "cpx/aitx/hackathon"
+  },
+  {
+    "query": "Continuum project JSON verdict insufficient reason analysis",
+    "expected_keywords": [
+      "expressions",
+      "distinct",
+      "repeated",
+      "establi",
+      "Evidence",
+      "message",
+      "multiple",
+      "identical"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abb03925\u00bb\u00bb from continuum. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "continuum"
+  },
+  {
+    "query": "Document gaps for dream project sessions referencing superempathy plansintegration chains",
+    "expected_keywords": [
+      "integration",
+      "superempathy",
+      "documented",
+      "ideally",
+      "carries",
+      "session",
+      "warranted",
+      "discussed"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abbf66af\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "bridge project structure and components",
+    "expected_keywords": [
+      "Biometric",
+      "runtime",
+      "research",
+      "orchestrator",
+      "superempathy",
+      "projects"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab1eccb0\u00bb\u00bb from plans. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "plans"
+  },
+  {
+    "query": "Claude project dream action scope control mechanism implementation",
+    "expected_keywords": [
+      "proposes",
+      "requiring",
+      "actions",
+      "recurring",
+      "overreach",
+      "friction",
+      "intervention",
+      "consistently"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abe29d1a\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "JavaScript dynamic image path resolution in project subdirectories",
+    "expected_keywords": [
+      "subproject",
+      "requests"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abb7da51\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "evidence validation claim superempathy v1 schema claude md files",
+    "expected_keywords": [
+      "insufficient",
+      "Superempathy",
+      "whether",
+      "validator",
+      "supports",
+      "contradicts",
+      "CLAIM",
+      "determine"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab1b255d\u00bb\u00bb from unknown. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "unknown"
+  },
+  {
+    "query": "Claude project dream action scope overrun solution",
+    "expected_keywords": [
+      "intervention",
+      "describe",
+      "behavior",
+      "requiring",
+      "projects",
+      "actions",
+      "multiple",
+      "intended"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab4f7a90\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "class SimulationState constructor initial setup deliveries responses phone states",
+    "expected_keywords": [
+      "currentDay",
+      "private",
+      "deliveries",
+      "SimulationState",
+      "responses",
+      "Delivery",
+      "Response",
+      "currentTime"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abe4712e\u00bb\u00bb from app. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "app"
+  },
+  {
+    "query": "search for determinePromptCategory function ranges in app project",
+    "expected_keywords": [
+      "endOffset",
+      "functions",
+      "isBlockCoverage",
+      "startOffset",
+      "functionName"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abf06d7e\u00bb\u00bb from app. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "app"
+  },
+  {
+    "query": "parse active chunks regex match transcription",
+    "expected_keywords": [
+      "_parse_active_chunks",
+      "raw_line",
+      "in_active",
+      "splitlines",
+      "transcript_text"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab98732e\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "project transition --print to Claude Code sessions validation context spoofing",
+    "expected_keywords": [
+      "architectural",
+      "interactive",
+      "correct",
+      "transition",
+      "sessions",
+      "context",
+      "validated",
+      "approach"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab92a058\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "cpx/mission-match project status SSE-on-connect implementation",
+    "expected_keywords": [
+      "created",
+      "abandoned",
+      "connect",
+      "project",
+      "leaving",
+      "question",
+      "mission",
+      "unanswered"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abc4f406\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "continuum verdict contradictory evidence JSON analysis",
+    "expected_keywords": [
+      "integration",
+      "Evidence",
+      "community",
+      "verdict",
+      "pyannote",
+      "describes",
+      "segments",
+      "explicitly"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab3168b6\u00bb\u00bb from continuum. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "continuum"
+  },
+  {
+    "query": "Claude Project Home Resume Commit Minimal Test Prompt ID",
+    "expected_keywords": [
+      "Minimal",
+      "context",
+      "promptId",
+      "gitBr",
+      "projects"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab9b38cc\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "ComfyUI project bridge job #184 status update",
+    "expected_keywords": [
+      "momentarily",
+      "generating",
+      "iterate",
+      "ComfyUI",
+      "results",
+      "abstract",
+      "connected"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab5aa481\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "bridge storage JSONL per session indexed by day",
+    "expected_keywords": [
+      "Storage",
+      "transcripts",
+      "JSONL",
+      "instincts",
+      "consider",
+      "indexed",
+      "granularity",
+      "session"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abb8de0d\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "superempathy three-layer architecture raw sessions kernels sutras UUIDssemantic addresses",
+    "expected_keywords": [
+      "principle",
+      "provenance",
+      "kernels",
+      "elegant",
+      "embedded",
+      "sessions",
+      "architecture",
+      "UUIDs"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab1fd50f\u00bb\u00bb from superempathy. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "superempathy"
+  },
+  {
+    "query": "bridge select prompt text function implementation details",
+    "expected_keywords": [
+      "_select_prompt_text",
+      "environ",
+      "THINK_PROMPT_USE_RAW",
+      "use_raw",
+      "raw_text"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab4b88ef\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "check bridge project API vs server process status",
+    "expected_keywords": [
+      "running",
+      "HTML",
+      "process",
+      "changes",
+      "earlier"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab6f3841\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "cpx/aitx/hackathon authentication options GitHub",
+    "expected_keywords": [
+      "Browser",
+      "easiest",
+      "authenticated",
+      "browser"
+    ],
+    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab851392\u00bb\u00bb from cpx/aitx/hackathon. Fast-mode keyword search failed to surface this chunk.",
+    "source_category": "reverse_gt",
+    "source_project": "cpx/aitx/hackathon"
   }
 ]
