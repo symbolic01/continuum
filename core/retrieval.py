@@ -49,6 +49,9 @@ class ContextRetriever:
         "rerank_query_overlap": 1.0,   # boost for query word overlap with chunk
         "rerank_identifier_hit": 2.0,  # boost for exact identifier match in chunk
         "rerank_specificity": 0.5,     # boost for information density (shorter = more specific)
+        "rerank_recency": 0.5,         # boost for recent content (days → score)
+        "rerank_semantic": 1.0,        # boost from re-embedding query vs chunk similarity
+        "rerank_role_weight": 0.5,     # boost for high-value roles (kernel, correction, context)
     }
 
     def __init__(
@@ -309,6 +312,14 @@ class ContextRetriever:
 
         Applied after initial axis scoring + temporal decay. The initial sort
         gets candidates into the pool; reranking determines their final order.
+
+        Axes:
+        - query_overlap: do the query's own words appear in the chunk?
+        - identifier_hit: exact function/file/variable names
+        - specificity: shorter chunks with hits = more focused answers
+        - recency: fresher content ranks higher
+        - semantic: re-score via embedding similarity (query vs chunk)
+        - role_weight: high-value content types (kernels, corrections, context)
         """
         if not ranked:
             return ranked
@@ -321,6 +332,34 @@ class ContextRetriever:
         w_overlap = self.params.get("rerank_query_overlap", 1.0)
         w_ident = self.params.get("rerank_identifier_hit", 2.0)
         w_spec = self.params.get("rerank_specificity", 0.5)
+        w_recency = self.params.get("rerank_recency", 0.5)
+        w_semantic = self.params.get("rerank_semantic", 1.0)
+        w_role = self.params.get("rerank_role_weight", 0.5)
+
+        # Pre-compute query embedding for semantic reranking
+        query_embedding = None
+        uid_to_idx = {}
+        if w_semantic > 0 and self.index and self.index.vectors:
+            try:
+                from .embeddings import embed_text
+                import numpy as np
+                vec = embed_text(query)
+                if vec:
+                    query_embedding = np.array(vec, dtype=np.float32)
+                    qn = np.linalg.norm(query_embedding)
+                    if qn > 0:
+                        query_embedding /= qn
+                    # Build UID → index lookup
+                    for idx, m in enumerate(self.index.metadata):
+                        uid_to_idx[m.get("uid", "")] = idx
+            except Exception:
+                pass
+
+        # Role value tiers
+        high_value_roles = {'kernel', 'context', 'correction', 'chain', 'code'}
+        mid_value_roles = {'plan', 'user'}
+
+        now_ts = time.time()
 
         reranked = []
         for meta, score in ranked:
@@ -328,12 +367,12 @@ class ContextRetriever:
             content_lower = content.lower()
             bonus = 0.0
 
-            # 1. Query word overlap: what fraction of query words appear in chunk?
+            # 1. Query word overlap
             if query_words:
                 overlap = sum(1 for w in query_words if w in content_lower) / len(query_words)
                 bonus += overlap * w_overlap
 
-            # 2. Identifier hits: exact function/file names in the chunk
+            # 2. Identifier hits
             if identifiers:
                 ident_hits = sum(1 for ident in identifiers if ident in content_lower)
                 bonus += (ident_hits / len(identifiers)) * w_ident
@@ -343,11 +382,41 @@ class ContextRetriever:
                 kw_hits = sum(1 for kw in keywords if kw in content_lower)
                 bonus += (kw_hits / len(keywords)) * w_overlap * 0.5
 
-            # 4. Specificity: shorter chunks with hits are more specific/useful
+            # 4. Specificity: shorter relevant chunks are more focused
             if bonus > 0 and w_spec > 0:
-                # Normalize: 100 chars = 1.0, 1000 chars = 0.1
                 specificity = min(1.0, 100 / max(len(content), 1))
                 bonus += specificity * w_spec
+
+            # 5. Recency: boost recent content
+            if w_recency > 0:
+                ts = meta.get("ts", "")
+                if ts:
+                    try:
+                        from datetime import datetime, timezone
+                        entry_time = datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
+                        days_ago = (now_ts - entry_time) / 86400
+                        # Sigmoid: 0 days = 1.0, 30 days = 0.5, 90 days = ~0.1
+                        recency = 1.0 / (1.0 + (days_ago / 30.0))
+                        bonus += recency * w_recency
+                    except (ValueError, TypeError):
+                        pass
+
+            # 6. Semantic similarity: look up stored embedding, compare with query
+            if query_embedding is not None and w_semantic > 0:
+                uid = meta.get("uid", "")
+                if uid and self.index and uid_to_idx:
+                    idx = uid_to_idx.get(uid)
+                    if idx is not None and idx < len(self.index.vectors):
+                        sim = float(np.dot(query_embedding, self.index.vectors[idx]))
+                        bonus += max(0, sim) * w_semantic
+
+            # 7. Role-based value
+            if w_role > 0:
+                role = meta.get("role", "").lower()
+                if role in high_value_roles:
+                    bonus += w_role
+                elif role in mid_value_roles:
+                    bonus += w_role * 0.5
 
             reranked.append((meta, score + bonus))
 

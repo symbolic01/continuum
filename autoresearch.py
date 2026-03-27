@@ -48,6 +48,9 @@ PARAM_HARD_BOUNDS = {
     "rerank_query_overlap": (0.0, None, float),
     "rerank_identifier_hit": (0.0, None, float),
     "rerank_specificity": (0.0, None, float),
+    "rerank_recency": (0.0, None, float),
+    "rerank_semantic": (0.0, None, float),
+    "rerank_role_weight": (0.0, None, float),
 }
 
 # Soft bounds — starting search range (auto-expand on wall hits)
@@ -66,6 +69,9 @@ PARAM_SOFT_BOUNDS = {
     "rerank_query_overlap": (0.0, 5.0),
     "rerank_identifier_hit": (0.0, 5.0),
     "rerank_specificity": (0.0, 3.0),
+    "rerank_recency": (0.0, 3.0),
+    "rerank_semantic": (0.0, 5.0),
+    "rerank_role_weight": (0.0, 3.0),
 }
 
 WALL_HIT_THRESHOLD = 3  # auto-expand after this many iterations at a bound
