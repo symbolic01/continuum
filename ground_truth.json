@@ -870,5 +870,127 @@
     "source_category": "cross_project",
     "source_session": "79e01490-ea9",
     "source_project": "cpx/mission-match"
+  },
+  {
+    "query": "looks like some context got lost somehow mic is working",
+    "expected_keywords": [
+      "mic",
+      "context",
+      "lost",
+      "bridge",
+      "transcript",
+      "listen"
+    ],
+    "description": "[context_lost] User mid-session in bridge: 'sure... mic is working already... looks like some context got lost somehow.' AI lost track of what was already established.",
+    "source_category": "context_lost",
+    "source_session": "51d8697c-826",
+    "source_project": "bridge"
+  },
+  {
+    "query": "transcript final utterance merge bug disappears then merges",
+    "expected_keywords": [
+      "utterance",
+      "merge",
+      "disappears",
+      "final",
+      "incoming",
+      "transcript",
+      "intermediate"
+    ],
+    "description": "[bug_report] Final utterance disappears for a long time, then merges with next incoming utterance. Intermediate state lost. Recently introduced bug.",
+    "source_category": "bug_report",
+    "source_session": "69a3ed7d-e4b",
+    "source_project": "bridge"
+  },
+  {
+    "query": "sister session live observability can't see evidence doing anything",
+    "expected_keywords": [
+      "sister",
+      "session",
+      "observability",
+      "think.log",
+      "logs",
+      "evidence"
+    ],
+    "description": "[architecture] Sister sessions implemented but no visibility. Logs go to think.log mixed with all other think traffic. Need dedicated observability.",
+    "source_category": "architecture",
+    "source_session": "fb3b2f4a-3db",
+    "source_project": "bridge"
+  },
+  {
+    "query": "sutra expansion layers Keli pay dreams needs that context",
+    "expected_keywords": [
+      "sutra",
+      "Keli",
+      "layers",
+      "expansion",
+      "dreams"
+    ],
+    "description": "[cross_session] User asked if AI consumed Keli's message about layers of sutra expansion. Dreams project needed that context. Cross-project context gap.",
+    "source_category": "cross_session",
+    "source_session": "11dabedf-6a7",
+    "source_project": "cpx"
+  },
+  {
+    "query": "feature requests lost when context compresses todo system needed",
+    "expected_keywords": [
+      "todo",
+      "lost",
+      "context",
+      "compresses",
+      "px todo",
+      "JSONL",
+      "feature requests"
+    ],
+    "description": "[motivation] Feature requests and bug fixes mentioned in CC conversations get lost when context compresses. Led to px todo system design.",
+    "source_category": "motivation",
+    "source_session": "agent-ad025a",
+    "source_project": "home"
+  },
+  {
+    "query": "subproject icons not displaying in bridge WebUI",
+    "expected_keywords": [
+      "subproject",
+      "icons",
+      "bridge",
+      "WebUI",
+      "displaying",
+      "sidebar"
+    ],
+    "description": "[ran_out_of_context] Session continued from context overflow. Original task: fix subproject icons not displaying in bridge WebUI.",
+    "source_category": "context_continuation",
+    "source_session": "76b04180-5f8",
+    "source_project": "home"
+  },
+  {
+    "query": "speech to candidate pipeline continuous non-linear stream project-scoped",
+    "expected_keywords": [
+      "transcript",
+      "candidate",
+      "pipeline",
+      "speech",
+      "project-scoped",
+      "non-linear",
+      "stream"
+    ],
+    "description": "[architecture] Core speech pipeline: user speaks in continuous non-linear stream, system produces project-scoped prompt candidates. Fluid speech \u2192 structured prompts.",
+    "source_category": "architecture",
+    "source_session": "2497dfca-81d",
+    "source_project": "bridge"
+  },
+  {
+    "query": "haven't had time for hackathon focused on bridge interaction workflow two kids",
+    "expected_keywords": [
+      "hackathon",
+      "bridge",
+      "workflow",
+      "AITX",
+      "AI Collective",
+      "Data Portability"
+    ],
+    "description": "[user_context] User balancing hackathon project with bridge development, caring for two kids, full work schedule. Bridge workflow enables working in small pockets of time.",
+    "source_category": "user_recall",
+    "source_session": "4cd7dcae-f3b",
+    "source_project": "cpx/aitx-hackathon"
   }
 ]
