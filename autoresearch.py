@@ -314,7 +314,7 @@ def run_autoresearch(args):
     resume_entry = accepted_log[-1] if accepted_log else best_entry
     if resume_entry and resume_entry.get("composite", 0) > 0:
         current_params = dict(resume_entry["params_after"])
-        print(f"── Resuming from iteration {len(log)} (best composite={resume_entry['composite']:.3f}) ──", file=sys.stderr)
+        print(f"── Resuming with iter {resume_entry.get('iteration', '?')} params (composite={resume_entry['composite']:.3f}, {len(log)} total logged) ──", file=sys.stderr)
     else:
         current_params = dict(config.get("retrieval", {}))
         print("── Baseline ──", file=sys.stderr)
