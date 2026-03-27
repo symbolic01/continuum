@@ -775,5 +775,100 @@
     "source_category": "motivation",
     "source_session": "55efcea8-0c8",
     "source_project": "home"
+  },
+  {
+    "query": "refine pipeline when to refine vs skip refinement",
+    "expected_keywords": [
+      "refine",
+      "raw card",
+      "candidate card",
+      "single candidate",
+      "sonnet",
+      "pending"
+    ],
+    "description": "[correction] User specified refine rules twice: refine when at least 1 raw card in selection OR more than one candidate card. Skip refine only for single candidate card.",
+    "source_category": "repeated_correction",
+    "source_session": "e014c25d-d95",
+    "source_project": "bridge"
+  },
+  {
+    "query": "dispatch v2 response collection fire and forget",
+    "expected_keywords": [
+      "dispatch",
+      "response",
+      "fire-and-forget",
+      "dispatch_send",
+      "PTY",
+      "completed"
+    ],
+    "description": "[architecture] Dispatch v1 is fire-and-forget: after dispatch_send injects prompt into PTY, nothing tracks completion. V2 adds response collection.",
+    "source_category": "architecture",
+    "source_session": "a1933951-4ea",
+    "source_project": "bridge"
+  },
+  {
+    "query": "sutra layer line ranges page section item pointer fragile coupling",
+    "expected_keywords": [
+      "sutra",
+      "line ranges",
+      "page",
+      "section",
+      "pointer",
+      "fragile coupling",
+      "dreams"
+    ],
+    "description": "[user_forgot] User forgot while transcribing: line ranges was first thought that changed to page/section/item pointer. Fragile coupling = interesting. 'humans forgetting things = interesting'.",
+    "source_category": "user_recall",
+    "source_session": "fcafef00-12a",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "dream report noise to signal ratio 100:1 temporal links useless",
+    "expected_keywords": [
+      "noise",
+      "signal",
+      "100:1",
+      "temporal links",
+      "useless",
+      "kernels",
+      "quality",
+      "quantity"
+    ],
+    "description": "[correction] Dream report noise:signal 100:1. Temporal links from CLAUDE.md = useless. Hyper-detailed chunks not human-meaningful. Want quality kernels not quantity of random chunk similarities.",
+    "source_category": "correction",
+    "source_session": "fcafef00-12a",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "WebUI Complete exit button no feedback no badge no new session",
+    "expected_keywords": [
+      "Complete",
+      "exit",
+      "feedback",
+      "badge",
+      "session",
+      "header"
+    ],
+    "description": "[architecture] Complete/exit button UX problems: no visible feedback in terminal, no badge update, no way to start new session without page reload.",
+    "source_category": "architecture",
+    "source_session": "66c9e4e9-019",
+    "source_project": "bridge"
+  },
+  {
+    "query": "mission match WebSocket restricted payloads observable analysis",
+    "expected_keywords": [
+      "mission-match",
+      "WebSocket",
+      "restricted",
+      "payloads",
+      "observable",
+      "Keli",
+      "AITX",
+      "Track 3"
+    ],
+    "description": "[cross_project] Mission Match is Keli's hackathon app (AITX Track 3 \u2014 Personal Data, Personal Value). Working on branch symbolic/help.",
+    "source_category": "cross_project",
+    "source_session": "79e01490-ea9",
+    "source_project": "cpx/mission-match"
   }
 ]
