@@ -5,3 +5,7 @@ numpy
 
 # Optional: continuum.yaml config file support
 pyyaml
+
+# Optional: text emotion classification at ingest time
+torch
+transformers
