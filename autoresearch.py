@@ -305,19 +305,26 @@ def run_autoresearch(args):
     model = args.model or get_model("compress")
     log = load_log()
 
-    # Establish baseline with current params
-    print("── Baseline ──", file=sys.stderr)
-    current_params = dict(config.get("retrieval", {}))
-    # Fill in defaults for any missing params
+    # Resume from last accepted params if log exists, otherwise use config defaults
     from core.retrieval import ContextRetriever
+    accepted_log = [e for e in log if e.get("accepted")]
+    if accepted_log:
+        current_params = dict(accepted_log[-1]["params_after"])
+        print(f"── Resuming from iteration {len(log)} (best composite={composite_score(accepted_log[-1]['scores']):.3f}) ──", file=sys.stderr)
+    else:
+        current_params = dict(config.get("retrieval", {}))
+        print("── Baseline ──", file=sys.stderr)
+
+    # Fill in defaults for any missing params
     for k, v in ContextRetriever.DEFAULT_PARAMS.items():
         if k not in current_params:
             current_params[k] = v
 
+    config["retrieval"] = current_params
     baseline_agg, _ = run_eval(config, ground_truth)
     print(f"  kw={baseline_agg['keyword_recall']:.3f}  mrr={baseline_agg['mrr']:.3f}  "
           f"p@k={baseline_agg['precision_at_k']:.3f}  tok={baseline_agg['token_count']:.0f}  "
-          f"lat={baseline_agg['latency_ms']:.0f}ms", file=sys.stderr)
+          f"lat={baseline_agg['latency_ms']:.0f}ms  composite={composite_score(baseline_agg):.3f}", file=sys.stderr)
 
     start_time = time.monotonic()
     iteration = len(log)
