@@ -45,6 +45,10 @@ class ContextRetriever:
         "context_boost": 1.5,
         "kernel_boost": 2.0,
         "chain_boost": 1.3,
+        # Reranking weights — applied after initial sort to rescore top candidates
+        "rerank_query_overlap": 1.0,   # boost for query word overlap with chunk
+        "rerank_identifier_hit": 2.0,  # boost for exact identifier match in chunk
+        "rerank_specificity": 0.5,     # boost for information density (shorter = more specific)
     }
 
     def __init__(
@@ -264,6 +268,9 @@ class ContextRetriever:
 
         ranked = sorted(decayed, key=lambda x: -x[1])
 
+        # Rerank: rescore top candidates using query-specific signals
+        ranked = self._rerank(query, decomposition, ranked)
+
         # Assemble into text, fitting budget
         chunks = []
         tokens_used = 0
@@ -295,6 +302,57 @@ class ContextRetriever:
             tokens_used += chunk_tokens
 
         return "\n".join(chunks)
+
+    def _rerank(self, query: str, decomposition: dict,
+                ranked: list[tuple[dict, float]]) -> list[tuple[dict, float]]:
+        """Rerank candidates using query-specific signals that affect ORDER.
+
+        Applied after initial axis scoring + temporal decay. The initial sort
+        gets candidates into the pool; reranking determines their final order.
+        """
+        if not ranked:
+            return ranked
+
+        query_lower = query.lower()
+        query_words = set(re.split(r'\W+', query_lower)) - {'', 'the', 'a', 'an', 'in', 'on', 'of', 'to', 'for', 'is', 'and', 'or'}
+        identifiers = [id.lower() for id in decomposition.get("identifiers", [])]
+        keywords = [kw.lower() for kw in decomposition.get("keywords", [])]
+
+        w_overlap = self.params.get("rerank_query_overlap", 1.0)
+        w_ident = self.params.get("rerank_identifier_hit", 2.0)
+        w_spec = self.params.get("rerank_specificity", 0.5)
+
+        reranked = []
+        for meta, score in ranked:
+            content = meta.get("content", "")
+            content_lower = content.lower()
+            bonus = 0.0
+
+            # 1. Query word overlap: what fraction of query words appear in chunk?
+            if query_words:
+                overlap = sum(1 for w in query_words if w in content_lower) / len(query_words)
+                bonus += overlap * w_overlap
+
+            # 2. Identifier hits: exact function/file names in the chunk
+            if identifiers:
+                ident_hits = sum(1 for ident in identifiers if ident in content_lower)
+                bonus += (ident_hits / len(identifiers)) * w_ident
+
+            # 3. Keyword hits from decomposition
+            if keywords:
+                kw_hits = sum(1 for kw in keywords if kw in content_lower)
+                bonus += (kw_hits / len(keywords)) * w_overlap * 0.5
+
+            # 4. Specificity: shorter chunks with hits are more specific/useful
+            if bonus > 0 and w_spec > 0:
+                # Normalize: 100 chars = 1.0, 1000 chars = 0.1
+                specificity = min(1.0, 100 / max(len(content), 1))
+                bonus += specificity * w_spec
+
+            reranked.append((meta, score + bonus))
+
+        reranked.sort(key=lambda x: -x[1])
+        return reranked
 
     def _search_semantic(self, query: str, k: int = 30) -> list[tuple[dict, float]]:
         """Semantic search via embedding similarity."""

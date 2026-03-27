@@ -44,6 +44,10 @@ PARAM_HARD_BOUNDS = {
     "context_boost": (0.0, None, float),
     "kernel_boost": (0.0, None, float),
     "chain_boost": (0.0, None, float),
+    # Reranking params — these directly affect result ORDER
+    "rerank_query_overlap": (0.0, None, float),
+    "rerank_identifier_hit": (0.0, None, float),
+    "rerank_specificity": (0.0, None, float),
 }
 
 # Soft bounds — starting search range (auto-expand on wall hits)
@@ -59,6 +63,9 @@ PARAM_SOFT_BOUNDS = {
     "context_boost": (0.5, 5.0),
     "kernel_boost": (0.5, 5.0),
     "chain_boost": (0.5, 3.0),
+    "rerank_query_overlap": (0.0, 5.0),
+    "rerank_identifier_hit": (0.0, 5.0),
+    "rerank_specificity": (0.0, 3.0),
 }
 
 WALL_HIT_THRESHOLD = 3  # auto-expand after this many iterations at a bound
