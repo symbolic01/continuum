@@ -50,7 +50,7 @@ class ContextRetriever:
         "rerank_identifier_hit": 2.0,  # boost for exact identifier match in chunk
         "rerank_specificity": 0.5,     # boost for information density (shorter = more specific)
         "rerank_recency": 0.5,         # boost for recent content (days → score)
-        "rerank_semantic": 1.0,        # boost from re-embedding query vs chunk similarity
+        "rerank_semantic": 0.0,        # OFF by default (Ollama model swap per query is too slow)
         "rerank_role_weight": 0.5,     # boost for high-value roles (kernel, correction, context)
     }
 
