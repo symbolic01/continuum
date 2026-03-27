@@ -73,15 +73,22 @@ def score_result(result_text: str, test_case: dict) -> dict:
     else:
         precision_at_k = 0.0
 
+    # UID recall: did we find the specific target chunk?
+    target_uid = test_case.get("target_uid", "")
+    uid_found = 1.0 if (target_uid and target_uid in result_text) else (0.0 if target_uid else None)
+
     # Token count
     token_count = count_tokens(result_text)
 
-    return {
+    result = {
         "keyword_recall": keyword_recall,
         "mrr": mrr,
         "precision_at_k": precision_at_k,
         "token_count": token_count,
     }
+    if uid_found is not None:
+        result["uid_found"] = uid_found
+    return result
 
 
 def run_eval(
@@ -127,6 +134,10 @@ def run_eval(
     if n == 0:
         return {"keyword_recall": 0, "mrr": 0, "precision_at_k": 0, "token_count": 0, "latency_ms": 0}
 
+    # UID recall: only average over entries that have target_uid
+    uid_scores = [s["uid_found"] for s in all_scores if "uid_found" in s]
+    uid_recall = sum(uid_scores) / len(uid_scores) if uid_scores else None
+
     agg = {
         "keyword_recall": sum(s["keyword_recall"] for s in all_scores) / n,
         "mrr": sum(s["mrr"] for s in all_scores) / n,
@@ -134,6 +145,8 @@ def run_eval(
         "token_count": sum(s["token_count"] for s in all_scores) / n,
         "latency_ms": total_latency / n,
     }
+    if uid_recall is not None:
+        agg["uid_recall"] = uid_recall
 
     return agg, all_scores
 

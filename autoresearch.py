@@ -65,7 +65,7 @@ WALL_HIT_THRESHOLD = 3  # auto-expand after this many iterations at a bound
 
 RESEARCH_PROMPT = """\
 You are a retrieval systems researcher running parameter optimization experiments.
-Your goal is to maximize cross-session recall (keyword_recall) while keeping other metrics stable.
+Your goal is to maximize the composite score = 0.25*keyword_recall + 0.40*mrr + 0.35*precision_at_k.
 
 Current parameters:
 {params_json}
@@ -76,17 +76,22 @@ Parameter bounds (min, max, type):
 Experiment history (last {n_history} runs):
 {log_entries}
 
-Primary metric: keyword_recall (cross-session memory recall — higher is better)
-Secondary metrics:
-- mrr (mean reciprocal rank — higher is better)
-- precision_at_k (fraction of top-k results that are relevant — higher is better)
-- token_count (tokens in output — lower is better for efficiency)
-- latency_ms (retrieval time — lower is better)
+Composite score = 0.25*keyword_recall + 0.40*mrr + 0.35*precision_at_k (higher is better)
+- keyword_recall: fraction of expected keywords found (0-1)
+- mrr: mean reciprocal rank of first relevant result (0-1)
+- precision_at_k: fraction of top-20 results that are relevant (0-1)
 
-Propose the next experiment. You may change 1-3 parameters at once.
-Reason briefly about what the history suggests — which changes helped, which hurt,
+{phase_guidance}
+
+Reason about what the history suggests — which changes helped, which hurt,
 what interactions you notice — then output ONLY this JSON:
 {{"changes": {{"param_name": new_value, ...}}, "reasoning": "your reasoning"}}"""
+
+PHASE_GUIDANCE = {
+    1: "You are in EXPLORATION phase. Propose 3-5 bold parameter changes across diverse params. Try extreme values. The goal is to map which parameters matter at all.",
+    2: "You are in REFINEMENT phase. Propose 2-4 parameter changes. Focus on the params that showed the most impact in exploration. Combine promising directions.",
+    3: "You are in FINE-TUNING phase. Propose 1-2 small parameter changes. Narrow in on the best region found so far.",
+}
 
 
 def load_log() -> list[dict]:
@@ -178,6 +183,35 @@ def clamp_params(changes: dict) -> dict:
     return clamped
 
 
+def random_proposal(current_params: dict) -> dict:
+    """Phase 1: random multi-param exploration to map the landscape."""
+    import random
+    bounds = _get_effective_bounds()
+    n_params = random.randint(3, 5)
+    chosen = random.sample(list(bounds.keys()), n_params)
+    changes = {}
+    for p in chosen:
+        lo, hi = bounds[p]
+        _, _, typ = PARAM_HARD_BOUNDS[p]
+        if typ == int:
+            changes[p] = random.randint(int(lo), int(hi))
+        else:
+            changes[p] = round(random.uniform(lo, hi), 3)
+    return {"changes": clamp_params(changes), "reasoning": f"Phase 1 random exploration: {', '.join(chosen)}"}
+
+
+def get_phase(iteration_in_run: int, forced_phase: int | None = None) -> int:
+    """Determine exploration phase from iteration count."""
+    if forced_phase is not None:
+        return forced_phase
+    if iteration_in_run <= 15:
+        return 1
+    elif iteration_in_run <= 35:
+        return 2
+    else:
+        return 3
+
+
 def propose_changes(current_params: dict, log: list[dict], model: str) -> dict | None:
     """Ask the LLM to propose parameter changes based on experiment history."""
     # Format log entries (last 20)
@@ -185,22 +219,25 @@ def propose_changes(current_params: dict, log: list[dict], model: str) -> dict |
     log_text = ""
     for entry in recent:
         accepted = "ACCEPTED" if entry.get("accepted") else "REJECTED"
+        cs = composite_score(entry.get("scores", {}))
         log_text += f"\n  iter {entry.get('iteration', '?')}: {json.dumps(entry.get('changes', {}))} → "
-        log_text += f"kw={entry['scores'].get('keyword_recall', 0):.3f} "
+        log_text += f"composite={cs:.3f} kw={entry['scores'].get('keyword_recall', 0):.3f} "
         log_text += f"mrr={entry['scores'].get('mrr', 0):.3f} "
         log_text += f"p@k={entry['scores'].get('precision_at_k', 0):.3f} "
-        log_text += f"tok={entry['scores'].get('token_count', 0):.0f} "
-        log_text += f"[{accepted}] {entry.get('reasoning', '')[:80]}"
+        log_text += f"[{accepted}] {entry.get('reasoning', '')[:200]}"
 
     if not log_text:
         log_text = "(no previous experiments — this is the first run)"
 
     effective_bounds = _get_effective_bounds()
+    # Phase guidance — caller can set this attribute
+    phase = getattr(propose_changes, '_phase', 2)
     prompt = RESEARCH_PROMPT.format(
         params_json=json.dumps(current_params, indent=2),
         bounds_json=json.dumps(effective_bounds, indent=2),
         n_history=len(recent),
         log_entries=log_text,
+        phase_guidance=PHASE_GUIDANCE.get(phase, PHASE_GUIDANCE[3]),
     )
 
     try:
@@ -233,25 +270,25 @@ def propose_changes(current_params: dict, log: list[dict], model: str) -> dict |
         return None
 
 
+def composite_score(scores: dict) -> float:
+    """Weighted composite: MRR and precision@k matter most."""
+    return (
+        0.25 * scores.get("keyword_recall", 0)
+        + 0.40 * scores.get("mrr", 0)
+        + 0.35 * scores.get("precision_at_k", 0)
+    )
+
+
 def is_improvement(new_scores: dict, baseline: dict) -> bool:
-    """Multi-objective acceptance: primary improves, secondaries don't regress >10%."""
-    # Primary must improve
-    if new_scores["keyword_recall"] <= baseline["keyword_recall"]:
-        return False
-
-    # Secondaries can't regress more than 10%
-    for metric in ["mrr", "precision_at_k"]:
-        base_val = baseline[metric]
-        if base_val > 0 and new_scores[metric] < base_val * 0.9:
-            return False
-
-    return True
+    """Accept if composite score improves."""
+    return composite_score(new_scores) > composite_score(baseline)
 
 
 def run_autoresearch(args):
     """Main autoresearch loop."""
     config = load_config(_CONTINUUM_DIR / "continuum.yaml")
-    ground_truth = load_ground_truth()
+    gt_path = Path(args.ground_truth) if args.ground_truth else None
+    ground_truth = load_ground_truth(gt_path) if gt_path else load_ground_truth()
     model = args.model or get_model("compress")
     log = load_log()
 
@@ -280,10 +317,16 @@ def run_autoresearch(args):
             break
 
         iteration += 1
-        print(f"\n── Iteration {iteration} ──", file=sys.stderr)
+        iteration_in_run = i + 1
+        phase = get_phase(iteration_in_run, getattr(args, 'phase', None))
+        print(f"\n── Iteration {iteration} (phase {phase}) ──", file=sys.stderr)
 
-        # Ask LLM for proposal
-        proposal = propose_changes(current_params, log, model)
+        # Phase 1: random exploration. Phase 2-3: LLM-guided.
+        if phase == 1:
+            proposal = random_proposal(current_params)
+        else:
+            propose_changes._phase = phase
+            proposal = propose_changes(current_params, log, model)
         if not proposal:
             print("  No valid proposal, retrying...", file=sys.stderr)
             continue
@@ -291,7 +334,7 @@ def run_autoresearch(args):
         changes = proposal["changes"]
         reasoning = proposal["reasoning"]
         print(f"  Proposed: {json.dumps(changes)}", file=sys.stderr)
-        print(f"  Reasoning: {reasoning[:100]}", file=sys.stderr)
+        print(f"  Reasoning: {reasoning[:300]}", file=sys.stderr)
 
         # Apply changes to a copy of config
         test_params = dict(current_params)
@@ -301,17 +344,20 @@ def run_autoresearch(args):
 
         # Evaluate
         new_agg, _ = run_eval(test_config, ground_truth)
-        print(f"  Result:   kw={new_agg['keyword_recall']:.3f}  mrr={new_agg['mrr']:.3f}  "
-              f"p@k={new_agg['precision_at_k']:.3f}  tok={new_agg['token_count']:.0f}", file=sys.stderr)
-
-        # Accept or reject
         accepted = is_improvement(new_agg, baseline_agg)
+        cs_new = composite_score(new_agg)
+        cs_base = composite_score(baseline_agg)
+        verdict = "ACCEPTED" if accepted else "REJECTED"
+        print(f"  Result:   composite={cs_new:.3f} (baseline={cs_base:.3f})  kw={new_agg['keyword_recall']:.3f}  "
+              f"mrr={new_agg['mrr']:.3f}  p@k={new_agg['precision_at_k']:.3f}  [{verdict}]", file=sys.stderr)
 
         entry = {
             "iteration": iteration,
+            "phase": phase,
             "changes": changes,
             "reasoning": reasoning,
             "scores": new_agg,
+            "composite": cs_new,
             "baseline": baseline_agg,
             "params_after": test_params if accepted else current_params,
             "accepted": accepted,
@@ -325,9 +371,6 @@ def run_autoresearch(args):
             baseline_agg = new_agg
             config["retrieval"] = current_params
             accepted_count += 1
-            print(f"  ✓ ACCEPTED (total: {accepted_count})", file=sys.stderr)
-        else:
-            print(f"  ✗ rejected", file=sys.stderr)
 
     # Summary
     elapsed = time.monotonic() - start_time
@@ -372,6 +415,8 @@ def main():
     parser.add_argument("--iterations", type=int, default=100, help="Max iterations (default: 100)")
     parser.add_argument("--max-time", type=int, default=0, help="Wall time cap in seconds (0=unlimited)")
     parser.add_argument("--model", default="", help="Model for research proposals (default: compress model)")
+    parser.add_argument("--phase", type=int, default=None, choices=[1, 2, 3], help="Force exploration phase (1=random, 2=guided, 3=fine-tune)")
+    parser.add_argument("--ground-truth", default=None, help="Path to ground_truth.json (default: built-in)")
     parser.add_argument("--report", action="store_true", help="Show experiment history and best params")
     args = parser.parse_args()
 
