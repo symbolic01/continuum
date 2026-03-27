@@ -49,32 +49,48 @@ def score_result(result_text: str, test_case: dict) -> dict:
     else:
         keyword_recall = 0.0
 
-    # MRR: 1/rank of first line containing any expected keyword or UID
+    # MRR: 1/rank of first relevant line
+    # Prefer UID matching (exact) over keyword matching (noisy)
+    target_uid = test_case.get("target_uid", "")
     mrr = 0.0
     for i, line in enumerate(lines):
-        line_lower = line.lower()
         hit = False
-        if expected_keywords and any(kw.lower() in line_lower for kw in expected_keywords):
+        # UID match is definitive — if we have a target_uid, only use that
+        if target_uid:
+            if target_uid in line:
+                hit = True
+        elif expected_uids and any(uid in line for uid in expected_uids):
             hit = True
-        if expected_uids and any(uid in line for uid in expected_uids):
-            hit = True
+        else:
+            # Keyword matching: require 2+ keywords to reduce false positives
+            line_lower = line.lower()
+            if expected_keywords:
+                kw_in_line = sum(1 for kw in expected_keywords if kw.lower() in line_lower)
+                if kw_in_line >= min(2, len(expected_keywords)):
+                    hit = True
         if hit:
             mrr = 1.0 / (i + 1)
             break
 
-    # Precision@k: fraction of top-k lines that contain any expected keyword
+    # Precision@k: fraction of top-k lines that are relevant
     k = min(20, len(lines))
-    if k > 0 and expected_keywords:
-        relevant_lines = sum(
-            1 for line in lines[:k]
-            if any(kw.lower() in line.lower() for kw in expected_keywords)
-        )
+    if k > 0:
+        relevant_lines = 0
+        for line in lines[:k]:
+            if target_uid and target_uid in line:
+                relevant_lines += 1
+            elif expected_uids and any(uid in line for uid in expected_uids):
+                relevant_lines += 1
+            elif expected_keywords:
+                line_lower = line.lower()
+                kw_in_line = sum(1 for kw in expected_keywords if kw.lower() in line_lower)
+                if kw_in_line >= min(2, len(expected_keywords)):
+                    relevant_lines += 1
         precision_at_k = relevant_lines / k
     else:
         precision_at_k = 0.0
 
     # UID recall: did we find the specific target chunk?
-    target_uid = test_case.get("target_uid", "")
     uid_found = 1.0 if (target_uid and target_uid in result_text) else (0.0 if target_uid else None)
 
     # Token count
