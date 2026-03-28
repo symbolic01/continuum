@@ -341,12 +341,11 @@ def run_autoresearch(args):
             break
 
         iteration += 1
-        iteration_in_run = i + 1
-        phase = get_phase(iteration_in_run, getattr(args, 'phase', None))
+        phase = get_phase(iteration, getattr(args, 'phase', None))
         print(f"\n── Iteration {iteration} (phase {phase}) ──", file=sys.stderr)
 
         # Phase transition: when entering phase 2, pick best from phase 1
-        prev_phase = get_phase(i, getattr(args, 'phase', None)) if i > 0 else 0
+        prev_phase = get_phase(iteration - 1, getattr(args, 'phase', None)) if iteration > 1 else 0
         if phase == 2 and prev_phase == 1:
             phase1_entries = [e for e in log if e.get("phase") == 1]
             if phase1_entries:
