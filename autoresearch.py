@@ -311,7 +311,13 @@ def run_autoresearch(args):
     # Also consider best phase 1 result (phase 1 doesn't "accept")
     all_entries = log
     best_entry = max(all_entries, key=lambda e: e.get("composite", 0)) if all_entries else None
-    resume_entry = accepted_log[-1] if accepted_log else best_entry
+    # Pick whichever has higher composite — accepted or global best
+    candidates = []
+    if accepted_log:
+        candidates.append(accepted_log[-1])
+    if best_entry:
+        candidates.append(best_entry)
+    resume_entry = max(candidates, key=lambda e: e.get("composite", 0)) if candidates else None
     if resume_entry and resume_entry.get("composite", 0) > 0:
         current_params = dict(resume_entry["params_after"])
         print(f"── Resuming with iter {resume_entry.get('iteration', '?')} params (composite={resume_entry['composite']:.3f}, {len(log)} total logged) ──", file=sys.stderr)
