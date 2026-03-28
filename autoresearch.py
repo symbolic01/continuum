@@ -51,6 +51,7 @@ PARAM_HARD_BOUNDS = {
     "rerank_recency": (0.0, None, float),
     "rerank_semantic": (0.0, None, float),
     "rerank_role_weight": (0.0, None, float),
+    "semantic_budget_pct": (0.0, 1.0, float),
 }
 
 # Soft bounds — starting search range (auto-expand on wall hits)
@@ -72,6 +73,7 @@ PARAM_SOFT_BOUNDS = {
     "rerank_recency": (0.0, 3.0),
     "rerank_semantic": (0.0, 5.0),
     "rerank_role_weight": (0.0, 3.0),
+    "semantic_budget_pct": (0.3, 1.0),
 }
 
 WALL_HIT_THRESHOLD = 3  # auto-expand after this many iterations at a bound

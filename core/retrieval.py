@@ -52,6 +52,8 @@ class ContextRetriever:
         "rerank_recency": 0.5,         # boost for recent content (days → score)
         "rerank_semantic": 0.0,        # OFF by default (Ollama model swap per query is too slow)
         "rerank_role_weight": 0.5,     # boost for high-value roles (kernel, correction, context)
+        # Budget split between semantic and keyword pools
+        "semantic_budget_pct": 0.7,    # fraction of token budget for semantic pool (rest = keyword)
     }
 
     def __init__(
@@ -234,12 +236,14 @@ class ContextRetriever:
                 all_candidates[uid] = (meta, score * self.params["keyword_weight"])
 
         # Identifier search: fuzzy-resolve then graduated exact match
+        identifier_uids = set()
         if raw_identifiers:
             resolved = self._resolve_identifiers(raw_identifiers)
             if resolved:
                 id_results = self._search_identifier(resolved, k=self.params["keyword_k"])
                 for meta, score in id_results:
                     uid = meta.get("uid", "")
+                    identifier_uids.add(uid)
                     if uid in all_candidates:
                         existing_meta, existing_score = all_candidates[uid]
                         all_candidates[uid] = (existing_meta, existing_score + score * self.params["identifier_weight"])
@@ -263,31 +267,89 @@ class ContextRetriever:
                 filtered[uid] = (meta, score)
             all_candidates = filtered
 
-        # Apply temporal decay + role-based scoring
-        decayed = []
-        for meta, score in all_candidates.values():
-            adjusted = self._apply_temporal_decay(meta, score)
-            decayed.append((meta, adjusted))
+        # Split candidates into semantic pool and keyword pool
+        # Semantic pool: all candidates (semantic + keyword + identifier merged)
+        # Keyword pool: only candidates found by keyword or identifier search
+        keyword_uids = set()
+        for meta, score in keyword_results:
+            keyword_uids.add(meta.get("uid", ""))
+        keyword_uids |= identifier_uids
 
-        ranked = sorted(decayed, key=lambda x: -x[1])
+        semantic_candidates = {}
+        keyword_candidates = {}
+        for uid, (meta, score) in all_candidates.items():
+            if uid in keyword_uids:
+                keyword_candidates[uid] = (meta, score)
+            # Items found by both go into BOTH pools (they compete in each)
+            # Items found only by semantic go only into semantic pool
+            semantic_candidates[uid] = (meta, score)
 
-        # Rerank: rescore top candidates using query-specific signals
-        ranked = self._rerank(query, decomposition, ranked)
+        # Apply temporal decay + role-based scoring to both pools
+        def _decay_and_rank(candidates):
+            decayed = []
+            for meta, score in candidates.values():
+                adjusted = self._apply_temporal_decay(meta, score)
+                decayed.append((meta, adjusted))
+            return sorted(decayed, key=lambda x: -x[1])
 
-        # Assemble into text, fitting budget
-        chunks = []
-        tokens_used = 0
+        semantic_ranked = _decay_and_rank(semantic_candidates)
+        keyword_ranked = _decay_and_rank(keyword_candidates)
 
-        for meta, score in ranked:
+        # Rerank semantic pool (this is what autoresearch optimizes)
+        semantic_ranked = self._rerank(query, decomposition, semantic_ranked)
+
+        # Split token budget between pools
+        sem_pct = self.params.get("semantic_budget_pct", 0.7)
+        sem_budget = int(token_budget * sem_pct)
+        kw_budget = token_budget - sem_budget
+
+        # Assemble each pool independently
+        def _assemble(ranked, budget):
+            chunks = []
+            tokens_used = 0
+            seen_uids = set()
+            for meta, score in ranked:
+                uid = meta.get("uid", "")
+                if uid in seen_uids:
+                    continue
+                content = meta.get("content", "")
+                role = meta.get("role", "?")
+                thread = meta.get("thread", "?")
+                ts = meta.get("ts", "?")[:10]
+                heading = meta.get("heading", "")
+                chunk_type = meta.get("chunk_type", "")
+
+                if role == "code" and heading:
+                    label = f"[{uid} {thread} {chunk_type}] {heading}"
+                    chunk = f"{label}\n{content}"
+                else:
+                    chunk = f"[{uid} {thread} {ts} {role}] {content}"
+
+                chunk_tokens = count_tokens(chunk)
+                if tokens_used + chunk_tokens > budget:
+                    continue
+
+                chunks.append(chunk)
+                seen_uids.add(uid)
+                tokens_used += chunk_tokens
+            return chunks, seen_uids
+
+        sem_chunks, sem_uids = _assemble(semantic_ranked, sem_budget)
+
+        # Keyword pool: skip anything already in semantic results
+        kw_chunks = []
+        kw_tokens = 0
+        for meta, score in keyword_ranked:
+            uid = meta.get("uid", "")
+            if uid in sem_uids:
+                continue
             content = meta.get("content", "")
             role = meta.get("role", "?")
             thread = meta.get("thread", "?")
             ts = meta.get("ts", "?")[:10]
-            uid = meta.get("uid", "")
             heading = meta.get("heading", "")
             chunk_type = meta.get("chunk_type", "")
 
-            # Code entries: show heading (file:function) instead of generic label
             if role == "code" and heading:
                 label = f"[{uid} {thread} {chunk_type}] {heading}"
                 chunk = f"{label}\n{content}"
@@ -295,16 +357,13 @@ class ContextRetriever:
                 chunk = f"[{uid} {thread} {ts} {role}] {content}"
 
             chunk_tokens = count_tokens(chunk)
-
-            if tokens_used + chunk_tokens > token_budget:
-                # Skip oversized entries instead of stopping — don't let one
-                # giant tool result block all smaller relevant entries
+            if kw_tokens + chunk_tokens > kw_budget:
                 continue
+            kw_chunks.append(chunk)
+            kw_tokens += chunk_tokens
 
-            chunks.append(chunk)
-            tokens_used += chunk_tokens
-
-        return "\n".join(chunks)
+        # Semantic results first (optimized ranking), then keyword safety net
+        return "\n".join(sem_chunks + kw_chunks)
 
     def _rerank(self, query: str, decomposition: dict,
                 ranked: list[tuple[dict, float]]) -> list[tuple[dict, float]]:
