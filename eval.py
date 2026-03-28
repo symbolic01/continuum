@@ -120,9 +120,11 @@ def run_eval(
             config["retrieval"] = {}
         config["retrieval"].update(param_overrides)
 
+    from core.index import load_question_index
     idx = load_index()
+    q_idx = load_question_index()
     sources = config.get("context_sources", [])
-    retriever = ContextRetriever(sources=sources, index=idx, config=config)
+    retriever = ContextRetriever(sources=sources, index=idx, question_index=q_idx, config=config)
 
     all_scores = []
     total_latency = 0.0

@@ -10,6 +10,7 @@ from .embeddings import EmbeddingIndex
 
 DEFAULT_CORPUS_DIR = Path.home() / ".continuum" / "corpus"
 DEFAULT_INDEX_PATH = Path.home() / ".continuum" / "index" / "corpus"
+DEFAULT_QUESTION_INDEX_PATH = Path.home() / ".continuum" / "index" / "corpus_question"
 DEFAULT_IDENTIFIERS_PATH = Path.home() / ".continuum" / "index" / "identifiers.json"
 DEFAULT_ALL_META_PATH = Path.home() / ".continuum" / "index" / "all_metadata.json"
 
@@ -41,10 +42,17 @@ def build_index(
     # Scan corpus — fresh index (don't load existing when forcing rebuild)
     idx = EmbeddingIndex(None)
     idx.path = index_path
+
+    # Question embedding index (separate .npz)
+    q_index_path = index_path.parent / "corpus_question"
+    q_idx = EmbeddingIndex(None)
+    q_idx.path = q_index_path
+
     corpus_files = sorted(f for f in corpus_dir.rglob("*.jsonl")
                           if "_archive" not in str(f))
 
     embedded = 0
+    q_embedded = 0
     all_metadata = []
 
     for cf in corpus_files:
@@ -83,7 +91,15 @@ def build_index(
                     idx.add(embedding, meta)
                     embedded += 1
 
+                # Question embeddings → separate index (same uid/meta, different vectors)
+                for qe in entry.get("question_embeddings", []):
+                    q_vec = qe.get("embedding")
+                    if q_vec:
+                        q_idx.add(q_vec, meta)
+                        q_embedded += 1
+
     idx.save()
+    q_idx.save()
 
     # Save all-metadata index for keyword/identifier search
     all_meta_path = index_path.parent / "all_metadata.json"
@@ -92,7 +108,7 @@ def build_index(
         json.dump(all_metadata, f)
 
     total = len(all_metadata)
-    print(f"Index built: {total} entries total, {embedded} with embeddings, {total - embedded} keyword-only")
+    print(f"Index built: {total} entries total, {embedded} with embeddings, {q_embedded} question embeddings, {total - embedded} keyword-only")
 
     # Also rebuild identifiers index (piggybacks on same corpus scan)
     build_identifiers(corpus_dir)
@@ -213,4 +229,9 @@ def load_all_metadata(meta_path: Path = DEFAULT_ALL_META_PATH) -> list[dict]:
 
 def load_index(index_path: Path = DEFAULT_INDEX_PATH) -> EmbeddingIndex:
     """Load existing index from disk. Returns empty index if not found."""
+    return EmbeddingIndex(index_path)
+
+
+def load_question_index(index_path: Path = DEFAULT_QUESTION_INDEX_PATH) -> EmbeddingIndex:
+    """Load the question embedding index. Returns empty index if not found."""
     return EmbeddingIndex(index_path)

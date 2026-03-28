@@ -52,7 +52,11 @@ PARAM_HARD_BOUNDS = {
     "rerank_semantic": (0.0, None, float),
     "rerank_role_weight": (0.0, None, float),
     "semantic_budget_pct": (0.0, 1.0, float),
+    "question_embedding_weight": (0.0, None, float),
 }
+
+# Note: question_embedding_weight only has effect after question embeddings
+# are generated (backfill_questions.py). Until then, question index is empty.
 
 # Soft bounds — starting search range (auto-expand on wall hits)
 PARAM_SOFT_BOUNDS = {
@@ -74,6 +78,7 @@ PARAM_SOFT_BOUNDS = {
     "rerank_semantic": (0.0, 5.0),
     "rerank_role_weight": (0.0, 3.0),
     "semantic_budget_pct": (0.3, 1.0),
+    "question_embedding_weight": (0.0, 2.0),
 }
 
 WALL_HIT_THRESHOLD = 3  # auto-expand after this many iterations at a bound

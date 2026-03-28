@@ -54,17 +54,21 @@ class ContextRetriever:
         "rerank_role_weight": 0.5,     # boost for high-value roles (kernel, correction, context)
         # Budget split between semantic and keyword pools
         "semantic_budget_pct": 0.7,    # fraction of token budget for semantic pool (rest = keyword)
+        # Question embedding weight (0 = ignore, 1 = equal to content, >1 = prefer)
+        "question_embedding_weight": 0.5,
     }
 
     def __init__(
         self,
         sources: list[str],
         index: EmbeddingIndex | None = None,
+        question_index: EmbeddingIndex | None = None,
         decompose_model: str = "",
         config: dict | None = None,
     ):
         self.sources = sources
         self.index = index
+        self.question_index = question_index
         if not decompose_model:
             from .config import get_model
             decompose_model = get_model("decompose")
@@ -483,13 +487,43 @@ class ContextRetriever:
         return reranked
 
     def _search_semantic(self, query: str, k: int = 30) -> list[tuple[dict, float]]:
-        """Semantic search via embedding similarity."""
-        if not self.index or len(self.index) == 0:
-            return []
+        """Semantic search via embedding similarity.
+
+        Searches both content and question indexes, merges by UID.
+        Question index matches question-to-question (same semantic space),
+        solving the reciprocity problem where questions and answers have
+        low cosine similarity.
+        """
         vec = embed_text(query)
         if vec is None:
             return []
-        return self.index.search(vec, k=k)
+
+        merged = {}  # uid → (meta, score)
+
+        # Content index
+        if self.index and len(self.index) > 0:
+            for meta, score in self.index.search(vec, k=k):
+                uid = meta.get("uid", "")
+                merged[uid] = (meta, score)
+
+        # Question index — query matches against embedded questions
+        q_weight = self.params.get("question_embedding_weight", 0.5)
+        if self.question_index and len(self.question_index) > 0 and q_weight > 0:
+            for meta, score in self.question_index.search(vec, k=k):
+                uid = meta.get("uid", "")
+                weighted = score * q_weight
+                if uid in merged:
+                    # Keep the higher score — don't double-count
+                    if weighted > merged[uid][1]:
+                        merged[uid] = (merged[uid][0], weighted)
+                else:
+                    merged[uid] = (meta, weighted)
+
+        if not merged:
+            return []
+
+        results = sorted(merged.values(), key=lambda x: -x[1])
+        return results[:k]
 
     def _search_temporal(self, filt: str, k: int = 20) -> list[tuple[dict, float]]:
         """Temporal search — find entries by time."""

@@ -16,7 +16,7 @@ if str(_CONTINUUM_DIR) not in sys.path:
     sys.path.insert(0, str(_CONTINUUM_DIR))
 
 from core.auto_ingest import auto_ingest
-from core.index import load_index
+from core.index import load_index, load_question_index
 from core.retrieval import ContextRetriever
 from core.config import load_config
 from core.tokens import count_tokens
@@ -48,7 +48,8 @@ def main():
             sys.exit(0)
 
     sources = config.get("context_sources", [])
-    retriever = ContextRetriever(sources=sources, index=idx, config=config)
+    q_idx = load_question_index()
+    retriever = ContextRetriever(sources=sources, index=idx, question_index=q_idx, config=config)
     result = retriever.retrieve(
         query=args.query,
         token_budget=args.budget,
