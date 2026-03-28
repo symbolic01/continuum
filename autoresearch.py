@@ -53,6 +53,7 @@ PARAM_HARD_BOUNDS = {
     "rerank_role_weight": (0.0, None, float),
     "semantic_budget_pct": (0.0, 1.0, float),
     "question_embedding_weight": (0.0, None, float),
+    "rrf_k": (1, None, int),
 }
 
 # Note: question_embedding_weight only has effect after question embeddings
@@ -79,6 +80,7 @@ PARAM_SOFT_BOUNDS = {
     "rerank_role_weight": (0.0, 3.0),
     "semantic_budget_pct": (0.3, 1.0),
     "question_embedding_weight": (0.0, 2.0),
+    "rrf_k": (20, 120),
 }
 
 WALL_HIT_THRESHOLD = 3  # auto-expand after this many iterations at a bound

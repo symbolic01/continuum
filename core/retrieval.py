@@ -32,6 +32,29 @@ class ContextRetriever:
     Corpus queries use LLM-decomposed retrieval across the embedding index.
     """
 
+    @staticmethod
+    def reciprocal_rank_fusion(
+        ranked_lists: list[list[tuple[dict, float]]],
+        k: int = 60,
+    ) -> list[tuple[dict, float]]:
+        """Merge multiple ranked lists using Reciprocal Rank Fusion.
+
+        rrf_score(d) = sum(1 / (k + rank)) for each list where d appears.
+        k=60 is the standard constant (Cormack et al. 2009).
+        """
+        scores: dict[str, tuple[dict, float]] = {}
+
+        for ranked in ranked_lists:
+            for rank, (meta, _) in enumerate(ranked):
+                uid = meta.get("uid", "")
+                contribution = 1.0 / (k + rank + 1)
+                if uid in scores:
+                    scores[uid] = (scores[uid][0], scores[uid][1] + contribution)
+                else:
+                    scores[uid] = (meta, contribution)
+
+        return sorted(scores.values(), key=lambda x: -x[1])
+
     # Default retrieval params — overridden by config["retrieval"]
     DEFAULT_PARAMS = {
         "semantic_k": 30,
@@ -56,6 +79,8 @@ class ContextRetriever:
         "semantic_budget_pct": 0.7,    # fraction of token budget for semantic pool (rest = keyword)
         # Question embedding weight (0 = ignore, 1 = equal to content, >1 = prefer)
         "question_embedding_weight": 0.5,
+        # RRF constant (higher = less weight on top ranks, more uniform)
+        "rrf_k": 60,
     }
 
     def __init__(
@@ -152,200 +177,90 @@ class ContextRetriever:
         expanded_keywords = decomposition.get("keywords", [])
         raw_identifiers = decomposition.get("identifiers", [])
 
-        # Collect candidates from each axis
-        all_candidates = {}  # uid → (meta, score)
+        # Build separate ranked lists per search axis (for RRF)
+        ranked_lists = []
 
+        # Decomposed axes → separate ranked lists
         for axis_spec in axes:
             axis = axis_spec.get("axis", "semantic")
-            weight = axis_spec.get("weight", 0.5)
             filt = axis_spec.get("filter", "")
 
             if axis == "semantic":
                 results = self._search_semantic(rewritten, k=self.params["semantic_k"])
-                for meta, score in results:
-                    uid = meta.get("uid", "")
-                    if uid in all_candidates:
-                        all_candidates[uid] = (meta, all_candidates[uid][1] + score * weight)
-                    else:
-                        all_candidates[uid] = (meta, score * weight)
-
             elif axis == "temporal":
                 results = self._search_temporal(filt, k=20)
-                for meta, score in results:
-                    uid = meta.get("uid", "")
-                    if uid in all_candidates:
-                        all_candidates[uid] = (meta, all_candidates[uid][1] + score * weight)
-                    else:
-                        all_candidates[uid] = (meta, score * weight)
-
             elif axis == "project":
                 results = self._search_project(filt, rewritten, k=20)
-                for meta, score in results:
-                    uid = meta.get("uid", "")
-                    if uid in all_candidates:
-                        all_candidates[uid] = (meta, all_candidates[uid][1] + score * weight)
-                    else:
-                        all_candidates[uid] = (meta, score * weight)
-
             elif axis == "entity":
                 results = self._search_entity(filt, k=20)
-                for meta, score in results:
-                    uid = meta.get("uid", "")
-                    if uid in all_candidates:
-                        all_candidates[uid] = (meta, all_candidates[uid][1] + score * weight)
-                    else:
-                        all_candidates[uid] = (meta, score * weight)
-
             elif axis == "anti_pattern":
                 results = self._search_semantic(rewritten + " error failed wrong bug", k=20)
-                for meta, score in results:
-                    uid = meta.get("uid", "")
-                    if uid in all_candidates:
-                        all_candidates[uid] = (meta, all_candidates[uid][1] + score * weight)
-                    else:
-                        all_candidates[uid] = (meta, score * weight)
-
             elif axis == "causal":
                 results = self._search_semantic(rewritten + " because decided reason why", k=20)
-                for meta, score in results:
-                    uid = meta.get("uid", "")
-                    if uid in all_candidates:
-                        all_candidates[uid] = (meta, all_candidates[uid][1] + score * weight)
-                    else:
-                        all_candidates[uid] = (meta, score * weight)
-
             elif axis == "emotional":
                 results = self._search_emotion(filt, rewritten, k=20)
-                for meta, score in results:
-                    uid = meta.get("uid", "")
-                    if uid in all_candidates:
-                        all_candidates[uid] = (meta, all_candidates[uid][1] + score * weight)
-                    else:
-                        all_candidates[uid] = (meta, score * weight)
+            else:
+                continue
 
-            # polarity, cycle_state — future axes
+            if results:
+                # Apply temporal decay per-list, sort
+                decayed = [(m, self._apply_temporal_decay(m, s)) for m, s in results]
+                decayed.sort(key=lambda x: -x[1])
+                ranked_lists.append(decayed)
 
-        # Hybrid: add keyword search results (always runs alongside semantic)
-        # Merge expanded keywords from decomposition with raw query terms
+        # Keyword list (always runs)
         keyword_query = rewritten
         if expanded_keywords:
             keyword_query = rewritten + " " + " ".join(expanded_keywords)
         keyword_results = self._search_keyword(keyword_query, k=self.params["keyword_k"])
-        for meta, score in keyword_results:
-            uid = meta.get("uid", "")
-            if uid in all_candidates:
-                existing_meta, existing_score = all_candidates[uid]
-                all_candidates[uid] = (existing_meta, existing_score + score * self.params["hybrid_boost"])
-            else:
-                all_candidates[uid] = (meta, score * self.params["keyword_weight"])
+        if keyword_results:
+            decayed = [(m, self._apply_temporal_decay(m, s)) for m, s in keyword_results]
+            decayed.sort(key=lambda x: -x[1])
+            ranked_lists.append(decayed)
 
-        # Identifier search: fuzzy-resolve then graduated exact match
-        identifier_uids = set()
+        # Identifier list
         if raw_identifiers:
             resolved = self._resolve_identifiers(raw_identifiers)
             if resolved:
                 id_results = self._search_identifier(resolved, k=self.params["keyword_k"])
-                for meta, score in id_results:
-                    uid = meta.get("uid", "")
-                    identifier_uids.add(uid)
-                    if uid in all_candidates:
-                        existing_meta, existing_score = all_candidates[uid]
-                        all_candidates[uid] = (existing_meta, existing_score + score * self.params["identifier_weight"])
-                    else:
-                        all_candidates[uid] = (meta, score * self.params["identifier_weight"])
+                if id_results:
+                    decayed = [(m, self._apply_temporal_decay(m, s)) for m, s in id_results]
+                    decayed.sort(key=lambda x: -x[1])
+                    ranked_lists.append(decayed)
 
-        # Apply filters
+        # Apply filters to each list
         if role_filter or project_filter or exclude_roles:
             role_f = role_filter.lower() if role_filter else ""
             proj_f = project_filter.lower() if project_filter else ""
             excl = {r.lower() for r in (exclude_roles or [])}
-            filtered = {}
-            for uid, (meta, score) in all_candidates.items():
-                role = meta.get("role", "").lower()
-                if role_f and role != role_f:
-                    continue
-                if excl and role in excl:
-                    continue
-                if proj_f and proj_f not in meta.get("thread", "").lower():
-                    continue
-                filtered[uid] = (meta, score)
-            all_candidates = filtered
 
-        # Split candidates into semantic pool and keyword pool
-        # Semantic pool: all candidates (semantic + keyword + identifier merged)
-        # Keyword pool: only candidates found by keyword or identifier search
-        keyword_uids = set()
-        for meta, score in keyword_results:
-            keyword_uids.add(meta.get("uid", ""))
-        keyword_uids |= identifier_uids
+            def _filter_list(ranked):
+                return [(m, s) for m, s in ranked
+                        if (not role_f or m.get("role", "").lower() == role_f)
+                        and (not excl or m.get("role", "").lower() not in excl)
+                        and (not proj_f or proj_f in m.get("thread", "").lower())]
 
-        semantic_candidates = {}
-        keyword_candidates = {}
-        for uid, (meta, score) in all_candidates.items():
-            if uid in keyword_uids:
-                keyword_candidates[uid] = (meta, score)
-            # Items found by both go into BOTH pools (they compete in each)
-            # Items found only by semantic go only into semantic pool
-            semantic_candidates[uid] = (meta, score)
+            ranked_lists = [_filter_list(rl) for rl in ranked_lists]
 
-        # Apply temporal decay + role-based scoring to both pools
-        def _decay_and_rank(candidates):
-            decayed = []
-            for meta, score in candidates.values():
-                adjusted = self._apply_temporal_decay(meta, score)
-                decayed.append((meta, adjusted))
-            return sorted(decayed, key=lambda x: -x[1])
+        # Rerank the first (primary semantic) list
+        if ranked_lists:
+            ranked_lists[0] = self._rerank(query, decomposition, ranked_lists[0])
 
-        semantic_ranked = _decay_and_rank(semantic_candidates)
-        keyword_ranked = _decay_and_rank(keyword_candidates)
+        # RRF merge all lists into a single unified ranking
+        rrf_k = self.params.get("rrf_k", 60)
+        unified = self.reciprocal_rank_fusion(ranked_lists, k=rrf_k)
 
-        # Rerank semantic pool (this is what autoresearch optimizes)
-        semantic_ranked = self._rerank(query, decomposition, semantic_ranked)
+        # Assemble from unified ranking
+        return self._assemble_chunks(unified, token_budget)
 
-        # Split token budget between pools
-        sem_pct = self.params.get("semantic_budget_pct", 0.7)
-        sem_budget = int(token_budget * sem_pct)
-        kw_budget = token_budget - sem_budget
-
-        # Assemble each pool independently
-        def _assemble(ranked, budget):
-            chunks = []
-            tokens_used = 0
-            seen_uids = set()
-            for meta, score in ranked:
-                uid = meta.get("uid", "")
-                if uid in seen_uids:
-                    continue
-                content = meta.get("content", "")
-                role = meta.get("role", "?")
-                thread = meta.get("thread", "?")
-                ts = meta.get("ts", "?")[:10]
-                heading = meta.get("heading", "")
-                chunk_type = meta.get("chunk_type", "")
-
-                if role == "code" and heading:
-                    label = f"[{uid} {thread} {chunk_type}] {heading}"
-                    chunk = f"{label}\n{content}"
-                else:
-                    chunk = f"[{uid} {thread} {ts} {role}] {content}"
-
-                chunk_tokens = count_tokens(chunk)
-                if tokens_used + chunk_tokens > budget:
-                    continue
-
-                chunks.append(chunk)
-                seen_uids.add(uid)
-                tokens_used += chunk_tokens
-            return chunks, seen_uids
-
-        sem_chunks, sem_uids = _assemble(semantic_ranked, sem_budget)
-
-        # Keyword pool: skip anything already in semantic results
-        kw_chunks = []
-        kw_tokens = 0
-        for meta, score in keyword_ranked:
+    def _assemble_chunks(self, ranked: list[tuple[dict, float]], budget: int) -> str:
+        """Assemble ranked chunks into text, fitting within token budget."""
+        chunks = []
+        tokens_used = 0
+        seen_uids = set()
+        for meta, score in ranked:
             uid = meta.get("uid", "")
-            if uid in sem_uids:
+            if uid in seen_uids:
                 continue
             content = meta.get("content", "")
             role = meta.get("role", "?")
@@ -361,13 +276,13 @@ class ContextRetriever:
                 chunk = f"[{uid} {thread} {ts} {role}] {content}"
 
             chunk_tokens = count_tokens(chunk)
-            if kw_tokens + chunk_tokens > kw_budget:
+            if tokens_used + chunk_tokens > budget:
                 continue
-            kw_chunks.append(chunk)
-            kw_tokens += chunk_tokens
 
-        # Semantic results first (optimized ranking), then keyword safety net
-        return "\n".join(sem_chunks + kw_chunks)
+            chunks.append(chunk)
+            seen_uids.add(uid)
+            tokens_used += chunk_tokens
+        return "\n".join(chunks)
 
     def _rerank(self, query: str, decomposition: dict,
                 ranked: list[tuple[dict, float]]) -> list[tuple[dict, float]]:
