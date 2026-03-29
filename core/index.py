@@ -33,13 +33,16 @@ def build_index(
     Scans all JSONL files in corpus_dir, extracts entries with embeddings,
     and builds an EmbeddingIndex. Saves to disk for fast reload.
     """
-    idx = EmbeddingIndex(index_path)
+    # Try loading existing index (skip if forcing rebuild or corrupt)
+    if not force:
+        try:
+            idx = EmbeddingIndex(index_path)
+            if len(idx) > 0:
+                return idx
+        except Exception:
+            pass  # corrupt file — will rebuild
 
-    # If index exists and not forcing rebuild, just load it
-    if len(idx) > 0 and not force:
-        return idx
-
-    # Scan corpus — fresh index (don't load existing when forcing rebuild)
+    # Scan corpus — fresh index
     idx = EmbeddingIndex(None)
     idx.path = index_path
 
