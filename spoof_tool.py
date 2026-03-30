@@ -137,9 +137,12 @@ def _read_cc_conversation(session_file: Path, preserve_tail_tools: bool = False)
     """Read user/assistant turns from a CC session JSONL.
 
     Returns a list of {role, content, ts} dicts.
-    Cuts off at the /spoof invocation — nothing after it is included.
+    Cuts off at the LAST /spoof invocation — earlier spoofs in the session
+    don't truncate subsequent work.
     """
     turns = []
+    last_spoof_idx = -1  # track where the last /spoof is
+
     try:
         with open(session_file) as f:
             for line in f:
@@ -156,18 +159,18 @@ def _read_cc_conversation(session_file: Path, preserve_tail_tools: bool = False)
                 if role == "user":
                     content = msg.get("content", "")
                     if isinstance(content, str) and content.strip():
-                        # Cut at spoof invocation
                         if _is_spoof_invocation(content):
-                            break
+                            last_spoof_idx = len(turns)
+                            continue  # don't include the spoof turn itself
                         turns.append({"role": "user", "content": content, "ts": ts})
                     elif isinstance(content, list):
-                        # Extract text blocks from list content
                         texts = [b.get("text", "") for b in content
                                  if isinstance(b, dict) and b.get("type") == "text"]
                         text = "\n".join(t for t in texts if t.strip())
                         if text.strip():
                             if _is_spoof_invocation(text):
-                                break
+                                last_spoof_idx = len(turns)
+                                continue
                             turns.append({"role": "user", "content": text, "ts": ts})
                 elif role == "assistant":
                     text = extract_text_from_cc_entry(entry)
@@ -176,6 +179,9 @@ def _read_cc_conversation(session_file: Path, preserve_tail_tools: bool = False)
     except Exception:
         pass
 
+    # If the last spoof is the final thing in the file (current invocation),
+    # we already skipped it and return everything before it.
+    # If there were earlier spoofs with work after them, that work is included.
     return turns
 
 
@@ -183,7 +189,8 @@ def _read_cc_raw_tail(session_file: Path, tail_count: int) -> list[dict]:
     """Read the last N user/assistant raw CC entries from a session, preserving tool calls.
 
     Returns raw CC JSONL entries (not simplified turns) for full-fidelity tail.
-    Stops at /spoof invocation from the end.
+    Skips /spoof invocation entries but doesn't truncate at them — work
+    after an earlier /spoof is included.
     """
     all_entries = []
     try:
@@ -197,16 +204,17 @@ def _read_cc_raw_tail(session_file: Path, tail_count: int) -> list[dict]:
                 if entry_type not in ("user", "assistant"):
                     continue
 
-                # Check for spoof invocation
+                # Skip spoof invocation entries (don't include them in output)
+                # but keep reading — work after an earlier /spoof is valid
                 msg = entry.get("message", {})
                 content = msg.get("content", "")
                 if isinstance(content, str) and _is_spoof_invocation(content):
-                    break
+                    continue
                 if isinstance(content, list):
                     texts = [b.get("text", "") for b in content
                              if isinstance(b, dict) and b.get("type") == "text"]
                     if any(_is_spoof_invocation(t) for t in texts):
-                        break
+                        continue
 
                 all_entries.append(entry)
     except Exception:
