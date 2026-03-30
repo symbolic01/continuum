@@ -246,7 +246,9 @@ def main():
         cwd = session_cwd
 
     source_id = source_file.stem
-    print(f"[continuum:spoof] source={source_id[:10]}", file=sys.stderr, end="")
+    print(f"[continuum:spoof] source={source_id[:12]}", file=sys.stderr)
+    print(f"  source_dir: {source_file.parent}", file=sys.stderr)
+    print(f"  session_cwd: {cwd}", file=sys.stderr)
 
     # Read conversation turns (cuts at /spoof invocation)
     cc_turns = _read_cc_conversation(source_file)
@@ -262,10 +264,12 @@ def main():
     except Exception:
         pass
 
-    print(f" ({len(cc_turns)} turns from {raw_count} entries, {len(raw_tail)} raw tail)", file=sys.stderr)
+    print(f"  text turns: {len(cc_turns)} (from {raw_count} raw entries)", file=sys.stderr)
+    print(f"  raw tail: {len(raw_tail)} entries (--tail-entries={args.tail_entries})", file=sys.stderr)
 
     # Detect if identity is already present (from a previous spoof)
     already_has_identity = _has_identity_exchange(cc_turns)
+    print(f"  identity_present: {already_has_identity}", file=sys.stderr)
 
     # Capture source time range from all turns
     source_timestamps = [t.get("ts", "") for t in cc_turns if t.get("ts")]
@@ -284,10 +288,11 @@ def main():
     if raw_tail and len(raw_tail) < len(cc_turns):
         head_turns = cc_turns[:-len(raw_tail)]
     elif raw_tail:
-        # Raw tail covers the entire session — no head needed
         head_turns = []
     else:
         head_turns = cc_turns
+
+    print(f"  head_turns: {len(head_turns)}, compress={args.compress}", file=sys.stderr)
 
     if args.compress and len(head_turns) > 20:
         from core.session_compress import compress_session
@@ -344,6 +349,7 @@ def main():
 
         # Generate session and build spoofed JSONL
         cc_session_id = str(uuid.uuid4())
+        print(f"  building spoofed session: log={len(log.entries)} entries, raw_tail={len(raw_tail) if raw_tail else 0}", file=sys.stderr)
         entries = build_spoofed_session(
             session_id=cc_session_id,
             continuum_log=log,
@@ -357,8 +363,9 @@ def main():
 
         # Write to the same CC project directory as the source session
         # so `claude --resume <id>` works from the same working directory
-        write_cc_session(cc_session_id, entries, cwd=cwd,
-                         target_dir=source_file.parent)
+        out_path = write_cc_session(cc_session_id, entries, cwd=cwd,
+                                    target_dir=source_file.parent)
+        print(f"  wrote {len(entries)} entries to {out_path}", file=sys.stderr)
 
         # Save last spoof for easy resume
         last_spoof_dir = Path.home() / ".continuum"
@@ -369,10 +376,10 @@ def main():
         if identity_text:
             (last_spoof_dir / ".last_identity").write_text(identity_text)
 
-        # Report
-        ctx_chars = len(retrieved_context) if retrieved_context else 0
-        tail_count = max(0, len(entries) - (2 if (identity_text or retrieved_context) else 0))
-        print(f"  context: {ctx_chars / 1000:.1f}K chars | tail: {tail_count} entries", file=sys.stderr)
+        # Report — breakdown of what's in the spoofed session
+        identity_entries = 2 if identity_text else 0
+        context_entries = (1 + len(retrieved_context.split("\n\n"))) if retrieved_context else 0
+        print(f"  output breakdown: {identity_entries} identity + {len(log.entries)} head + {len(raw_tail) if raw_tail else 0} raw_tail = {len(entries)} total", file=sys.stderr)
 
         # Build resume command — include --append-system-prompt if identity exists
         resume_cmd = f"claude --resume {cc_session_id}"
