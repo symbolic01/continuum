@@ -32,40 +32,32 @@ LOG_PATH = Path.home() / ".continuum" / "autoresearch_log.jsonl"
 
 # Hard bounds: physically meaningful limits that can never be crossed
 # Soft bounds: starting search range, auto-expanded when the LLM hits them
+# Active params — these actually affect retrieval in the RRF architecture
+# Dead params (keyword_weight, hybrid_boost, identifier_weight, semantic_budget_pct)
+# removed — RRF handles merging without weights
 PARAM_HARD_BOUNDS = {
-    "semantic_k": (1, None, int),        # at least 1, no upper limit
+    "semantic_k": (1, None, int),
     "keyword_k": (1, None, int),
-    "keyword_weight": (0.0, None, float),  # non-negative, no ceiling
-    "hybrid_boost": (0.0, None, float),
-    "identifier_weight": (0.0, None, float),
-    "decay_half_life_days": (1, None, float),  # at least 1 day
-    "decay_floor": (0.0, 1.0, float),    # 0 = fully decay, 1 = no decay
+    "decay_half_life_days": (1, None, float),
+    "decay_floor": (0.0, 1.0, float),
     "correction_boost_max": (0.0, None, float),
     "context_boost": (0.0, None, float),
     "kernel_boost": (0.0, None, float),
     "chain_boost": (0.0, None, float),
-    # Reranking params — these directly affect result ORDER
+    # Reranking — directly affects result ORDER
     "rerank_query_overlap": (0.0, None, float),
     "rerank_identifier_hit": (0.0, None, float),
     "rerank_specificity": (0.0, None, float),
     "rerank_recency": (0.0, None, float),
-    "rerank_semantic": (0.0, None, float),
     "rerank_role_weight": (0.0, None, float),
-    "semantic_budget_pct": (0.0, 1.0, float),
+    # Architecture params
     "question_embedding_weight": (0.0, None, float),
     "rrf_k": (1, None, int),
 }
 
-# Note: question_embedding_weight only has effect after question embeddings
-# are generated (backfill_questions.py). Until then, question index is empty.
-
-# Soft bounds — starting search range (auto-expand on wall hits)
 PARAM_SOFT_BOUNDS = {
     "semantic_k": (10, 100),
     "keyword_k": (10, 100),
-    "keyword_weight": (0.0, 1.0),
-    "hybrid_boost": (0.0, 1.0),
-    "identifier_weight": (0.0, 1.0),
     "decay_half_life_days": (7, 120),
     "decay_floor": (0.0, 0.8),
     "correction_boost_max": (0.0, 2.0),
@@ -76,9 +68,7 @@ PARAM_SOFT_BOUNDS = {
     "rerank_identifier_hit": (0.0, 5.0),
     "rerank_specificity": (0.0, 3.0),
     "rerank_recency": (0.0, 3.0),
-    "rerank_semantic": (0.0, 5.0),
     "rerank_role_weight": (0.0, 3.0),
-    "semantic_budget_pct": (0.3, 1.0),
     "question_embedding_weight": (0.0, 2.0),
     "rrf_k": (20, 120),
 }
@@ -87,7 +77,7 @@ WALL_HIT_THRESHOLD = 3  # auto-expand after this many iterations at a bound
 
 RESEARCH_PROMPT = """\
 You are a retrieval systems researcher running parameter optimization experiments.
-Your goal is to maximize the composite score = 0.25*keyword_recall + 0.40*mrr + 0.35*precision_at_k.
+Your goal is to maximize MRR (mean reciprocal rank) — the right answer should be near the top of results.
 
 Current parameters:
 {params_json}
@@ -98,10 +88,8 @@ Parameter bounds (min, max, type):
 Experiment history (last {n_history} runs):
 {log_entries}
 
-Composite score = 0.25*keyword_recall + 0.40*mrr + 0.35*precision_at_k (higher is better)
-- keyword_recall: fraction of expected keywords found (0-1)
-- mrr: mean reciprocal rank of first relevant result (0-1)
-- precision_at_k: fraction of top-20 results that are relevant (0-1)
+Primary metric: MRR (mean reciprocal rank — higher means right answer ranked higher, 1.0 = first result)
+Also tracked: keyword_recall (found expected keywords), precision_at_k (noise in top-20)
 
 {phase_guidance}
 
@@ -293,12 +281,8 @@ def propose_changes(current_params: dict, log: list[dict], model: str) -> dict |
 
 
 def composite_score(scores: dict) -> float:
-    """Weighted composite: MRR and precision@k matter most."""
-    return (
-        0.25 * scores.get("keyword_recall", 0)
-        + 0.40 * scores.get("mrr", 0)
-        + 0.35 * scores.get("precision_at_k", 0)
-    )
+    """Single objective: MRR. Is the right answer near the top?"""
+    return scores.get("mrr", 0)
 
 
 def is_improvement(new_scores: dict, baseline: dict) -> bool:
