@@ -49,32 +49,114 @@ def _mangle_cwd(cwd: str) -> str:
     return mangled
 
 
+def _get_process_args(pid: int) -> list[str] | None:
+    """Get command-line args for a process. Supports Linux + macOS."""
+    # Linux: /proc/<pid>/cmdline
+    cmdline_path = f"/proc/{pid}/cmdline"
+    if os.path.exists(cmdline_path):
+        try:
+            with open(cmdline_path, "rb") as f:
+                raw = f.read().split(b"\x00")
+            return [a.decode("utf-8", errors="replace") for a in raw if a]
+        except Exception:
+            return None
+
+    # macOS/BSD: ps
+    try:
+        import subprocess as _sp
+        result = _sp.run(["ps", "-p", str(pid), "-o", "args="],
+                         capture_output=True, text=True, timeout=5)
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip().split()
+    except Exception:
+        pass
+    return None
+
+
+def _extract_session_id_from_args(args: list[str]) -> str | None:
+    """Extract a CC session UUID from command-line args (--resume, --continue)."""
+    for i, arg in enumerate(args):
+        if arg in ("--resume", "--continue") and i + 1 < len(args):
+            candidate = args[i + 1]
+            if len(candidate) == 36 and candidate.count("-") == 4:
+                return candidate
+    return None
+
+
+def _detect_current_session_id() -> str | None:
+    """Detect the current Claude Code session ID by walking up the process tree.
+
+    The tool call runs inside: claude → shell → python spoof_tool.py
+    Walk ancestors until we find a process with --resume <uuid>.
+    """
+    try:
+        pid = os.getpid()
+        for _ in range(10):  # max 10 levels up
+            # Get parent PID
+            stat_path = f"/proc/{pid}/stat"
+            if os.path.exists(stat_path):
+                with open(stat_path) as f:
+                    fields = f.read().split()
+                ppid = int(fields[3])
+            else:
+                ppid = os.getppid() if pid == os.getpid() else 0
+
+            if ppid <= 1:
+                break
+
+            args = _get_process_args(ppid)
+            if args:
+                sid = _extract_session_id_from_args(args)
+                if sid:
+                    return sid
+
+            pid = ppid
+    except Exception:
+        pass
+    return None
+
+
 def _find_source_session(cwd: str, session_id: str | None = None) -> Path | None:
     """Find a CC session JSONL file.
 
-    If session_id is given, search ALL CC project directories (not just CWD).
-    Otherwise, find the most recent session for the given CWD.
+    Priority:
+    1. Explicit --session argument
+    2. Auto-detect from parent process (the invoking CC session)
+    3. Most recent session by mtime (fallback)
     """
-    if session_id:
+    if not _CC_PROJECTS_DIR.is_dir():
+        return None
+
+    # Use explicit session ID or auto-detect from parent process
+    target_id = session_id or _detect_current_session_id()
+
+    if target_id:
         # Search across all project directories — session ID is globally unique
         for project_dir in _CC_PROJECTS_DIR.iterdir():
             if not project_dir.is_dir():
                 continue
-            candidate = project_dir / f"{session_id}.jsonl"
+            candidate = project_dir / f"{target_id}.jsonl"
             if candidate.is_file():
                 return candidate
             # Try prefix match
-            matches = sorted(glob.glob(str(project_dir / f"{session_id}*.jsonl")), key=os.path.getmtime, reverse=True)
+            matches = sorted(glob.glob(str(project_dir / f"{target_id}*.jsonl")), key=os.path.getmtime, reverse=True)
             if matches:
                 return Path(matches[0])
-        return None
+        if session_id:
+            return None  # explicit ID not found — don't fall through
 
-    # No session ID — most recent session for the given CWD
-    cc_dir = _CC_PROJECTS_DIR / _mangle_cwd(cwd)
-    if not cc_dir.is_dir():
-        return None
-    candidates = sorted(glob.glob(str(cc_dir / "*.jsonl")), key=os.path.getmtime, reverse=True)
-    return Path(candidates[0]) if candidates else None
+    # Fallback: most recent session by mtime across all dirs
+    all_sessions = []
+    for project_dir in _CC_PROJECTS_DIR.iterdir():
+        if not project_dir.is_dir():
+            continue
+        for sf in project_dir.glob("*.jsonl"):
+            if "subagent" not in sf.name:
+                all_sessions.append(sf)
+    if all_sessions:
+        all_sessions.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        return all_sessions[0]
+    return None
 
 
 def _get_session_cwd(session_file: Path) -> str | None:
@@ -242,10 +324,13 @@ def main():
     if not args.no_ingest:
         auto_ingest()
 
-    # Find source session
+    # Find source session — auto-detect from parent process if no --session given
+    detected_id = _detect_current_session_id()
+    if detected_id and not args.session:
+        print(f"[continuum:spoof] detected session from parent: {detected_id[:12]}", file=sys.stderr)
     source_file = _find_source_session(cwd, args.session)
     if source_file is None:
-        print(f"[continuum:spoof] no CC session found for {cwd}", file=sys.stderr)
+        print(f"[continuum:spoof] no CC session found (cwd={cwd}, detected={detected_id})", file=sys.stderr)
         sys.exit(1)
 
     # Use the session's own starting CWD, not the current working directory
