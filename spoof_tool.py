@@ -334,7 +334,10 @@ def main():
             raw_tail_entries=raw_tail if raw_tail else None,
         )
 
-        write_cc_session(cc_session_id, entries, cwd=cwd)
+        # Write to the same CC project directory as the source session
+        # so `claude --resume <id>` works from the same working directory
+        write_cc_session(cc_session_id, entries, cwd=cwd,
+                         target_dir=source_file.parent)
 
         # Save last spoof for easy resume
         last_spoof_dir = Path.home() / ".continuum"

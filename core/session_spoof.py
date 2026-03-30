@@ -376,23 +376,38 @@ def build_spoofed_session(
 
     # Zone 3: raw tail — full fidelity with tool calls preserved
     if raw_tail_entries:
-        # Use raw CC entries directly — preserves tool_use, tool_result, code diffs
+        # Use raw CC entries directly — preserves tool_use structure
         for raw_entry in raw_tail_entries:
             cc = copy.deepcopy(raw_entry)
             # Rewrite session linkage so the chain is contiguous
             cc["sessionId"] = session_id
-            old_uuid = cc.get("uuid", "")
             cc["uuid"] = str(uuid.uuid4())
             cc["parentUuid"] = prev_uuid
-            # Abbreviate code blocks in text content to reduce bloat
+            # Clean up content blocks to reduce bloat
             msg = cc.get("message", {})
             content = msg.get("content", "")
             if isinstance(content, str):
                 msg["content"] = _abbreviate_code_blocks(content)
             elif isinstance(content, list):
                 for block in content:
-                    if isinstance(block, dict) and block.get("type") == "text":
+                    if not isinstance(block, dict):
+                        continue
+                    btype = block.get("type", "")
+                    if btype == "text":
                         block["text"] = _abbreviate_code_blocks(block.get("text", ""))
+                    elif btype == "tool_result":
+                        # Truncate tool_result content — can be enormous
+                        # (retrieval dumps, file reads, command output)
+                        result = block.get("content", "")
+                        if isinstance(result, str) and len(result) > 500:
+                            block["content"] = result[:500] + "\n[... truncated ...]"
+                        elif isinstance(result, list):
+                            # Tool results can be list of content blocks
+                            for rb in result:
+                                if isinstance(rb, dict) and rb.get("type") == "text":
+                                    txt = rb.get("text", "")
+                                    if len(txt) > 500:
+                                        rb["text"] = txt[:500] + "\n[... truncated ...]"
             entries.append(cc)
             prev_uuid = cc["uuid"]
     else:
@@ -428,15 +443,23 @@ def build_spoofed_session(
     return entries
 
 
-def write_cc_session(session_id: str, entries: list[dict], cwd: str = "/home/symbolic/projects") -> Path:
+def write_cc_session(session_id: str, entries: list[dict],
+                     cwd: str = "/home/symbolic/projects",
+                     target_dir: Path | None = None) -> Path:
     """Write entries to a Claude Code session JSONL file.
+
+    If target_dir is given, write there (used to match source session location).
+    Otherwise, derive from cwd.
 
     Returns the path to the written file.
     """
-    mangled_cwd = cwd.replace("/", "-")
-    if not mangled_cwd.startswith("-"):
-        mangled_cwd = "-" + mangled_cwd
-    session_dir = CC_SESSION_DIR / mangled_cwd
+    if target_dir:
+        session_dir = target_dir
+    else:
+        mangled_cwd = cwd.replace("/", "-")
+        if not mangled_cwd.startswith("-"):
+            mangled_cwd = "-" + mangled_cwd
+        session_dir = CC_SESSION_DIR / mangled_cwd
     session_dir.mkdir(parents=True, exist_ok=True)
 
     session_file = session_dir / f"{session_id}.jsonl"
