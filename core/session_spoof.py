@@ -390,24 +390,8 @@ def build_spoofed_session(
                 msg["content"] = _abbreviate_code_blocks(content)
             elif isinstance(content, list):
                 for block in content:
-                    if not isinstance(block, dict):
-                        continue
-                    btype = block.get("type", "")
-                    if btype == "text":
+                    if isinstance(block, dict) and block.get("type") == "text":
                         block["text"] = _abbreviate_code_blocks(block.get("text", ""))
-                    elif btype == "tool_result":
-                        # Truncate tool_result content — can be enormous
-                        # (retrieval dumps, file reads, command output)
-                        result = block.get("content", "")
-                        if isinstance(result, str) and len(result) > 500:
-                            block["content"] = result[:500] + "\n[... truncated ...]"
-                        elif isinstance(result, list):
-                            # Tool results can be list of content blocks
-                            for rb in result:
-                                if isinstance(rb, dict) and rb.get("type") == "text":
-                                    txt = rb.get("text", "")
-                                    if len(txt) > 500:
-                                        rb["text"] = txt[:500] + "\n[... truncated ...]"
             entries.append(cc)
             prev_uuid = cc["uuid"]
     else:
