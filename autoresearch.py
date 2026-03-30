@@ -391,7 +391,7 @@ def run_autoresearch(args):
             accepted = is_improvement(new_agg, baseline_agg)
             verdict = "ACCEPTED" if accepted else "REJECTED"
 
-        print(f"  Result:   composite={cs_new:.3f} (baseline={cs_base:.3f})  kw={new_agg['keyword_recall']:.3f}  "
+        print(f"  Result:   uid_recall={cs_new:.3f} (baseline={cs_base:.3f})  "
               f"mrr={new_agg['mrr']:.3f}  p@k={new_agg['precision_at_k']:.3f}  [{verdict}]", file=sys.stderr)
 
         entry = {
