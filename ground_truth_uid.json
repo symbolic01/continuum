@@ -1,926 +1,1602 @@
 [
   {
-    "query": "Bridge _slack_generate_reply thread context fix version history",
-    "expected_keywords": [
-      "_slack_generate_reply",
-      "solution",
-      "showing",
-      "context",
-      "failing",
-      "recurred"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab5e8772\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "Timeline tab transcriptList panel terminal wrap HTML structure layout element",
+    "target_uid": "\u00abf567a9\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00ab5e8772\u00bb"
+    "source_project": "bridge"
   },
   {
-    "query": "search for: \"bridge 'was interrupted' state bug resolve_project_session race condition fixes",
-    "expected_keywords": [
-      "content",
-      "addressed",
-      "correction",
-      "patched",
-      "detection",
-      "kernels",
-      "interrupted"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abd7bc8a\u00bb\u00bb from unknown. Fast-mode keyword search failed to surface this chunk.",
+    "query": "spoofer session dead ends clean story narrative conversion tool implementation",
+    "target_uid": "\u00ab0ccc0f\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "unknown",
-    "target_uid": "\u00abd7bc8a\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "Fix repeated `renderTimeline()` and `transcriptOffset`/`ingestTranscriptChunk` bugs in Bridge project",
-    "expected_keywords": [
-      "sharing",
-      "desynchronization",
-      "independently",
-      "despite",
-      "ingestTranscriptChunk",
-      "renderTimeline",
-      "transcriptOffset",
-      "multiple"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab5f38a4\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "claude code session tags notation ACT OUT TIM USR tool calls text responses",
+    "target_uid": "\u00ab61bd9d\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00ab5f38a4\u00bb"
+    "source_project": "bridge"
   },
   {
-    "query": "voxel-diffusion cluster_by_similarity function parameters",
-    "expected_keywords": [
-      "ndarray",
-      "threshold",
-      "cluster_by_similarity",
-      "min_cluster_size",
-      "vectors"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab9b70da\u00bb\u00bb from voxel-diffusion. Fast-mode keyword search failed to surface this chunk.",
+    "query": "Symbolic pre-computed echo humanity collective wisdom Jayarama human counterpart symbiosis",
+    "target_uid": "\u00ab82a35b\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "voxel-diffusion",
-    "target_uid": "\u00ab9b70da\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "bridge installSwipeActions function details",
-    "expected_keywords": [
-      "function",
-      "selection",
-      "handlers",
-      "transcript",
-      "missing",
-      "addressing",
-      "installSwipeActions",
-      "specific"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abd0b459\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "Sister manager Bridge utterance handling loop sister_session inject_prompt orchestrator integration",
+    "target_uid": "\u00ab008ab2\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from continuum",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00ab\u00abd0b459\u00bb"
+    "source_project": "continuum"
   },
   {
-    "query": "bridge fix response preview tail Bug 1 Claude PTY stream",
-    "expected_keywords": [
-      "instead",
-      "preview",
-      "response"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab39aef0\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "claude resume user entry fields slug gitBranch promptId session restoration",
+    "target_uid": "\u00abaaa160\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00ab\u00ab39aef0\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "project Continuum tab xterm pane claude --resume implementation status",
-    "expected_keywords": [
-      "running",
-      "architecturally",
-      "designed",
-      "planned",
-      "Continuum",
-      "context",
-      "visibility",
-      "implemented"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab4f2b4a\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "file has not been read yet pervasive workflow issue",
+    "target_uid": "\u00abc5f3b4\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00ab\u00ab4f2b4a\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "bridge line 3080 translateToString true issues with ANSI escape handling",
-    "expected_keywords": [
-      "ANSI",
-      "indexOf",
-      "problem",
-      "translateToString",
-      "trimmed"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab811f26\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "spoof compress toolchain infrastructure implementation Continuum session compression settled architecture",
+    "target_uid": "\u00abd09d02\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00ab\u00ab811f26\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "Check PTY allocation and xterm resize handling in bridge project",
-    "expected_keywords": [
-      "actually",
-      "creates",
-      "correct",
-      "picture",
-      "loadSavedCols",
-      "ensureTerminal",
-      "connects"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abf0b382\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "_read_cc_conversation assistant entries user turns rendering filter Claude Code issue",
+    "target_uid": "\u00ab4e56df\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00abf0b382\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "Python function for mapping probability to ANSI color in bridge project",
-    "expected_keywords": [
-      "ANSI",
-      "_word_conf_color",
-      "confidence",
-      "probability"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abec4fe2\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "orchestrate.py print flag interactive Claude Code sessions context spoofing replacement",
+    "target_uid": "\u00ab95414c\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00abec4fe2\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "_project_home_spoofing_issue_read_cc_conversation_filter_27_entries_3_to_18",
-    "expected_keywords": [
-      "actually",
-      "correct",
-      "written",
-      "conversation",
-      "entries",
-      "spoofing"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab83ded5\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "query": "logarithmic compaction dreams superempathy plan 2026-03-06 full implementation status activity tracking progress",
+    "target_uid": "\u00abe4feb5\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "home",
-    "target_uid": "\u00ab83ded5\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "dream function make_cc_entry request_id timestamp validation template-based approach",
-    "expected_keywords": [
-      "rewritten",
-      "approach",
-      "timestamp",
-      "make_cc_entry",
-      "timestamps",
-      "template",
-      "multiple",
-      "requestId"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab3700b6\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "lovenotes project icon request Continuum Bridge unknown project eight sessions search abandoned",
+    "target_uid": "\u00ab81780f\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from unknown",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00ab\u00ab3700b6\u00bb"
+    "source_project": "unknown"
   },
   {
-    "query": "app export function composeNudgeMessage missing parameter",
-    "expected_keywords": [
-      "function",
-      "formatName",
-      "undefined",
-      "fallback"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab3ede18\u00bb\u00bb from app. Fast-mode keyword search failed to surface this chunk.",
+    "query": "dream phase tools Continuum tool collection superempathy integration",
+    "target_uid": "\u00abbba9f8\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "app",
-    "target_uid": "\u00ab\u00ab3ede18\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "Slack bot project dream unresolved generate reply thread context bug",
-    "expected_keywords": [
-      "resolution",
-      "_slack_generate_reply",
-      "partially",
-      "resolved",
-      "handling",
-      "separate",
-      "context",
-      "mentioned"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abd15259\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "Continuum semantic embedding massive corpus context injection token limit MVP",
+    "target_uid": "\u00ab57b090\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00abd15259\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "fix project bridge bugs PTY tail refine prompt execution",
-    "expected_keywords": [
-      "separate",
-      "preview",
-      "response",
-      "executin",
-      "Response",
-      "instead"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab7f2df7\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "make_cc_entry spoof_tool.py rewrites synthetic requestId timestamp issue resolution documented",
+    "target_uid": "\u00ab99306a\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from continuum",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00ab7f2df7\u00bb"
+    "source_project": "continuum"
   },
   {
-    "query": "home: verify renaming Canopy, update problem mapping(steps/stages)",
-    "expected_keywords": [
-      "difficult",
-      "started",
-      "carries",
-      "baggage",
-      "company"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab50adf5\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "query": "orchestrate.py non-interactive print architectural approach Claude Code interactive sessions spoofing",
+    "target_uid": "\u00ab388662\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from unknown",
     "source_category": "reverse_gt",
-    "source_project": "home",
-    "target_uid": "\u00ab\u00ab50adf5\u00bb"
+    "source_project": "unknown"
   },
   {
-    "query": "dream transcriptOffset ingestTranscriptChunk bridge state management bug fix confirmation",
-    "expected_keywords": [
-      "desynchronization",
-      "transcriptOffset",
-      "management",
-      "identified",
-      "ingestTranscriptChunk",
-      "context",
-      "timeline"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab44d9b1\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "continuum project directory structure session manipulation retrieval CLI entry points organization",
+    "target_uid": "\u00abd69b4b\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00ab\u00ab44d9b1\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "project slack_generate_reply recurring thread context fix system prompt code changes",
-    "expected_keywords": [
-      "_slack_generate_reply",
-      "handling",
-      "eventually",
-      "context",
-      "recurring",
-      "changes",
-      "comprehensive",
-      "leading"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abf7d5cc\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "renderTimeline transcriptOffset bug transcript timeline state desynchronization Bridge root cause shared",
+    "target_uid": "\u00abc2d375\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00ab\u00abf7d5cc\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "search for \"File has not been read yet\" error in stress kernels across bridge home cpx/aitx/hackathon",
-    "expected_keywords": [
-      "repeatedly",
-      "content",
-      "kernels",
-      "hackathon",
-      "appears"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab403149\u00bb\u00bb from unknown. Fast-mode keyword search failed to surface this chunk.",
+    "query": "Claude Code resume command Opus 4.6 model 1M context window continuation",
+    "target_uid": "\u00ab9370a7\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "unknown",
-    "target_uid": "\u00ab403149\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "GitHub Project Bridge Synthetic Session Launch Fix",
-    "expected_keywords": [
-      "synthetic",
-      "sessions",
-      "intended",
-      "intention",
-      "subsequent",
-      "GitHub",
-      "completed",
-      "session"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab3cf74c\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "prompt injection session dispatch context missing response path Claude Code",
+    "target_uid": "\u00ab6042be\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00ab3cf74c\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "CSS width constraint for .terminal-wrap overflow issue in project bridge",
-    "expected_keywords": [
-      "terminal",
-      "resolved",
-      "constraints",
-      "children",
-      "viewport",
-      "overflow",
-      "explicit"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abdbec07\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "mic button CSS red pulse active state audio TTS integration",
+    "target_uid": "\u00ab373f45\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00abdbec07\u00bb"
+    "source_project": "bridge"
   },
   {
-    "query": "CLAUDE.md update frequency project:dream",
-    "expected_keywords": [
-      "bearing",
-      "CLAUDE",
-      "ongoing",
-      "updated",
-      "discipline",
-      "practice",
-      "maintaining",
-      "actively"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab037daa\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "Bridge development pattern UX feature layout state edge case fix symptom",
+    "target_uid": "\u00ab98be19\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from continuum",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00ab037daa\u00bb"
+    "source_project": "continuum"
   },
   {
-    "query": "test function for non-resume state reset in voxel-diffusion project",
-    "expected_keywords": [
-      "test_non_resume_resets_stale_state_rows",
-      "tmp_path",
-      "_make_image",
-      "input_dir",
-      "output_dir"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab7ab84a\u00bb\u00bb from voxel-diffusion. Fast-mode keyword search failed to surface this chunk.",
+    "query": "app element height rotated mode CSS important inline JavaScript precedence",
+    "target_uid": "\u00ab697b73\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
     "source_category": "reverse_gt",
-    "source_project": "voxel-diffusion",
-    "target_uid": "\u00ab7ab84a\u00bb"
+    "source_project": "bridge"
   },
   {
-    "query": "continuum project evidence validation subprocess CLAUDECODE=1 impact",
-    "expected_keywords": [
-      "insufficient",
-      "whether",
-      "validator",
-      "supports",
-      "contradicts",
-      "subprocess",
-      "spawned",
-      "CLAIM"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab9ed1a9\u00bb\u00bb from continuum. Fast-mode keyword search failed to surface this chunk.",
+    "query": "bridge server manual restart UI feature changes apply verification tasks",
+    "target_uid": "\u00ab544327\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "continuum",
-    "target_uid": "\u00ab9ed1a9\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "voxel-diffusion cluster_centroids implementation details",
-    "expected_keywords": [
-      "ndarray",
-      "enumerate",
-      "clusters",
-      "vectors",
-      "centroids",
-      "_cluster_centroids",
-      "members"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abd88318\u00bb\u00bb from voxel-diffusion. Fast-mode keyword search failed to surface this chunk.",
+    "query": "Dashboard GitHub personas report HTML links 2641 entries 1071 kernels",
+    "target_uid": "\u00ab0ace66\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from cpx/aitx/hackathon",
     "source_category": "reverse_gt",
-    "source_project": "voxel-diffusion",
-    "target_uid": "\u00abd88318\u00bb"
+    "source_project": "cpx/aitx/hackathon"
   },
   {
-    "query": "superempathy/dreams project provenance chain update just refs CLAUDE.md",
-    "expected_keywords": [
-      "updates",
-      "broader",
-      "CLAUDE",
-      "project",
-      "superempathy",
-      "context",
-      "correction",
-      "provenance"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abf72033\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "privacy conscious power users lawyers therapists doctors integration chains gap",
+    "target_uid": "\u00ab547103\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00abf72033\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "claude project home resume c2bfda83-4afd-9201-ea5cd692f0d2 Claude Code v2.1.78 Op",
-    "expected_keywords": [
-      "context",
-      "projects"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abec05e2\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "query": "index.html HTML JavaScript changes restart requirement CC session editing",
+    "target_uid": "\u00aba19f49\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
     "source_category": "reverse_gt",
-    "source_project": "home",
-    "target_uid": "\u00abec05e2\u00bb"
+    "source_project": "bridge"
   },
   {
-    "query": "cd to repo and start Python web server for home project sessions",
-    "expected_keywords": [
-      "terminal",
-      "continuum",
-      "session",
-      "localhost"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab033ac5\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "query": "superempathy logarithmic compaction plan implementation written referenced but not coded",
+    "target_uid": "\u00ab62f4ee\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "home",
-    "target_uid": "\u00ab033ac5\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "project FileHasNotBeenReadYet error Claude editing pattern",
-    "expected_keywords": [
-      "without",
-      "attempts",
-      "project",
-      "workflow",
-      "pattern",
-      "appears",
-      "indicating",
-      "persistent"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abc90ade\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "privacy conscious users integration chains product vision implementation gap documentation",
+    "target_uid": "\u00ab86fd98\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00ab\u00abc90ade\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "home February 17, 2026 first conversation .claude folders",
-    "expected_keywords": [
-      "operating",
-      "collection",
-      "personal",
-      "February",
-      "dynamic",
-      "context",
-      "folders",
-      "windows"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab208552\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "query": "ImageMagick icon generation Bridge project icons implementation investigation multiple sessions",
+    "target_uid": "\u00ab8ddd19\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "home",
-    "target_uid": "\u00ab\u00ab208552\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "cpx mission-match project status SSE-on-connect",
-    "expected_keywords": [
-      "created",
-      "abandoned",
-      "connect",
-      "project",
-      "leaving",
-      "question",
-      "mission",
-      "unanswered"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab82d610\u00bb\u00bb from cpx. Fast-mode keyword search failed to surface this chunk.",
+    "query": "statusline script validation warnings handoff availability across projects testing configuration",
+    "target_uid": "\u00ab0c5538\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "cpx",
-    "target_uid": "\u00ab82d610\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "continuum project provenance chain correction history",
-    "expected_keywords": [
-      "content",
-      "corrected",
-      "correction",
-      "provenance",
-      "kernels"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab4ab570\u00bb\u00bb from continuum. Fast-mode keyword search failed to surface this chunk.",
+    "query": "financial gap 100-500 units 15K business plan revenue model forecast",
+    "target_uid": "\u00ab6777af\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "continuum",
-    "target_uid": "\u00ab4ab570\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "superempathy VRAM budget model requirements overflow",
-    "expected_keywords": [
-      "everything",
-      "Currently",
-      "Whisper",
-      "earlier",
-      "VRAM"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab6a6565\u00bb\u00bb from superempathy. Fast-mode keyword search failed to surface this chunk.",
+    "query": "make_cc_entry spoof_tool.py requestId timestamp grounding template based solution implementation",
+    "target_uid": "\u00aba05586\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "superempathy",
-    "target_uid": "\u00ab6a6565\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "Django Bridge WebUI recurring bugs fix history and root cause analysis",
-    "expected_keywords": [
-      "terminal",
-      "recurring",
-      "WebUI",
-      "renderTimeline",
-      "showing",
-      "corruption",
-      "preview",
-      "handlers"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abf8ea76\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "noise speaker audio MIN_SEC parameter clip duration restart threshold adjustment",
+    "target_uid": "\u00abb055fd\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from superempathy",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00abf8ea76\u00bb"
+    "source_project": "superempathy"
   },
   {
-    "query": "claude resume project home v2.1.78 context length",
-    "expected_keywords": [
-      "context",
-      "requestId",
-      "projects",
-      "everythi"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab91f870\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "query": "handoff statusline patterns Memory context awareness convention root CLAUDE configuration",
+    "target_uid": "\u00ab8fe152\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "home",
-    "target_uid": "\u00ab5cda93\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "Canopy Project: Bridge CLAUDE.md Validated Section Memory Optimization Crash Location",
-    "expected_keywords": [
-      "CLAUDE",
-      "exactly",
-      "section",
-      "strings",
-      "shouldn",
-      "serialize",
-      "content",
-      "Validated"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab1cc16a\u00bb\u00bb from canopy. Fast-mode keyword search failed to surface this chunk.",
+    "query": "CC rejecting assistant entries merging consecutive same role debugging fix",
+    "target_uid": "\u00abe91c1a\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "canopy",
-    "target_uid": "\u00ab1cc16a\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "implement Claude Code v2.1.78 features in Opus 4.6 project",
-    "expected_keywords": [
-      "context",
-      "projects"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab4f9b28\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "query": "scroll buffer writes terminal freeze pause resume pending updates notification",
+    "target_uid": "\u00ab5ef0c6\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
     "source_category": "reverse_gt",
-    "source_project": "home",
-    "target_uid": "\u00ab4f9b28\u00bb"
+    "source_project": "bridge"
   },
   {
-    "query": "cpx project cpx-6-summary commits Slack CLI hackathon configuration",
-    "expected_keywords": [
-      "Summary",
-      "hackathon",
-      "context",
-      "dispatch",
-      "Commits"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abc9f76d\u00bb\u00bb from cpx. Fast-mode keyword search failed to surface this chunk.",
+    "query": "auto-disable LoveLetter per-partner gating feature weekly summary implementation status",
+    "target_uid": "\u00ab2c2872\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from cpx/lovenotes/app/.lovable/memories/plans",
     "source_category": "reverse_gt",
-    "source_project": "cpx",
-    "target_uid": "\u00abc9f76d\u00bb"
+    "source_project": "cpx/lovenotes/app/.lovable/memories/plans"
   },
   {
-    "query": "CLAUDE.md edit re-read cycle 14-21 days project chunks",
-    "expected_keywords": [
-      "CLAUDE",
-      "discuss",
-      "implicit",
-      "emphasizing",
-      "various",
-      "context",
-      "maintenance",
-      "projects"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab76927e\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "physically constrained installation order rework house back-yard fence documentation CLAUDE.md memory",
+    "target_uid": "\u00ab3e104d\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00ab76927e\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "cpx/aitx/hackathon CLAUDE.md deadline tasks critical path",
-    "expected_keywords": [
-      "CLAUDE",
-      "ANTHROPIC_API_KEY",
-      "deadline",
-      "Looking",
-      "synthesis",
-      "deposit",
-      "credits",
-      "checklist"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab363073\u00bb\u00bb from cpx/aitx/hackathon. Fast-mode keyword search failed to surface this chunk.",
+    "query": "breadcrumb-seg clickable segment Bridge phase3 breadcrumb tree UI component navigation",
+    "target_uid": "\u00ab5d857e\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "cpx/aitx/hackathon",
-    "target_uid": "\u00ab363073\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "Continuum project JSON verdict insufficient reason analysis",
-    "expected_keywords": [
-      "expressions",
-      "distinct",
-      "repeated",
-      "establi",
-      "Evidence",
-      "message",
-      "multiple",
-      "identical"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abb03925\u00bb\u00bb from continuum. Fast-mode keyword search failed to surface this chunk.",
+    "query": "polling loop REACT_ONLY responses bot tags thread tracking involvement identification",
+    "target_uid": "\u00ab8044f8\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from cpx",
     "source_category": "reverse_gt",
-    "source_project": "continuum",
-    "target_uid": "\u00abb03925\u00bb"
+    "source_project": "cpx"
   },
   {
-    "query": "Document gaps for dream project sessions referencing superempathy plansintegration chains",
-    "expected_keywords": [
-      "integration",
-      "superempathy",
-      "documented",
-      "ideally",
-      "carries",
-      "session",
-      "warranted",
-      "discussed"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abbf66af\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "Bridge Continuum tools work adoption legal ethical plan March 2026",
+    "target_uid": "\u00ab0235e9\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00abbf66af\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "bridge project structure and components",
-    "expected_keywords": [
-      "Biometric",
-      "runtime",
-      "research",
-      "orchestrator",
-      "superempathy",
-      "projects"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab1eccb0\u00bb\u00bb from plans. Fast-mode keyword search failed to surface this chunk.",
+    "query": "retriever role_filter negative filter exclude chain kernel roles filtering logic",
+    "target_uid": "\u00aba8c908\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from superempathy/dreams",
     "source_category": "reverse_gt",
-    "source_project": "plans",
-    "target_uid": "\u00ab1eccb0\u00bb"
+    "source_project": "superempathy/dreams"
   },
   {
-    "query": "Claude project dream action scope control mechanism implementation",
-    "expected_keywords": [
-      "proposes",
-      "requiring",
-      "actions",
-      "recurring",
-      "overreach",
-      "friction",
-      "intervention",
-      "consistently"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abe29d1a\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "Bridge terminal buffer access checking term.buffer viewportY serializeAddon investigation verification",
+    "target_uid": "\u00abf3395a\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00abe29d1a\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "JavaScript dynamic image path resolution in project subdirectories",
-    "expected_keywords": [
-      "subproject",
-      "requests"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abb7da51\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "query": "dream session tail superempathy automatic dream generation triggering operational pipeline status",
+    "target_uid": "\u00abe64f6d\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "home",
-    "target_uid": "\u00abb7da51\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "evidence validation claim superempathy v1 schema claude md files",
-    "expected_keywords": [
-      "insufficient",
-      "Superempathy",
-      "whether",
-      "validator",
-      "supports",
-      "contradicts",
-      "CLAIM",
-      "determine"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab1b255d\u00bb\u00bb from unknown. Fast-mode keyword search failed to surface this chunk.",
+    "query": "Bridge WebUI bugs response preview session_count terminal buffer mobile overflow",
+    "target_uid": "\u00ab583c9a\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "unknown",
-    "target_uid": "\u00ab1b255d\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "Claude project dream action scope overrun solution",
-    "expected_keywords": [
-      "intervention",
-      "describe",
-      "behavior",
-      "requiring",
-      "projects",
-      "actions",
-      "multiple",
-      "intended"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab4f7a90\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "exit button unreachable position outside app element rotate content accessible",
+    "target_uid": "\u00ab483fcc\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00ab4f7a90\u00bb"
+    "source_project": "bridge"
   },
   {
-    "query": "class SimulationState constructor initial setup deliveries responses phone states",
-    "expected_keywords": [
-      "currentDay",
-      "private",
-      "deliveries",
-      "SimulationState",
-      "responses",
-      "Delivery",
-      "Response",
-      "currentTime"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abe4712e\u00bb\u00bb from app. Fast-mode keyword search failed to surface this chunk.",
+    "query": "Bridge server restart friction point hot reload development reactive patching pattern",
+    "target_uid": "\u00ab15c897\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "app",
-    "target_uid": "\u00abe4712e\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "search for determinePromptCategory function ranges in app project",
-    "expected_keywords": [
-      "endOffset",
-      "functions",
-      "isBlockCoverage",
-      "startOffset",
-      "functionName"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abf06d7e\u00bb\u00bb from app. Fast-mode keyword search failed to surface this chunk.",
+    "query": "retriever bounds constraints semantic_k keyword_k weights performance parameters natural limits",
+    "target_uid": "\u00aba6df74\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "app",
-    "target_uid": "\u00abf06d7e\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "parse active chunks regex match transcription",
-    "expected_keywords": [
-      "_parse_active_chunks",
-      "raw_line",
-      "in_active",
-      "splitlines",
-      "transcript_text"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab98732e\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "Bridge _replace_session function initial_cols race condition incomplete refactor migration",
+    "target_uid": "\u00ab988371\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00ab98732e\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "project transition --print to Claude Code sessions validation context spoofing",
-    "expected_keywords": [
-      "architectural",
-      "interactive",
-      "correct",
-      "transition",
-      "sessions",
-      "context",
-      "validated",
-      "approach"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab92a058\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "dream phase tools Continuum integration cx dream end-to-end tool collection",
+    "target_uid": "\u00abffd0ce\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00ab\u00ab92a058\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "cpx/mission-match project status SSE-on-connect implementation",
-    "expected_keywords": [
-      "created",
-      "abandoned",
-      "connect",
-      "project",
-      "leaving",
-      "question",
-      "mission",
-      "unanswered"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abc4f406\u00bb\u00bb from dream. Fast-mode keyword search failed to surface this chunk.",
+    "query": "replace_session append_system_prompt verification evidence verdict insufficient confirmation working status",
+    "target_uid": "\u00abdb3d49\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from unknown",
     "source_category": "reverse_gt",
-    "source_project": "dream",
-    "target_uid": "\u00abc4f406\u00bb"
+    "source_project": "unknown"
   },
   {
-    "query": "continuum verdict contradictory evidence JSON analysis",
-    "expected_keywords": [
-      "integration",
-      "Evidence",
-      "community",
-      "verdict",
-      "pyannote",
-      "describes",
-      "segments",
-      "explicitly"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab3168b6\u00bb\u00bb from continuum. Fast-mode keyword search failed to surface this chunk.",
+    "query": "graceful restart session preservation SIGHUP WebSocket PtyHub sessions disk serialization",
+    "target_uid": "\u00ab635f40\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge/plans",
     "source_category": "reverse_gt",
-    "source_project": "continuum",
-    "target_uid": "\u00ab\u00ab3168b6\u00bb"
+    "source_project": "bridge/plans"
   },
   {
-    "query": "Claude Project Home Resume Commit Minimal Test Prompt ID",
-    "expected_keywords": [
-      "Minimal",
-      "context",
-      "promptId",
-      "gitBr",
-      "projects"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab9b38cc\u00bb\u00bb from home. Fast-mode keyword search failed to surface this chunk.",
+    "query": "graceful memory degradation episodic memory superempathy publication strategy design 2026",
+    "target_uid": "\u00abbed32b\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "home",
-    "target_uid": "\u00ab9b38cc\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "ComfyUI project bridge job #184 status update",
-    "expected_keywords": [
-      "momentarily",
-      "generating",
-      "iterate",
-      "ComfyUI",
-      "results",
-      "abstract",
-      "connected"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab5aa481\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "add dangerously-skip-permissions claude spawn commands webui_server.py",
+    "target_uid": "\u00ab9d3b2a\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00ab5aa481\u00bb"
+    "source_project": "bridge"
   },
   {
-    "query": "bridge storage JSONL per session indexed by day",
-    "expected_keywords": [
-      "Storage",
-      "transcripts",
-      "JSONL",
-      "instincts",
-      "consider",
-      "indexed",
-      "granularity",
-      "session"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00abb8de0d\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "continuum_bridge per-project ground truth logs session seed",
+    "target_uid": "\u00ab1858d6\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00ab\u00abb8de0d\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "superempathy three-layer architecture raw sessions kernels sutras UUIDssemantic addresses",
-    "expected_keywords": [
-      "principle",
-      "provenance",
-      "kernels",
-      "elegant",
-      "embedded",
-      "sessions",
-      "architecture",
-      "UUIDs"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab1fd50f\u00bb\u00bb from superempathy. Fast-mode keyword search failed to surface this chunk.",
+    "query": "border-color #3a6080 promote-refine-pipeline documentation integration",
+    "target_uid": "\u00ab3871aa\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from continuum",
     "source_category": "reverse_gt",
-    "source_project": "superempathy",
-    "target_uid": "\u00ab1fd50f\u00bb"
+    "source_project": "continuum"
   },
   {
-    "query": "bridge select prompt text function implementation details",
-    "expected_keywords": [
-      "_select_prompt_text",
-      "environ",
-      "THINK_PROMPT_USE_RAW",
-      "use_raw",
-      "raw_text"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab4b88ef\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "tags empty list project detection pipeline fix",
+    "target_uid": "\u00ab183aaf\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00ab\u00ab4b88ef\u00bb"
+    "source_project": "home"
   },
   {
-    "query": "check bridge project API vs server process status",
-    "expected_keywords": [
-      "running",
-      "HTML",
-      "process",
-      "changes",
-      "earlier"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab6f3841\u00bb\u00bb from bridge. Fast-mode keyword search failed to surface this chunk.",
+    "query": "lovenotes project icon selection implementation repeated",
+    "target_uid": "\u00abc3a965\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "bridge",
-    "target_uid": "\u00ab6f3841\u00bb"
+    "source_project": "dream"
   },
   {
-    "query": "cpx/aitx/hackathon authentication options GitHub",
-    "expected_keywords": [
-      "Browser",
-      "easiest",
-      "authenticated",
-      "browser"
-    ],
-    "description": "[reverse_gt] Retrieve miss on corpus chunk \u00ab\u00ab851392\u00bb\u00bb from cpx/aitx/hackathon. Fast-mode keyword search failed to surface this chunk.",
+    "query": "orchestrate.py interactive session context spoofing Continuum tab",
+    "target_uid": "\u00abc2a8b8\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
     "source_category": "reverse_gt",
-    "source_project": "cpx/aitx/hackathon",
-    "target_uid": "\u00ab851392\u00bb"
+    "source_project": "dream"
+  },
+  {
+    "query": "TTS response reader single button tray popover",
+    "target_uid": "\u00abec36cb\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "automatic dream generation trigger persist superempathy session",
+    "target_uid": "\u00abb477e7\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "mine_ground_truth.py query dataset train test split overfitting",
+    "target_uid": "\u00ab1da04c\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "spirit sub-project definition conceptual framework",
+    "target_uid": "\u00ab920831\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "bridge SSL socket corruption process kill restart friction",
+    "target_uid": "\u00ab990da0\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "file has not been read yet tool error",
+    "target_uid": "\u00ab86f6ed\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "action potentials context management Claude Code executor",
+    "target_uid": "\u00ab2c44af\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "xterm.js mouseup events double-click selection onSelectionChange",
+    "target_uid": "\u00abb80f42\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "project_cwd px codebase resolution assistant bug",
+    "target_uid": "\u00ab2dd641\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "dream_tool automatic generation threading synthesis timeout",
+    "target_uid": "\u00ab7253c9\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "response preview refine command terminal buffer bugs",
+    "target_uid": "\u00ab51ed75\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "bridge code change process kill os._exit restart",
+    "target_uid": "\u00abc37ab6\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "enumerate_projects recursive discovery arbitrary depth nested tree",
+    "target_uid": "\u00abcf3838\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "fix href regex dream_report json loadReportHistory not finding elements javascript query",
+    "target_uid": "\u00abc8b8dc\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from superempathy/dreams",
+    "source_category": "reverse_gt",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "Bridge sister manager utterance handling integration abandoned implementation status incomplete midway",
+    "target_uid": "\u00ab4a747d\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "Trazodone Gabapentin integration documentation memory confinement comfort medication chains implementation",
+    "target_uid": "\u00ab1dbade\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "biometric inputs activation control outputs target state trajectories v1 schema validation",
+    "target_uid": "\u00ab2a7ce7\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "Trazodone Gabapentin integration documentation memory confinement comfort medication chains implementation",
+    "target_uid": "\u00ab689155\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "backlog items survive context compression session boundaries sorting creation time alphabetical",
+    "target_uid": "\u00ab4cbc9f\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "dream phase tools Continuum integration not implemented blocking status workflow",
+    "target_uid": "\u00ab366b63\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "Jordan Identity Crisis self-worth promotion anxiety job title themes neural",
+    "target_uid": "\u00abe638d3\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from cpx/aitx/hackathon",
+    "source_category": "reverse_gt",
+    "source_project": "cpx/aitx/hackathon"
+  },
+  {
+    "query": "sort comparator home pinned top level tree recency alpha ordering",
+    "target_uid": "\u00ab4b9119\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "File not read yet Edit before Read anti-pattern workflow habit systemic",
+    "target_uid": "\u00ab61d2c6\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "Timeline tab mobile transcript right panel layout responsive design implementation",
+    "target_uid": "\u00ab334707\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "Bridge code changes os._exit process kill hot reload architecture friction",
+    "target_uid": "\u00abc9af36\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "safe-ai Slack channel watch reply thread handling implementation fix sloppy",
+    "target_uid": "\u00abe8d8e1\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "ImageMagick icon generation Bridge project incomplete task multiple sessions fix",
+    "target_uid": "\u00abd736e6\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "diagram render errors validator mobile phone copy paste optimization needed",
+    "target_uid": "\u00ab4cf74a\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from cpx/lovenotes",
+    "source_category": "reverse_gt",
+    "source_project": "cpx/lovenotes"
+  },
+  {
+    "query": "header redesign new session resume sidebar layout two commits separate",
+    "target_uid": "\u00ab1d3603\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "Con meaningless ID intrinsic meaning sutra layer integration chains documentation",
+    "target_uid": "\u00aba728a3\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "CLAUDE.md reminder dreams pipeline kernel sutra compression review progress build status check",
+    "target_uid": "\u00abd0d585\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "favorite color shyam dark blue Krishna memory documentation integration chains resolved",
+    "target_uid": "\u00ab1fe6ed\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "kernel validation 20 supported evidence chain references guillemet fix quality report complete",
+    "target_uid": "\u00ababb5e7\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from superempathy/dreams",
+    "source_category": "reverse_gt",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "orchestrate.py script replaced interactive Claude sessions transcript storage retention plan design approved",
+    "target_uid": "\u00ab8b24ad\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "desktop enter shift newline alt send PTY bridge CLAUDE.md state integration chain documentation",
+    "target_uid": "\u00ab4a21b4\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from continuum",
+    "source_category": "reverse_gt",
+    "source_project": "continuum"
+  },
+  {
+    "query": "text fading rendering single line only issue failure correction bug fix",
+    "target_uid": "\u00abcc4111\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "cpx mission-match local API testing blocked Supabase keys handshake brittleness unresolved question",
+    "target_uid": "\u00ab6d1d41\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "make_cc_entry rewrite multiple times synthetic timestamps requestIds template approach final solution implemented",
+    "target_uid": "\u00ab7784ea\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "bridge slack generate reply thread context Sutra.cc silent failure fix pattern recurring March",
+    "target_uid": "\u00abedddaf\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "minimum viable graph Canopy capabilities linked discussion system building startup question",
+    "target_uid": "\u00ab32f02e\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from superempathy/plans",
+    "source_category": "reverse_gt",
+    "source_project": "superempathy/plans"
+  },
+  {
+    "query": "bridge canopy.js graph data endpoint API static file implementation options comparison cleaner",
+    "target_uid": "\u00abc0a5b2\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from canopy",
+    "source_category": "reverse_gt",
+    "source_project": "canopy"
+  },
+  {
+    "query": "text atlas rendering bridge Continuum file watcher WebSocket dynamic session context metrics",
+    "target_uid": "\u00ab872e14\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from continuum",
+    "source_category": "reverse_gt",
+    "source_project": "continuum"
+  },
+  {
+    "query": "local command caveat messages user generated do not respond consider valid context",
+    "target_uid": "\u00abc97c7b\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "Symbolic Dispatch design captured plans api dispatch bridge card approval prompt PTY",
+    "target_uid": "\u00ab4bd461\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "min-width CSS auto override grid layout xterm shrink content width bubbles page",
+    "target_uid": "\u00ab7b3ab0\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "extended family parents siblings in-laws coordination documented plans nested project tree integration",
+    "target_uid": "\u00ab728a4b\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "pyannote community diarization speaker identification embeddings VRAM memory usage documentation integration chains",
+    "target_uid": "\u00ab025160\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "6 foot tension bars fabric fence construction do not shorten bars memory",
+    "target_uid": "\u00ab813384\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "temporal links work SDLC finance projects periodic updates",
+    "target_uid": "\u00ab0c22bc\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "transcript flows sub-agents bridge Continuum session record visibility",
+    "target_uid": "\u00abe7a0fd\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "spring forces atoms drag entity bounds label bar implementation",
+    "target_uid": "\u00aba1be26\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from canopy",
+    "source_category": "reverse_gt",
+    "source_project": "canopy"
+  },
+  {
+    "query": "document.querySelector header class rendered HTML selector issue",
+    "target_uid": "\u00ab008fe3\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from superempathy/dreams",
+    "source_category": "reverse_gt",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "ImageMagick icon generation Bridge project palette error script",
+    "target_uid": "\u00abeffcc7\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "mission-match demo readiness SSE-on-connect API routes Vercel",
+    "target_uid": "\u00ab525d3d\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "unresolved actions task accept reject implementation status",
+    "target_uid": "\u00ab8f9084\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from continuum/plans",
+    "source_category": "reverse_gt",
+    "source_project": "continuum/plans"
+  },
+  {
+    "query": "health exercise nutrition nested-project-tree integration chains",
+    "target_uid": "\u00ab074117\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "provenance chain versus refs terminology conceptual drift",
+    "target_uid": "\u00ab4833c5\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "family house work projects sub-projects integration interview",
+    "target_uid": "\u00ab3ec1a6\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "fence project blocking locker pickup tension wire come-along",
+    "target_uid": "\u00abf68f1b\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from unknown",
+    "source_category": "reverse_gt",
+    "source_project": "unknown"
+  },
+  {
+    "query": "Stack VRAM Whisper bridge CLAUDE.md Direction documentation",
+    "target_uid": "\u00abcfaef0\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from continuum",
+    "source_category": "reverse_gt",
+    "source_project": "continuum"
+  },
+  {
+    "query": "Academia.edu publish superempathy publication strategy 2026",
+    "target_uid": "\u00ab707d18\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "turn boundary markers Unicode user prompt assistant action",
+    "target_uid": "\u00aba7fe61\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "terminal-wrap grid items width minmax viewport expansion",
+    "target_uid": "\u00abfd9516\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "terminal-wrap grid template responsive laptop Android layout",
+    "target_uid": "\u00abb5fccf\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "querySelector header render function dream_report.json kernels",
+    "target_uid": "\u00abf01f37\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from superempathy/dreams",
+    "source_category": "reverse_gt",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "dynamic context benchmarks factual recall error counting measurement",
+    "target_uid": "\u00ab31566f\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "server decision file project prompt frontend response preview TUI",
+    "target_uid": "\u00abf313a6\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "Claude consistently overscoping actions beyond intended scope system prompt constraints strengthening",
+    "target_uid": "\u00ab7536e8\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "Large JSON JSON-e file handling issues ingest pipeline core problem unresolved",
+    "target_uid": "\u00abe23f8d\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "Claude Code resume session user assistant entry type cloning test",
+    "target_uid": "\u00ab71601d\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "webui server shutdown child processes STT pipeline scroll stability notification design",
+    "target_uid": "\u00aba6d9f6\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "Anthropic API overloaded error rate limiting backoff retry management continuum dream",
+    "target_uid": "\u00abb18807\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "mobile portrait breakpoint collapsed expanded icon grid CSS class system",
+    "target_uid": "\u00ab8e71dc\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE environment variable compaction override spoof skill documentation reference",
+    "target_uid": "\u00ab6aac61\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "cpx mission match project SSE on connect architectural question answered",
+    "target_uid": "\u00ab4a392a\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "project-row badge display hidden collapsed expanded CSS not selector rule",
+    "target_uid": "\u00abbec8fb\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "verify benefit enrolled before cancellation assumptions finance CLAUDE.md integration gap",
+    "target_uid": "\u00ab51e78b\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "selectedTranscriptIds candidate-actions sidebar CSS reboot button reference cleanup check",
+    "target_uid": "\u00ab07caf0\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "4 projects generated 35 total options first option each preview selection",
+    "target_uid": "\u00abc2c223\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "markdown heading section chunking actions retrieval conversion integration gap documented",
+    "target_uid": "\u00abc48679\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "transcriptOffset ingestTranscriptChunk desynchronization bug Bridge unaddressed permanent fix needed",
+    "target_uid": "\u00ab40e7e5\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "orchestrate.py interactive Claude Code sessions context spoofing tool visibility continuity",
+    "target_uid": "\u00ab261844\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "substring containment false positive matching nwebui_server minimum length requirement filter",
+    "target_uid": "\u00ab1ca4cc\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "particle editor visual vocabulary entities windows atoms cards node graph",
+    "target_uid": "\u00abf0954f\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from canopy",
+    "source_category": "reverse_gt",
+    "source_project": "canopy"
+  },
+  {
+    "query": "dream check Ollama GPU Claude process wake graceful shutdown cron",
+    "target_uid": "\u00abc9d19a\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from superempathy/dreams",
+    "source_category": "reverse_gt",
+    "source_project": "superempathy/dreams"
+  },
+  {
+    "query": "how to replace session PTY spawn new claude terminal in webui server",
+    "target_uid": "\u00abe0db7a\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "load save continuum projects persistence CONTINUUM_PROJECTS_FILE like YOLO pattern",
+    "target_uid": "\u00ab3a64ba\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "autoresearch levers benchmark harness new params continuum integration chains testing",
+    "target_uid": "\u00abc0e4f9\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "streaming TTS Piper sister session dispatch response capture webui server",
+    "target_uid": "\u00ab030e70\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge/plans",
+    "source_category": "reverse_gt",
+    "source_project": "bridge/plans"
+  },
+  {
+    "query": "spoof verification loop token consumption feedback mechanism cheaper faster tests",
+    "target_uid": "\u00ab9ef6e3\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "terminalViewport FitAddon dimensions styling CSS proper size width height configuration",
+    "target_uid": "\u00ab09a67a\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "bridge runtime orchestrator dreams reflection canopy substrate action potentials context management",
+    "target_uid": "\u00ab61092f\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "canopy orchestrator action potentials sutra layer context management architecture design",
+    "target_uid": "\u00abbd430c\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from continuum",
+    "source_category": "reverse_gt",
+    "source_project": "continuum"
+  },
+  {
+    "query": "VP Engineering Fortune 500 business plan persona age 45 manages people",
+    "target_uid": "\u00ab220647\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "touch scroll handler gesture overlay vertical scrollbar width coverage fix",
+    "target_uid": "\u00ab39f3f6\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "smart query decomposition keyword expansion identifier resolution integration multiple files",
+    "target_uid": "\u00abbb8670\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "mobile portrait CSS max-width 100vw app width rotation display issue",
+    "target_uid": "\u00abd6a1b9\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "health exercise nutrition medical holistic well-being CLAUDE memory integration system",
+    "target_uid": "\u00aba3e7ec\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "claude print fallback concurrent Ollama extraction GPU resource competition handling",
+    "target_uid": "\u00abe287e2\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from cpx/aitx/hackathon",
+    "source_category": "reverse_gt",
+    "source_project": "cpx/aitx/hackathon"
+  },
+  {
+    "query": "dreams pipeline kernel sutra compression task execution failure completion blocking",
+    "target_uid": "\u00ab341e8c\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "Canopy tab loading old canopy.js bridge serving cache issue resolution",
+    "target_uid": "\u00ab4c3045\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from canopy",
+    "source_category": "reverse_gt",
+    "source_project": "canopy"
+  },
+  {
+    "query": "keybar redesign dense table CSS grid layout usage priority layout",
+    "target_uid": "\u00ab1fd9c8\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "dream phase tools Continuum collection superempathy dreams pipeline end-to-end setup",
+    "target_uid": "\u00ab085e3c\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "gesture toggle button placement reading mode controls user interaction interface",
+    "target_uid": "\u00ab2d1845\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "Bridge race condition interrupted state bug root cause multiple fix attempts failures",
+    "target_uid": "\u00ab18171b\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "sidebar start window edge x=0 expand trigger mobile responsive layout 380px width",
+    "target_uid": "\u00abc5e668\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "mobile portrait CSS height overflow viewport dimensions media query rendering issues",
+    "target_uid": "\u00ab327e68\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "JSON file handling ingest pipeline large files corruption gap issue silently drop",
+    "target_uid": "\u00ab0f4d2e\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "Bridge code changes verification restart requirements hot reload development friction evidence",
+    "target_uid": "\u00ab62022d\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from continuum",
+    "source_category": "reverse_gt",
+    "source_project": "continuum"
+  },
+  {
+    "query": "make_cc_entry synthetic timestamps requestIds session time window template approach grounding validation",
+    "target_uid": "\u00ab33b30e\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "make_cc_entry template approach synthetic timestamps session validation spoofed entries CC rejection",
+    "target_uid": "\u00ab09a480\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "scrollBottomBtn copyToast position absolute left 50% viewport floating button centered visibility",
+    "target_uid": "\u00abd99c78\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "Trazodone Gabapentin medication documentation family CLAUDE.md memory no integration chains setup",
+    "target_uid": "\u00abe18ad6\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "getBoundingClientRect rotated transform sub-pixel rounding clientWidth mobile portrait reading mode",
+    "target_uid": "\u00ab6e0596\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "superempathy dreams automatic generation pipeline ComfyUI trigger session tail ingest incomplete",
+    "target_uid": "\u00ab1e1d83\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "semantic embedding per turn query index experimental search synthesis jump compare",
+    "target_uid": "\u00abc079c8\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "reminders tab API endpoints server client implementation validation CLAUDE.md checkbox toggle",
+    "target_uid": "\u00ab4f1897\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "spirit sub-project unresolved question across sessions abandoned forgotten closure status follow-up",
+    "target_uid": "\u00ab9106ce\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "claude resume clone user assistant entries synthetic msg IDs validation field test",
+    "target_uid": "\u00abe78f42\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "dream generation ComfyUI automatic pipeline session handling tail incomplete wiring",
+    "target_uid": "\u00ab00540c\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "AI confirmation checkpoints user intent halting actions multiple projects validation tighter",
+    "target_uid": "\u00ab3ac658\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "Approve Send button rename dispatch auto-submit PTY refactor Claude Code",
+    "target_uid": "\u00ab152b26\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "v1 schema biometric inputs activation control target state trajectories",
+    "target_uid": "\u00ab37cf2d\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from superempathy",
+    "source_category": "reverse_gt",
+    "source_project": "superempathy"
+  },
+  {
+    "query": "spirit sub-project identity voxel-diffusion dream home sessions unresolved context scope",
+    "target_uid": "\u00abc9cdf0\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "timestamp strategy spoofed sessions capturing time windows updating function calls",
+    "target_uid": "\u00abb04aa3\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from home",
+    "source_category": "reverse_gt",
+    "source_project": "home"
+  },
+  {
+    "query": "semantic retrieval embeddings vector search Continuum session logs context selection",
+    "target_uid": "\u00ab3af9cf\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from continuum",
+    "source_category": "reverse_gt",
+    "source_project": "continuum"
+  },
+  {
+    "query": "biometric inputs activation control target outcomes integration memory documentation gaps",
+    "target_uid": "\u00ab2673b8\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "Slack bot channel scope groups read private channels hackathon bot",
+    "target_uid": "\u00abaf4818\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from continuum",
+    "source_category": "reverse_gt",
+    "source_project": "continuum"
+  },
+  {
+    "query": "terminal viewport width cols FitAddon overflow-x mobile horizontal scroll fix",
+    "target_uid": "\u00aba63d59\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "renderTimeline transcriptOffset ingestTranscriptChunk transcript timeline state desynchronization bugs fix",
+    "target_uid": "\u00ab166345\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "spirit sub-project identity voxel-diffusion sessions unresolved what is scope definition",
+    "target_uid": "\u00abc084a1\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "_replace_session session resume system prompt injection append_system_prompt implementation handling",
+    "target_uid": "\u00ab6bb499\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "input_tokens PCT MAX_K token usage computation 200k calculation fix",
+    "target_uid": "\u00abba1765\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "BRIDGE_NO_LISTEN environment variable server icons project PNG webui_server changes",
+    "target_uid": "\u00ab4a06b2\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from bridge",
+    "source_category": "reverse_gt",
+    "source_project": "bridge"
+  },
+  {
+    "query": "emotion classification classes angry disgusted fearful happy surprised unknown types",
+    "target_uid": "\u00ab206d94\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "favorite color shyam dark blue black Krishna user preference memory",
+    "target_uid": "\u00ab545a29\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "Slack card design incoming reply posted teal green indented threads",
+    "target_uid": "\u00abf00309\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from cpx",
+    "source_category": "reverse_gt",
+    "source_project": "cpx"
+  },
+  {
+    "query": "provenance chain refs independent pointers mental model correction CLAUDE.md update",
+    "target_uid": "\u00ab5a555d\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "_slack_generate_reply thread context rate limiting Sutra.cc messages dropped bug",
+    "target_uid": "\u00ab65f124\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
+  },
+  {
+    "query": "Slack channels scoped hackathon prototypes hardcoded SLACK_WATCH_CHANNELS configuration limit",
+    "target_uid": "\u00abaa631c\u00bb",
+    "expected_keywords": [],
+    "description": "[reverse_gt_v2] from dream",
+    "source_category": "reverse_gt",
+    "source_project": "dream"
   }
 ]
