@@ -119,7 +119,13 @@ class EmbeddingIndex:
         self.path = Path(path) if path else None
 
         if self.path and self.path.with_suffix(".npz").exists():
-            self._load()
+            try:
+                self._load()
+            except Exception as e:
+                import sys
+                print(f"Warning: corrupt index at {self.path}, starting empty: {e}", file=sys.stderr)
+                self.vectors = []
+                self.metadata = []
 
     def add(self, vector: list[float], meta: dict):
         """Add a single vector + metadata to the index."""
