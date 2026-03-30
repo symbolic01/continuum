@@ -77,7 +77,7 @@ WALL_HIT_THRESHOLD = 3  # auto-expand after this many iterations at a bound
 
 RESEARCH_PROMPT = """\
 You are a retrieval systems researcher running parameter optimization experiments.
-Your goal is to maximize MRR (mean reciprocal rank) — the right answer should be near the top of results.
+Your goal is to maximize uid_recall — the fraction of target chunks that appear anywhere in the retrieved output. This is the metric that matters: did we find the right chunk or not?
 
 Current parameters:
 {params_json}
@@ -88,8 +88,8 @@ Parameter bounds (min, max, type):
 Experiment history (last {n_history} runs):
 {log_entries}
 
-Primary metric: MRR (mean reciprocal rank — higher means right answer ranked higher, 1.0 = first result)
-Also tracked: keyword_recall (found expected keywords), precision_at_k (noise in top-20)
+Primary metric: uid_recall (fraction of target chunks found in output — 1.0 = found all targets)
+Also tracked: keyword_recall, mrr, precision_at_k
 
 {phase_guidance}
 
@@ -281,8 +281,8 @@ def propose_changes(current_params: dict, log: list[dict], model: str) -> dict |
 
 
 def composite_score(scores: dict) -> float:
-    """Single objective: MRR. Is the right answer near the top?"""
-    return scores.get("mrr", 0)
+    """Single objective: uid_recall. Did the target chunk make it into the output?"""
+    return scores.get("uid_recall", 0)
 
 
 def is_improvement(new_scores: dict, baseline: dict) -> bool:
