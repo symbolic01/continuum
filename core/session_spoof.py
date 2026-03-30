@@ -322,16 +322,19 @@ def build_spoofed_session(
     # 3. Recent session tail at full fidelity
     log_entries = continuum_log.entries
 
-    tail_tokens = 0
-    tail_start = len(log_entries)
-
-    # Walk backwards to find where the tail starts
-    for i in range(len(log_entries) - 1, -1, -1):
-        entry_tokens = count_tokens(log_entries[i].get("content", "")) + 50
-        if tail_tokens + entry_tokens > tail_budget:
-            break
-        tail_tokens += entry_tokens
-        tail_start = i
+    if raw_tail_entries:
+        # Raw tail is provided separately — ALL log_entries are the head
+        tail_start = len(log_entries)
+    else:
+        # No raw tail — split log_entries into head + tail by token budget
+        tail_tokens = 0
+        tail_start = len(log_entries)
+        for i in range(len(log_entries) - 1, -1, -1):
+            entry_tokens = count_tokens(log_entries[i].get("content", "")) + 50
+            if tail_tokens + entry_tokens > tail_budget:
+                break
+            tail_tokens += entry_tokens
+            tail_start = i
 
     # Zone 2: compressed narrative timestamps — spread across head time window
     # The entries before the tail are compressed. If we have head_time_range,
