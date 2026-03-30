@@ -215,6 +215,7 @@ def build_spoofed_session(
     cwd: str = "/home/symbolic/projects",
     source_time_range: tuple[str, str] | None = None,
     head_time_range: tuple[str, str] | None = None,
+    raw_tail_entries: list[dict] | None = None,
 ) -> list[dict]:
     """Build a Claude Code session JSONL from Continuum state.
 
@@ -222,6 +223,10 @@ def build_spoofed_session(
     - Zone 1 (identity/context): session start, +1s each
     - Zone 2 (compressed narrative): spread across head_time_range
     - Zone 3 (raw tail): inherit original timestamps from source
+
+    If raw_tail_entries is provided, those CC-format entries are used
+    directly for Zone 3 (preserving tool_use, tool_result, etc.).
+    Otherwise, falls back to text-extracted entries from continuum_log.
 
     Returns a list of CC-format entries ready to write.
     """
@@ -369,38 +374,56 @@ def build_spoofed_session(
             entries.append(cc)
             prev_uuid = cc["uuid"]
 
-    # Zone 3: raw tail — inherit original timestamps
-    tail = log_entries[tail_start:]
-    # Fallback timestamp: continues from end of zone 2 or head
-    _fallback_base = _base_time + timedelta(hours=2)
-    _fallback_idx = [0]
+    # Zone 3: raw tail — full fidelity with tool calls preserved
+    if raw_tail_entries:
+        # Use raw CC entries directly — preserves tool_use, tool_result, code diffs
+        for raw_entry in raw_tail_entries:
+            cc = copy.deepcopy(raw_entry)
+            # Rewrite session linkage so the chain is contiguous
+            cc["sessionId"] = session_id
+            old_uuid = cc.get("uuid", "")
+            cc["uuid"] = str(uuid.uuid4())
+            cc["parentUuid"] = prev_uuid
+            # Abbreviate code blocks in text content to reduce bloat
+            msg = cc.get("message", {})
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                msg["content"] = _abbreviate_code_blocks(content)
+            elif isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        block["text"] = _abbreviate_code_blocks(block.get("text", ""))
+            entries.append(cc)
+            prev_uuid = cc["uuid"]
+    else:
+        # Fallback: text-extracted entries from continuum_log
+        tail = log_entries[tail_start:]
+        _fallback_base = _base_time + timedelta(hours=2)
+        _fallback_idx = [0]
 
-    def _fallback_ts() -> str:
-        dt = _fallback_base + timedelta(seconds=_fallback_idx[0])
-        _fallback_idx[0] += 1
-        return _format_ts(dt)
+        def _fallback_ts() -> str:
+            dt = _fallback_base + timedelta(seconds=_fallback_idx[0])
+            _fallback_idx[0] += 1
+            return _format_ts(dt)
 
-    for entry in tail:
-        role = entry.get("role", "user")
-        content = entry.get("content", "")
-        ts = entry.get("ts", "")
+        for entry in tail:
+            role = entry.get("role", "user")
+            content = entry.get("content", "")
+            ts = entry.get("ts", "")
 
-        # Abbreviate long code blocks in tail content
-        content = _abbreviate_code_blocks(content)
+            content = _abbreviate_code_blocks(content)
+            entry_ts = _normalize_timestamp(ts) if ts else _fallback_ts()
 
-        # Use original timestamp if available and valid, otherwise fallback
-        entry_ts = _normalize_timestamp(ts) if ts else _fallback_ts()
-
-        if role == "user":
-            cc = make_cc_entry("user", "user", content, session_id,
-                               parent_uuid=prev_uuid, cwd=cwd, timestamp=entry_ts)
-        else:
-            cc = make_cc_entry("assistant", "assistant",
-                               [{"type": "text", "text": content}],
-                               session_id, parent_uuid=prev_uuid, cwd=cwd,
-                               timestamp=entry_ts)
-        entries.append(cc)
-        prev_uuid = cc["uuid"]
+            if role == "user":
+                cc = make_cc_entry("user", "user", content, session_id,
+                                   parent_uuid=prev_uuid, cwd=cwd, timestamp=entry_ts)
+            else:
+                cc = make_cc_entry("assistant", "assistant",
+                                   [{"type": "text", "text": content}],
+                                   session_id, parent_uuid=prev_uuid, cwd=cwd,
+                                   timestamp=entry_ts)
+            entries.append(cc)
+            prev_uuid = cc["uuid"]
 
     return entries
 

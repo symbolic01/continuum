@@ -225,6 +225,9 @@ def main():
     # Read conversation turns (cuts at /spoof invocation)
     cc_turns = _read_cc_conversation(source_file)
 
+    # Read raw tail entries (preserves tool_use, tool_result, code diffs)
+    raw_tail = _read_cc_raw_tail(source_file, args.tail_entries)
+
     # Count raw entries for reporting
     raw_count = 0
     try:
@@ -233,7 +236,7 @@ def main():
     except Exception:
         pass
 
-    print(f" ({len(cc_turns)} turns from {raw_count} entries)", file=sys.stderr)
+    print(f" ({len(cc_turns)} turns from {raw_count} entries, {len(raw_tail)} raw tail)", file=sys.stderr)
 
     # Detect if identity is already present (from a previous spoof)
     already_has_identity = _has_identity_exchange(cc_turns)
@@ -244,12 +247,17 @@ def main():
     if source_timestamps:
         source_time_range = (source_timestamps[0], source_timestamps[-1])
 
-    # Compress if requested — keep recent tail raw
+    # Figure out where the raw tail starts in the text-extracted turns
+    # so we can exclude those from the head (avoid double-counting)
+    raw_tail_uuids = {e.get("uuid", "") for e in raw_tail if e.get("uuid")}
+
+    # Compress if requested — only compress the head (non-tail portion)
     head_time_range = None
     if args.compress:
         from core.session_compress import compress_session
 
-        # Split: compress the bulk, keep the recent tail verbatim
+        # The head is everything before the raw tail
+        # Use character counting to find the split in text-extracted turns
         tail_chars = 0
         tail_start = len(cc_turns)
         for i in range(len(cc_turns) - 1, -1, -1):
@@ -259,7 +267,6 @@ def main():
                 break
 
         head = cc_turns[:tail_start]
-        tail = cc_turns[tail_start:]
         raw_count_turns = len(cc_turns)
 
         # Capture head time window before compression destroys timestamps
@@ -275,10 +282,17 @@ def main():
                 local_model=args.local_model,
             )
 
-        cc_turns = head + tail
-        print(f"  compressed {raw_count_turns}→{len(cc_turns)} turns ({len(tail)} raw tail)", file=sys.stderr)
+        # Head is compressed text turns; tail will be raw CC entries
+        cc_turns = head
+        print(f"  compressed {raw_count_turns}→{len(cc_turns)} head turns + {len(raw_tail)} raw tail entries", file=sys.stderr)
+    else:
+        # No compression — still use raw tail for the last N entries
+        # Remove the tail portion from text turns to avoid duplication
+        if raw_tail:
+            # Approximate: drop the last N text turns matching tail count
+            cc_turns = cc_turns[:-len(raw_tail)] if len(raw_tail) < len(cc_turns) else []
 
-    # Build an in-memory SessionLog
+    # Build an in-memory SessionLog from the head turns only
     tmp = tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False)
     tmp.close()
     try:
@@ -317,6 +331,7 @@ def main():
             cwd=cwd,
             source_time_range=source_time_range,
             head_time_range=head_time_range,
+            raw_tail_entries=raw_tail if raw_tail else None,
         )
 
         write_cc_session(cc_session_id, entries, cwd=cwd)
