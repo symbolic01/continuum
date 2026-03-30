@@ -126,17 +126,41 @@ def run_eval(
     sources = config.get("context_sources", [])
     retriever = ContextRetriever(sources=sources, index=idx, question_index=q_idx, config=config)
 
-    # Pre-decompose all queries in one batch (keeps Qwen loaded, then unloaded)
+    # Decompose queries — cached to disk so repeated evals skip Qwen entirely
     from core.query import decompose_query
+    import hashlib
     n = len(ground_truth)
-    print(f"  Decomposing {n} queries...", file=sys.stderr, end="", flush=True)
+
+    cache_dir = Path.home() / ".continuum" / "decompose_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
     decompositions = []
+    cached = 0
     for i, tc in enumerate(ground_truth):
-        decompositions.append(
-            decompose_query(tc["query"], model=retriever.decompose_model)
-        )
+        query = tc["query"]
+        cache_key = hashlib.sha256(query.encode()).hexdigest()[:16]
+        cache_file = cache_dir / f"{cache_key}.json"
+
+        if cache_file.exists():
+            try:
+                decompositions.append(json.loads(cache_file.read_text()))
+                cached += 1
+                continue
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        decomp = decompose_query(query, model=retriever.decompose_model)
+        decompositions.append(decomp)
+        try:
+            cache_file.write_text(json.dumps(decomp))
+        except OSError:
+            pass
         print(".", file=sys.stderr, end="", flush=True)
-    print(f" done", file=sys.stderr)
+
+    if cached == n:
+        print(f"  Decompositions: {n} cached", file=sys.stderr)
+    else:
+        print(f" {n - cached} decomposed, {cached} cached", file=sys.stderr)
     print(f"  Retrieving {n} queries...", file=sys.stderr, end="", flush=True)
 
     # Now run retrieval with pre-computed decompositions (only nomic needed)
