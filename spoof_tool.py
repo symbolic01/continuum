@@ -277,46 +277,41 @@ def main():
     # so we can exclude those from the head (avoid double-counting)
     raw_tail_uuids = {e.get("uuid", "") for e in raw_tail if e.get("uuid")}
 
-    # Compress if requested — only compress the head (non-tail portion)
+    # Split: head (for compression) + raw tail (full fidelity)
+    # The raw tail is already extracted. Remove those turns from the text-extracted
+    # list to get the head. Use raw_tail count as the split point.
     head_time_range = None
-    if args.compress:
+    if raw_tail and len(raw_tail) < len(cc_turns):
+        head_turns = cc_turns[:-len(raw_tail)]
+    elif raw_tail:
+        # Raw tail covers the entire session — no head needed
+        head_turns = []
+    else:
+        head_turns = cc_turns
+
+    if args.compress and len(head_turns) > 20:
         from core.session_compress import compress_session
 
-        # The head is everything before the raw tail
-        # Use character counting to find the split in text-extracted turns
-        tail_chars = 0
-        tail_start = len(cc_turns)
-        for i in range(len(cc_turns) - 1, -1, -1):
-            tail_chars += len(cc_turns[i].get("content", "")) + 20
-            if tail_chars >= 3000:
-                tail_start = i
-                break
-
-        head = cc_turns[:tail_start]
-        raw_count_turns = len(cc_turns)
+        raw_count_turns = len(head_turns)
 
         # Capture head time window before compression destroys timestamps
-        head_ts = [t.get("ts", "") for t in head if t.get("ts")]
+        head_ts = [t.get("ts", "") for t in head_turns if t.get("ts")]
         if head_ts:
             head_time_range = (head_ts[0], head_ts[-1])
 
-        if len(head) > 20:
-            head = compress_session(
-                head,
-                user_prompt=args.prompt,
-                use_local=args.local,
-                local_model=args.local_model,
-            )
+        head_turns = compress_session(
+            head_turns,
+            user_prompt=args.prompt,
+            use_local=args.local,
+            local_model=args.local_model,
+        )
 
-        # Head is compressed text turns; tail will be raw CC entries
-        cc_turns = head
-        print(f"  compressed {raw_count_turns}→{len(cc_turns)} head turns + {len(raw_tail)} raw tail entries", file=sys.stderr)
+        print(f"  compressed {raw_count_turns}→{len(head_turns)} head turns + {len(raw_tail)} raw tail entries", file=sys.stderr)
     else:
-        # No compression — still use raw tail for the last N entries
-        # Remove the tail portion from text turns to avoid duplication
-        if raw_tail:
-            # Approximate: drop the last N text turns matching tail count
-            cc_turns = cc_turns[:-len(raw_tail)] if len(raw_tail) < len(cc_turns) else []
+        print(f"  {len(head_turns)} head turns + {len(raw_tail)} raw tail entries (no compression)", file=sys.stderr)
+
+    # head_turns become the SessionLog; raw_tail gets appended as raw CC entries
+    cc_turns = head_turns
 
     # Build an in-memory SessionLog from the head turns only
     tmp = tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False)
