@@ -399,7 +399,10 @@ def run_autoresearch(args):
         if phase == 1:
             # Phase 1: log everything, no accept/reject. Best picked at end.
             accepted = False  # doesn't update baseline during exploration
-            verdict = f"LOGGED (best so far: {max(cs_new, cs_base):.3f})"
+            best_so_far = max(
+                [e.get("composite", 0) for e in log if e.get("phase") == 1] + [cs_new]
+            )
+            verdict = f"LOGGED (best so far: {best_so_far:.3f})"
         else:
             accepted = is_improvement(new_agg, baseline_agg)
             verdict = "ACCEPTED" if accepted else "REJECTED"
