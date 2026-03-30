@@ -52,25 +52,46 @@ def _mangle_cwd(cwd: str) -> str:
 def _find_source_session(cwd: str, session_id: str | None = None) -> Path | None:
     """Find a CC session JSONL file.
 
-    If session_id is given, look for that specific file.
+    If session_id is given, search ALL CC project directories (not just CWD).
     Otherwise, find the most recent session for the given CWD.
     """
+    if session_id:
+        # Search across all project directories — session ID is globally unique
+        for project_dir in _CC_PROJECTS_DIR.iterdir():
+            if not project_dir.is_dir():
+                continue
+            candidate = project_dir / f"{session_id}.jsonl"
+            if candidate.is_file():
+                return candidate
+            # Try prefix match
+            matches = sorted(glob.glob(str(project_dir / f"{session_id}*.jsonl")), key=os.path.getmtime, reverse=True)
+            if matches:
+                return Path(matches[0])
+        return None
+
+    # No session ID — most recent session for the given CWD
     cc_dir = _CC_PROJECTS_DIR / _mangle_cwd(cwd)
     if not cc_dir.is_dir():
         return None
-
-    if session_id:
-        # Try exact match
-        candidate = cc_dir / f"{session_id}.jsonl"
-        if candidate.is_file():
-            return candidate
-        # Try prefix match
-        matches = sorted(glob.glob(str(cc_dir / f"{session_id}*.jsonl")), key=os.path.getmtime, reverse=True)
-        return Path(matches[0]) if matches else None
-
-    # Most recent by mtime
     candidates = sorted(glob.glob(str(cc_dir / "*.jsonl")), key=os.path.getmtime, reverse=True)
     return Path(candidates[0]) if candidates else None
+
+
+def _get_session_cwd(session_file: Path) -> str | None:
+    """Read the session's starting CWD from its first entry."""
+    try:
+        with open(session_file) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                entry = json.loads(line)
+                cwd = entry.get("cwd", "")
+                if cwd:
+                    return cwd
+    except Exception:
+        pass
+    return None
 
 
 def _is_spoof_invocation(content: str) -> bool:
@@ -218,6 +239,11 @@ def main():
     if source_file is None:
         print(f"[continuum:spoof] no CC session found for {cwd}", file=sys.stderr)
         sys.exit(1)
+
+    # Use the session's own starting CWD, not the current working directory
+    session_cwd = _get_session_cwd(source_file)
+    if session_cwd:
+        cwd = session_cwd
 
     source_id = source_file.stem
     print(f"[continuum:spoof] source={source_id[:10]}", file=sys.stderr, end="")
