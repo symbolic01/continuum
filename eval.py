@@ -126,10 +126,21 @@ def run_eval(
     sources = config.get("context_sources", [])
     retriever = ContextRetriever(sources=sources, index=idx, question_index=q_idx, config=config)
 
+    # Pre-decompose all queries in one batch (keeps Qwen loaded, then unloaded)
+    from core.query import decompose_query
+    print(f"  Decomposing {len(ground_truth)} queries...", file=sys.stderr)
+    decompositions = []
+    for tc in ground_truth:
+        decompositions.append(
+            decompose_query(tc["query"], model=retriever.decompose_model)
+        )
+    print(f"  Decomposition done. Running retrieval...", file=sys.stderr)
+
+    # Now run retrieval with pre-computed decompositions (only nomic needed)
     all_scores = []
     total_latency = 0.0
 
-    for tc in ground_truth:
+    for tc, decomp in zip(ground_truth, decompositions):
         query = tc["query"]
 
         t0 = time.monotonic()
@@ -137,7 +148,8 @@ def run_eval(
             query=query,
             token_budget=budget,
             conversation_tail="",
-            cull=False,  # no cull during eval — measure raw retrieval quality
+            cull=False,
+            decomposition=decomp,
         )
         latency_ms = (time.monotonic() - t0) * 1000
         total_latency += latency_ms

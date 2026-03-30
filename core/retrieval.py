@@ -902,7 +902,8 @@ Which of these retrieved context chunks are relevant? Return ONLY the numbers of
                  cull: bool = False, cull_factor: int = 5,
                  role_filter: str = "", project_filter: str = "",
                  exclude_roles: list[str] | None = None,
-                 skip_decompose: bool = False) -> str:
+                 skip_decompose: bool = False,
+                 decomposition: dict | None = None) -> str:
         """Retrieve context from index via LLM-routed query decomposition.
 
         Args:
@@ -921,8 +922,9 @@ Which of these retrieved context chunks are relevant? Return ONLY the numbers of
                 tail_truncated = conversation_tail[-2000:]
                 enriched_query = f"{tail_truncated}\n\nCurrent question: {query}"
 
-            if skip_decompose:
-                # Fast mode: skip LLM decomposition, use fallback (pure semantic + keyword)
+            if decomposition:
+                pass  # pre-computed, use as-is
+            elif skip_decompose:
                 from .query import _fallback
                 decomposition = _fallback(enriched_query)
             else:
