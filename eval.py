@@ -128,13 +128,16 @@ def run_eval(
 
     # Pre-decompose all queries in one batch (keeps Qwen loaded, then unloaded)
     from core.query import decompose_query
-    print(f"  Decomposing {len(ground_truth)} queries...", file=sys.stderr)
+    n = len(ground_truth)
+    print(f"  Decomposing {n} queries...", file=sys.stderr, end="", flush=True)
     decompositions = []
-    for tc in ground_truth:
+    for i, tc in enumerate(ground_truth):
         decompositions.append(
             decompose_query(tc["query"], model=retriever.decompose_model)
         )
-    print(f"  Decomposition done. Running retrieval...", file=sys.stderr)
+        print(".", file=sys.stderr, end="", flush=True)
+    print(f" done", file=sys.stderr)
+    print(f"  Retrieving {n} queries...", file=sys.stderr, end="", flush=True)
 
     # Now run retrieval with pre-computed decompositions (only nomic needed)
     all_scores = []
@@ -158,6 +161,8 @@ def run_eval(
         scores["latency_ms"] = latency_ms
         scores["query"] = query
         all_scores.append(scores)
+        print(".", file=sys.stderr, end="", flush=True)
+    print(f" done", file=sys.stderr)
 
     # Aggregate
     n = len(all_scores)
