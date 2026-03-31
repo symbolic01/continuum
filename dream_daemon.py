@@ -136,6 +136,154 @@ def should_synthesize(max_hours: float, morning_hour: float) -> tuple[bool, str]
     return False, "waiting"
 
 
+def run_autoresearch(verbose: bool = False):
+    """Run one autoresearch iteration to tune retrieval params.
+
+    Uses a random sample of GT entries each time (prevents overfitting).
+    Generates new GT entries periodically to track corpus growth.
+    Resumes from best params found so far.
+    """
+    import random
+
+    gt_full_path = CONTINUUM_DIR / "ground_truth_uid.json"
+    gt_sample_path = Path.home() / ".continuum" / "gt_sample.json"
+
+    # Load full GT pool
+    try:
+        with open(gt_full_path) as f:
+            gt_full = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        log("Autoresearch: no ground truth file, skipping")
+        return
+
+    if len(gt_full) < 10:
+        log(f"Autoresearch: only {len(gt_full)} GT entries, skipping")
+        return
+
+    # Sample random subset (100 or all if fewer)
+    sample_size = min(100, len(gt_full))
+    sample = random.sample(gt_full, sample_size)
+    with open(gt_sample_path, "w") as f:
+        json.dump(sample, f)
+
+    log(f"Autoresearch: sampled {sample_size}/{len(gt_full)} GT entries")
+
+    cmd = [
+        sys.executable, str(CONTINUUM_DIR / "autoresearch.py"),
+        "--iterations", "1",
+        "--ground-truth", str(gt_sample_path),
+    ]
+
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True,
+            timeout=1200,  # 20 min max
+        )
+        for line in result.stderr.strip().split("\n"):
+            if line.strip() and "identifiers resolved" not in line:
+                log(f"  {line.strip()}")
+    except subprocess.TimeoutExpired:
+        log("Autoresearch iteration timed out")
+
+
+def run_gt_refresh(verbose: bool = False):
+    """Generate new GT entries from current corpus. Runs every ~10 cycles."""
+    state = load_dream_state()
+    cycles_since_refresh = state.get("cycles_since_gt_refresh", 0)
+
+    if cycles_since_refresh < 10:
+        state["cycles_since_gt_refresh"] = cycles_since_refresh + 1
+        save_dream_state(state)
+        return
+
+    log("Refreshing ground truth from current corpus...")
+
+    cmd = [
+        sys.executable, "-c",
+        """
+import json, random, re, subprocess, glob, sys
+sys.path.insert(0, '%s')
+from core.index import load_index
+from core.retrieval import ContextRetriever
+from core.config import load_config
+
+# Load current corpus chunks with embeddings
+chunks = []
+idx = load_index()
+index_uids = {m.get('uid','') for m in idx.metadata} if idx.metadata else set()
+
+for f in glob.glob('/home/symbolic/.continuum/corpus/**/*.jsonl', recursive=True):
+    if '_archive' in f: continue
+    for line in open(f):
+        line = line.strip()
+        if not line: continue
+        try:
+            e = json.loads(line)
+            if e.get('embedding') and e.get('uid','') in index_uids:
+                content = e.get('content','')
+                if len(content) >= 150 and e.get('role','') not in ('tool_result','tool_use'):
+                    chunks.append(e)
+        except: pass
+
+# Sample 50 new chunks
+sample = random.sample(chunks, min(50, len(chunks)))
+contents = [c.get('content','')[:500] for c in sample]
+
+# Generate queries via Claude
+all_queries = []
+for batch_start in range(0, len(contents), 20):
+    batch = contents[batch_start:batch_start+20]
+    chunk_text = ''
+    for i, content in enumerate(batch):
+        chunk_text += f'\\n[{i}]\\n{content[:400]}\\n'
+    prompt = f'For each numbered chunk, write ONE search query (10-15 words). Return JSON: {{"0":"query",...}}\\n{chunk_text}\\nJSON:'
+    try:
+        result = subprocess.run(['claude','--print','--model','claude-haiku-4-5-20251001'],
+            input=prompt, capture_output=True, text=True, timeout=60)
+        if result.returncode == 0:
+            match = re.search(r'\\{[\\s\\S]*\\}', result.stdout)
+            if match:
+                parsed = json.loads(match.group())
+                for key, query in parsed.items():
+                    idx_num = int(key)
+                    if 0 <= idx_num < len(batch) and isinstance(query,str) and 10<len(query)<150:
+                        all_queries.append((batch_start+idx_num, query.strip()))
+    except: pass
+
+# Append new entries to GT
+gt_path = '%s/ground_truth_uid.json'
+try:
+    with open(gt_path) as f: gt = json.load(f)
+except: gt = []
+existing_uids = {e.get('target_uid','') for e in gt}
+
+added = 0
+for chunk_idx, query in all_queries:
+    uid = sample[chunk_idx].get('uid','')
+    if uid in existing_uids: continue
+    gt.append({'query':query,'target_uid':uid,'expected_keywords':[],'description':'[auto_refresh]','source_category':'reverse_gt','source_project':sample[chunk_idx].get('thread','')})
+    existing_uids.add(uid)
+    added += 1
+
+with open(gt_path,'w') as f: json.dump(gt, f, indent=2)
+print(f'Added {added} new GT entries (total: {len(gt)})')
+""" % (str(CONTINUUM_DIR), str(CONTINUUM_DIR))
+    ]
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        if result.stdout.strip():
+            log(f"  {result.stdout.strip()}")
+        for line in result.stderr.strip().split("\n"):
+            if line.strip():
+                log(f"  {line.strip()}")
+    except subprocess.TimeoutExpired:
+        log("GT refresh timed out")
+
+    state["cycles_since_gt_refresh"] = 0
+    save_dream_state(state)
+
+
 def run_integration(dream_minutes: int, verbose: bool = False):
     """Run integration-only cycle (no synthesis, no validation — fast and free)."""
     dream_seconds = dream_minutes * 60
@@ -278,6 +426,10 @@ def main():
         # Otherwise check integration
         should, reason = should_integrate(args.idle, args.gap)
         if should:
+            # Pre-dream: refresh GT + tune retrieval
+            run_gt_refresh(args.verbose)
+            run_autoresearch(args.verbose)
+            # Then dream
             log(f"Triggering integration: {reason}")
             run_integration(args.dream, args.verbose)
         else:
@@ -300,6 +452,10 @@ def main():
             # Check integration
             should, reason = should_integrate(args.idle, args.gap)
             if should:
+                # Pre-dream: refresh GT (every ~10 cycles) + tune retrieval
+                run_gt_refresh(args.verbose)
+                run_autoresearch(args.verbose)
+                # Then dream
                 log(f"Triggering integration: {reason}")
                 run_integration(args.dream, args.verbose)
 
